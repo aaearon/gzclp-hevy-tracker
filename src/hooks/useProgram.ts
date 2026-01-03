@@ -1,0 +1,327 @@
+/**
+ * useProgram Hook
+ *
+ * Manages the GZCLP program configuration stored in localStorage.
+ */
+
+import { useCallback, useMemo } from 'react'
+import { useLocalStorage } from './useLocalStorage'
+import { createInitialState, isSetupRequired } from '@/lib/state-factory'
+import { migrateState, needsMigration } from '@/lib/migrations'
+import { STORAGE_KEY } from '@/lib/constants'
+import { generateId } from '@/utils/id'
+import type {
+  GZCLPState,
+  ExerciseConfig,
+  ProgressionState,
+  WeightUnit,
+} from '@/types/state'
+
+export interface UseProgramResult {
+  state: GZCLPState
+  isSetupRequired: boolean
+
+  // API Key
+  setApiKey: (apiKey: string) => void
+
+  // Settings
+  setWeightUnit: (unit: WeightUnit) => void
+
+  // Exercises
+  addExercise: (config: Omit<ExerciseConfig, 'id'>) => string
+  updateExercise: (id: string, updates: Partial<ExerciseConfig>) => void
+  removeExercise: (id: string) => void
+
+  // Progression
+  setInitialWeight: (exerciseId: string, weight: number) => void
+  updateProgression: (exerciseId: string, updates: Partial<ProgressionState>) => void
+  updateProgressionBatch: (progressionUpdates: Record<string, ProgressionState>) => void
+
+  // Program
+  setHevyRoutineId: (day: 'A1' | 'B1' | 'A2' | 'B2', routineId: string) => void
+  setHevyRoutineIds: (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => void
+
+  // Sync
+  setLastSync: (timestamp: string) => void
+
+  // Full state management
+  resetState: () => void
+  importState: (state: GZCLPState) => void
+}
+
+export function useProgram(): UseProgramResult {
+  const [rawState, setRawState, removeState] = useLocalStorage<GZCLPState>(
+    STORAGE_KEY,
+    createInitialState()
+  )
+
+  // Apply migrations if needed
+  const state = useMemo((): GZCLPState => {
+    if (needsMigration(rawState)) {
+      const migrated = migrateState(rawState)
+      // Note: We don't save here to avoid infinite loops
+      // The next write will persist the migrated state
+      return migrated
+    }
+    return rawState
+  }, [rawState])
+
+  const setupRequired = useMemo(() => isSetupRequired(state), [state])
+
+  /**
+   * Set the Hevy API key.
+   */
+  const setApiKey = useCallback(
+    (apiKey: string) => {
+      setRawState((prev) => ({
+        ...prev,
+        apiKey,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the weight unit preference.
+   */
+  const setWeightUnit = useCallback(
+    (unit: WeightUnit) => {
+      setRawState((prev) => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          weightUnit: unit,
+          increments:
+            unit === 'kg' ? { upper: 2.5, lower: 5 } : { upper: 5, lower: 10 },
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Add a new exercise configuration.
+   */
+  const addExercise = useCallback(
+    (config: Omit<ExerciseConfig, 'id'>): string => {
+      const id = generateId()
+      const exerciseConfig: ExerciseConfig = { ...config, id }
+
+      setRawState((prev) => ({
+        ...prev,
+        exercises: {
+          ...prev.exercises,
+          [id]: exerciseConfig,
+        },
+        progression: {
+          ...prev.progression,
+          [id]: {
+            exerciseId: id,
+            currentWeight: 0,
+            stage: 0,
+            baseWeight: 0,
+            lastWorkoutId: null,
+            lastWorkoutDate: null,
+            amrapRecord: 0,
+          },
+        },
+      }))
+
+      return id
+    },
+    [setRawState]
+  )
+
+  /**
+   * Update an existing exercise configuration.
+   */
+  const updateExercise = useCallback(
+    (id: string, updates: Partial<ExerciseConfig>) => {
+      setRawState((prev) => {
+        const existing = prev.exercises[id]
+        if (!existing) return prev
+
+        return {
+          ...prev,
+          exercises: {
+            ...prev.exercises,
+            [id]: { ...existing, ...updates },
+          },
+        }
+      })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Remove an exercise configuration.
+   */
+  const removeExercise = useCallback(
+    (id: string) => {
+      setRawState((prev) => {
+        const { [id]: removedExercise, ...remainingExercises } = prev.exercises
+        const { [id]: removedProgression, ...remainingProgression } = prev.progression
+
+        return {
+          ...prev,
+          exercises: remainingExercises,
+          progression: remainingProgression,
+          pendingChanges: prev.pendingChanges.filter((c) => c.exerciseId !== id),
+        }
+      })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the initial weight for an exercise.
+   */
+  const setInitialWeight = useCallback(
+    (exerciseId: string, weight: number) => {
+      setRawState((prev) => {
+        const existing = prev.progression[exerciseId]
+        if (!existing) return prev
+
+        return {
+          ...prev,
+          progression: {
+            ...prev.progression,
+            [exerciseId]: {
+              ...existing,
+              currentWeight: weight,
+              baseWeight: weight,
+            },
+          },
+        }
+      })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Update progression state for an exercise.
+   */
+  const updateProgression = useCallback(
+    (exerciseId: string, updates: Partial<ProgressionState>) => {
+      setRawState((prev) => {
+        const existing = prev.progression[exerciseId]
+        if (!existing) return prev
+
+        return {
+          ...prev,
+          progression: {
+            ...prev.progression,
+            [exerciseId]: { ...existing, ...updates },
+          },
+        }
+      })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Update multiple progression states at once.
+   */
+  const updateProgressionBatch = useCallback(
+    (progressionUpdates: Record<string, ProgressionState>) => {
+      setRawState((prev) => ({
+        ...prev,
+        progression: {
+          ...prev.progression,
+          ...progressionUpdates,
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the Hevy routine ID for a specific day.
+   */
+  const setHevyRoutineId = useCallback(
+    (day: 'A1' | 'B1' | 'A2' | 'B2', routineId: string) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          hevyRoutineIds: {
+            ...prev.program.hevyRoutineIds,
+            [day]: routineId,
+          },
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set multiple Hevy routine IDs at once.
+   */
+  const setHevyRoutineIds = useCallback(
+    (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          hevyRoutineIds: {
+            ...prev.program.hevyRoutineIds,
+            ...(ids.A1 !== undefined && { A1: ids.A1 }),
+            ...(ids.B1 !== undefined && { B1: ids.B1 }),
+            ...(ids.A2 !== undefined && { A2: ids.A2 }),
+            ...(ids.B2 !== undefined && { B2: ids.B2 }),
+          },
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the last sync timestamp.
+   */
+  const setLastSync = useCallback(
+    (timestamp: string) => {
+      setRawState((prev) => ({
+        ...prev,
+        lastSync: timestamp,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Reset state to initial values.
+   */
+  const resetState = useCallback(() => {
+    removeState()
+  }, [removeState])
+
+  /**
+   * Import a complete state object.
+   */
+  const importState = useCallback(
+    (newState: GZCLPState) => {
+      const migrated = migrateState(newState)
+      setRawState(migrated)
+    },
+    [setRawState]
+  )
+
+  return {
+    state,
+    isSetupRequired: setupRequired,
+    setApiKey,
+    setWeightUnit,
+    addExercise,
+    updateExercise,
+    removeExercise,
+    setInitialWeight,
+    updateProgression,
+    updateProgressionBatch,
+    setHevyRoutineId,
+    setHevyRoutineIds,
+    setLastSync,
+    resetState,
+    importState,
+  }
+}
