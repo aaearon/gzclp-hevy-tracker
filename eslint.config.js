@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage', '*.config.js', '*.config.ts', '*.config.d.ts'] },
+  { ignores: ['dist', 'node_modules', 'coverage', '*.config.js', '*.config.ts', '*.config.d.ts', 'specs/*/contracts/*.ts'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
@@ -13,7 +13,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['tests/**/*.ts', 'tests/**/*.tsx'],
+          allowDefaultProject: ['tests/*.ts', 'tests/*.tsx', 'tests/*/*.ts', 'tests/*/*.tsx'],
         },
         tsconfigRootDir: import.meta.dirname,
       },

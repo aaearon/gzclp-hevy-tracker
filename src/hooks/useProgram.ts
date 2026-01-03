@@ -12,9 +12,12 @@ import { STORAGE_KEY } from '@/lib/constants'
 import { generateId } from '@/utils/id'
 import type {
   GZCLPState,
+  GZCLPDay,
   ExerciseConfig,
   ProgressionState,
   WeightUnit,
+  RoutineAssignment,
+  Stage,
 } from '@/types/state'
 
 export interface UseProgramResult {
@@ -33,13 +36,15 @@ export interface UseProgramResult {
   removeExercise: (id: string) => void
 
   // Progression
-  setInitialWeight: (exerciseId: string, weight: number) => void
+  setInitialWeight: (exerciseId: string, weight: number, stage?: Stage) => void
   updateProgression: (exerciseId: string, updates: Partial<ProgressionState>) => void
   updateProgressionBatch: (progressionUpdates: Record<string, ProgressionState>) => void
 
   // Program
   setHevyRoutineId: (day: 'A1' | 'B1' | 'A2' | 'B2', routineId: string) => void
   setHevyRoutineIds: (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => void
+  setRoutineIds: (assignment: RoutineAssignment) => void
+  setCurrentDay: (day: GZCLPDay) => void
 
   // Sync
   setLastSync: (timestamp: string) => void
@@ -174,10 +179,10 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
-   * Set the initial weight for an exercise.
+   * Set the initial weight for an exercise, optionally with a stage.
    */
   const setInitialWeight = useCallback(
-    (exerciseId: string, weight: number) => {
+    (exerciseId: string, weight: number, stage: Stage = 0) => {
       setRawState((prev) => {
         const existing = prev.progression[exerciseId]
         if (!existing) return prev
@@ -190,6 +195,7 @@ export function useProgram(): UseProgramResult {
               ...existing,
               currentWeight: weight,
               baseWeight: weight,
+              stage,
             },
           },
         }
@@ -277,6 +283,43 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
+   * Set routine IDs from import assignment.
+   */
+  const setRoutineIds = useCallback(
+    (assignment: RoutineAssignment) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          hevyRoutineIds: {
+            A1: assignment.A1,
+            B1: assignment.B1,
+            A2: assignment.A2,
+            B2: assignment.B2,
+          },
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the current day in the GZCLP rotation.
+   */
+  const setCurrentDay = useCallback(
+    (day: GZCLPDay) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          currentDay: day,
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
    * Set the last sync timestamp.
    */
   const setLastSync = useCallback(
@@ -320,6 +363,8 @@ export function useProgram(): UseProgramResult {
     updateProgressionBatch,
     setHevyRoutineId,
     setHevyRoutineIds,
+    setRoutineIds,
+    setCurrentDay,
     setLastSync,
     resetState,
     importState,

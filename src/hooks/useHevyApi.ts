@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { createHevyClient, HevyAuthError, type HevyClient } from '@/lib/hevy-client'
-import type { ExerciseTemplate } from '@/types/hevy'
+import type { ExerciseTemplate, Routine } from '@/types/hevy'
 
 export interface UseHevyApiState {
   isConnected: boolean
@@ -15,12 +15,15 @@ export interface UseHevyApiState {
   connectionError: string | null
   exerciseTemplates: ExerciseTemplate[]
   isLoadingTemplates: boolean
+  routines: Routine[]
+  isLoadingRoutines: boolean
 }
 
 export interface UseHevyApiActions {
   connect: (apiKey: string) => Promise<boolean>
   disconnect: () => void
   loadExerciseTemplates: () => Promise<void>
+  loadRoutines: () => Promise<void>
 }
 
 export type UseHevyApiResult = UseHevyApiState & UseHevyApiActions
@@ -32,6 +35,8 @@ export function useHevyApi(initialApiKey?: string): UseHevyApiResult {
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [exerciseTemplates, setExerciseTemplates] = useState<ExerciseTemplate[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [routines, setRoutines] = useState<Routine[]>([])
+  const [isLoadingRoutines, setIsLoadingRoutines] = useState(false)
 
   // Create client instance when API key changes
   const client = useMemo((): HevyClient | null => {
@@ -77,6 +82,7 @@ export function useHevyApi(initialApiKey?: string): UseHevyApiResult {
     setIsConnected(false)
     setConnectionError(null)
     setExerciseTemplates([])
+    setRoutines([])
   }, [])
 
   /**
@@ -97,14 +103,35 @@ export function useHevyApi(initialApiKey?: string): UseHevyApiResult {
     }
   }, [client])
 
+  /**
+   * Load all routines from Hevy.
+   */
+  const loadRoutines = useCallback(async () => {
+    if (!client) {
+      throw new Error('Not connected to Hevy API')
+    }
+
+    setIsLoadingRoutines(true)
+
+    try {
+      const loadedRoutines = await client.getAllRoutines()
+      setRoutines(loadedRoutines)
+    } finally {
+      setIsLoadingRoutines(false)
+    }
+  }, [client])
+
   return {
     isConnected,
     isConnecting,
     connectionError,
     exerciseTemplates,
     isLoadingTemplates,
+    routines,
+    isLoadingRoutines,
     connect,
     disconnect,
     loadExerciseTemplates,
+    loadRoutines,
   }
 }

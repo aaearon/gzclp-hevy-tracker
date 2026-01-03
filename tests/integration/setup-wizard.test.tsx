@@ -14,11 +14,13 @@ import type { ExerciseTemplate } from '@/types/hevy'
 // Mock the Hevy client
 const mockTestConnection = vi.fn()
 const mockGetAllExerciseTemplates = vi.fn()
+const mockGetAllRoutines = vi.fn()
 
 vi.mock('@/lib/hevy-client', () => ({
   createHevyClient: vi.fn(() => ({
     testConnection: mockTestConnection,
     getAllExerciseTemplates: mockGetAllExerciseTemplates,
+    getAllRoutines: mockGetAllRoutines,
   })),
   HevyAuthError: class HevyAuthError extends Error {
     constructor() {
@@ -72,6 +74,7 @@ describe('[US1] Setup Wizard Flow', () => {
     vi.clearAllMocks()
     mockTestConnection.mockResolvedValue(true)
     mockGetAllExerciseTemplates.mockResolvedValue(mockExerciseTemplates)
+    mockGetAllRoutines.mockResolvedValue([]) // Default to no routines
     localStorage.clear()
   })
 
@@ -118,7 +121,7 @@ describe('[US1] Setup Wizard Flow', () => {
       })
     })
 
-    it('should proceed to next step on successful connection', async () => {
+    it('should proceed to routine source step on successful connection', async () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
       const input = screen.getByLabelText(/api key/i)
@@ -128,8 +131,8 @@ describe('[US1] Setup Wizard Flow', () => {
       await user.click(connectButton)
 
       await waitFor(() => {
-        // Should show exercise selection after successful connection
-        expect(screen.getByText(/select exercises/i)).toBeInTheDocument()
+        // Should show routine source selection after successful connection
+        expect(screen.getByText(/how would you like to set up/i)).toBeInTheDocument()
       })
     })
   })
@@ -143,6 +146,15 @@ describe('[US1] Setup Wizard Flow', () => {
       await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
       const connectButton = screen.getByRole('button', { name: /connect/i })
       await user.click(connectButton)
+
+      // Wait for routine source step
+      await waitFor(() => {
+        expect(screen.getByText(/how would you like to set up/i)).toBeInTheDocument()
+      })
+
+      // Select "Create New" to proceed to exercises step
+      const createNewButton = screen.getByRole('button', { name: /create new routines/i })
+      await user.click(createNewButton)
 
       await waitFor(() => {
         expect(screen.getByText(/select exercises/i)).toBeInTheDocument()

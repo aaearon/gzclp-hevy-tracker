@@ -160,3 +160,67 @@ export const CURRENT_STATE_VERSION = '1.0.0'
 // =============================================================================
 
 export const STORAGE_KEY = 'gzclp_state'
+
+// =============================================================================
+// Slot Mapping for Import (Day → T1/T2 slots)
+// =============================================================================
+
+/**
+ * Fixed mapping from GZCLP day to T1/T2 exercise slots.
+ * Used during routine import to determine which slot each exercise belongs to.
+ */
+export const SLOT_MAPPING: Record<GZCLPDay, { t1: GZCLPSlot; t2: GZCLPSlot }> = {
+  A1: { t1: 't1_squat', t2: 't2_bench' },
+  B1: { t1: 't1_ohp', t2: 't2_deadlift' },
+  A2: { t1: 't1_bench', t2: 't2_squat' },
+  B2: { t1: 't1_deadlift', t2: 't2_ohp' },
+}
+
+// =============================================================================
+// Stage Detection Patterns for Import
+// =============================================================================
+
+/**
+ * T1 patterns: [setCount, repCount, stageIndex]
+ * Used to detect which stage a T1 exercise is in based on logged sets.
+ */
+export const T1_STAGE_PATTERNS: readonly [number, number, Stage][] = [
+  [5, 3, 0], // 5x3+ = Stage 1 (index 0)
+  [6, 2, 1], // 6x2+ = Stage 2 (index 1)
+  [10, 1, 2], // 10x1+ = Stage 3 (index 2)
+]
+
+/**
+ * T2 patterns: [setCount, repCount, stageIndex]
+ * Used to detect which stage a T2 exercise is in based on logged sets.
+ */
+export const T2_STAGE_PATTERNS: readonly [number, number, Stage][] = [
+  [3, 10, 0], // 3x10 = Stage 1 (index 0)
+  [3, 8, 1], // 3x8 = Stage 2 (index 1)
+  [3, 6, 2], // 3x6 = Stage 3 (index 2)
+]
+
+/**
+ * Display names for stages.
+ */
+export const STAGE_DISPLAY: Record<Stage, string> = {
+  0: 'Stage 1',
+  1: 'Stage 2',
+  2: 'Stage 3',
+}
+
+/**
+ * Rep scheme display strings by tier and stage.
+ */
+export const STAGE_SCHEMES: Record<'T1' | 'T2', Record<Stage, string>> = {
+  T1: {
+    0: '5x3+',
+    1: '6x2+',
+    2: '10x1+',
+  },
+  T2: {
+    0: '3x10',
+    1: '3x8',
+    2: '3x6',
+  },
+}

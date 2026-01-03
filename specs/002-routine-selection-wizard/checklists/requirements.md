@@ -33,9 +33,13 @@
 ## Notes
 
 - All items pass validation
-- Spec is ready for `/speckit.clarify` or `/speckit.plan`
-- FR-010 references "rep scheme hints" which are domain-specific (GZCLP patterns) but appropriate for this audience
+- Spec is ready for `/speckit.plan`
+- FR-008 documents the fixed slot-to-day mapping that is core to GZCLP
+- FR-013 specifies warmup set filtering for accurate stage detection
 
 ## Revision History
 
-- **2026-01-03**: Added manual routine selection capability (User Story 3). Users can now explicitly select routines from their Hevy account when auto-detection by naming convention fails. Added FR-007, FR-008, FR-009, FR-015 for manual selection flow. Removed assumption that routines must follow standard naming convention.
+- **2026-01-03 (v4)**: Major simplification. Removed auto-detection by naming convention (users explicitly select routines). Reduced from 6 to 4 user stories. Added explicit slot-to-day mapping (FR-008), warmup set filtering (FR-013), T3 extraction from A1 (FR-009). Reduced FRs from 23 to 19. Reduced success criteria from 4 to 3.
+- **2026-01-03 (v3)**: Added progression state detection and next workout selection.
+- **2026-01-03 (v2)**: Added manual routine selection capability.
+- **2026-01-02 (v1)**: Initial specification.
