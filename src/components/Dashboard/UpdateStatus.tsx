@@ -83,8 +83,8 @@ export function UpdateStatus({ status, error, onDismiss }: UpdateStatusProps) {
     )
   }
 
-  if (status === 'error') {
-    return (
+  // status === 'error' at this point
+  return (
       <div
         data-testid="update-status"
         className="flex items-center justify-between rounded-md bg-red-50 px-4 py-3 text-red-700"
@@ -116,7 +116,4 @@ export function UpdateStatus({ status, error, onDismiss }: UpdateStatusProps) {
         )}
       </div>
     )
-  }
-
-  return null
 }

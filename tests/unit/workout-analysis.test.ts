@@ -3,6 +3,8 @@
  *
  * Tests for analyzing Hevy workout data and extracting progression info.
  * [US2] User Story 2 - Sync Workouts and Calculate Progression
+ *
+ * Updated for role-based system (Feature 004).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -15,37 +17,32 @@ import type { Workout, WorkoutSet } from '@/types/hevy'
 import type { ExerciseConfig } from '@/types/state'
 
 describe('[US2] Workout Analysis', () => {
+  // Role-based exercise configs
   const mockExercises: Record<string, ExerciseConfig> = {
     'ex-001': {
       id: 'ex-001',
       hevyTemplateId: 'hevy-squat',
       name: 'Squat (Barbell)',
-      tier: 'T1',
-      slot: 't1_squat',
-      muscleGroup: 'lower',
+      role: 'squat',
     },
     'ex-002': {
       id: 'ex-002',
       hevyTemplateId: 'hevy-bench',
       name: 'Bench Press (Barbell)',
-      tier: 'T2',
-      slot: 't2_bench',
-      muscleGroup: 'upper',
+      role: 'bench',
     },
     'ex-003': {
       id: 'ex-003',
       hevyTemplateId: 'hevy-curl',
       name: 'Bicep Curl',
-      tier: 'T3',
-      slot: 't3_1',
-      muscleGroup: 'upper',
+      role: 't3',
     },
   }
 
-  const createMockWorkout = (exercises: Array<{
+  const createMockWorkout = (exercises: {
     templateId: string
-    sets: Array<{ reps: number | null; weight: number | null; type?: string }>
-  }>): Workout => ({
+    sets: { reps: number | null; weight: number | null; type?: string }[]
+  }[]): Workout => ({
     id: 'workout-001',
     title: 'GZCLP A1',
     routine_id: 'routine-001',
@@ -166,11 +163,13 @@ describe('[US2] Workout Analysis', () => {
         },
       ])
 
-      const result = analyzeWorkout(workout, mockExercises, {})
+      // Pass day to properly determine tier
+      const result = analyzeWorkout(workout, mockExercises, {}, 'A1')
 
-      // Should only consider first 5 sets for T1 stage 0
+      // Should include all reps recorded
       expect(result[0]?.reps).toEqual([3, 3, 3, 3, 5, 8, 5])
-      // But the progression function will only use first 5
+      // Tier should be T1 for squat on A1
+      expect(result[0]?.tier).toBe('T1')
     })
   })
 
@@ -186,9 +185,9 @@ describe('[US2] Workout Analysis', () => {
       ])
       workout2.start_time = '2026-01-03T10:00:00Z' // Gap - skipped day
 
-      // Both should be analyzed independently
-      const result1 = analyzeWorkout(workout1, mockExercises, {})
-      const result2 = analyzeWorkout(workout2, mockExercises, {})
+      // Both should be analyzed independently, pass day for tier determination
+      const result1 = analyzeWorkout(workout1, mockExercises, {}, 'A1')
+      const result2 = analyzeWorkout(workout2, mockExercises, {}, 'A1')
 
       expect(result1[0]?.weight).toBe(100)
       expect(result2[0]?.weight).toBe(105)
@@ -202,7 +201,8 @@ describe('[US2] Workout Analysis', () => {
         // Missing bench and curl
       ])
 
-      const result = analyzeWorkout(workout, mockExercises, {})
+      // Pass day for tier determination
+      const result = analyzeWorkout(workout, mockExercises, {}, 'A1')
 
       expect(result).toHaveLength(1)
       expect(result[0]?.exerciseId).toBe('ex-001')
@@ -227,7 +227,8 @@ describe('[US2] Workout Analysis', () => {
         },
       }
 
-      const result = analyzeWorkout(workout, mockExercises, storedProgression)
+      // Pass day for tier determination
+      const result = analyzeWorkout(workout, mockExercises, storedProgression, 'A1')
 
       expect(result[0]?.discrepancy).toBeDefined()
       expect(result[0]?.discrepancy?.storedWeight).toBe(100)
@@ -251,9 +252,42 @@ describe('[US2] Workout Analysis', () => {
         },
       }
 
-      const result = analyzeWorkout(workout, mockExercises, storedProgression)
+      // Pass day for tier determination
+      const result = analyzeWorkout(workout, mockExercises, storedProgression, 'A1')
 
       expect(result[0]?.discrepancy).toBeUndefined()
+    })
+  })
+
+  describe('Role-based tier determination', () => {
+    it('should determine T1 tier for squat on A1 day', () => {
+      const workout = createMockWorkout([
+        { templateId: 'hevy-squat', sets: [{ reps: 5, weight: 100 }] },
+      ])
+
+      const result = analyzeWorkout(workout, mockExercises, {}, 'A1')
+
+      expect(result[0]?.tier).toBe('T1')
+    })
+
+    it('should determine T2 tier for bench on A1 day', () => {
+      const workout = createMockWorkout([
+        { templateId: 'hevy-bench', sets: [{ reps: 10, weight: 60 }] },
+      ])
+
+      const result = analyzeWorkout(workout, mockExercises, {}, 'A1')
+
+      expect(result[0]?.tier).toBe('T2')
+    })
+
+    it('should determine T3 tier for t3 role exercises', () => {
+      const workout = createMockWorkout([
+        { templateId: 'hevy-curl', sets: [{ reps: 15, weight: 10 }] },
+      ])
+
+      const result = analyzeWorkout(workout, mockExercises, {}, 'A1')
+
+      expect(result[0]?.tier).toBe('T3')
     })
   })
 })

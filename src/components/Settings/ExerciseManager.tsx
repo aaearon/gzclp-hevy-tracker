@@ -1,0 +1,211 @@
+/**
+ * ExerciseManager Component
+ *
+ * Lists all configured exercises with role dropdowns for role management.
+ * Detects conflicts when assigning main lift roles and offers to swap roles.
+ */
+
+import { useState, useMemo } from 'react'
+import { RoleDropdown } from '@/components/common/RoleDropdown'
+import { useProgram } from '@/hooks/useProgram'
+import { ROLE_DISPLAY } from '@/lib/constants'
+import { MAIN_LIFT_ROLES } from '@/types/state'
+import type { ExerciseConfig, ExerciseRole, MainLiftRole } from '@/types/state'
+
+interface SwapConflict {
+  sourceExercise: ExerciseConfig
+  targetExercise: ExerciseConfig
+  newRole: MainLiftRole
+  oldRole: ExerciseRole | undefined
+}
+
+export interface ExerciseManagerProps {
+  /** Callback when an exercise role is changed */
+  onRoleChange?: (exercise: ExerciseConfig, oldRole: ExerciseRole | undefined) => void
+}
+
+export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
+  const { state, updateExercise } = useProgram()
+  const [swapConflict, setSwapConflict] = useState<SwapConflict | null>(null)
+
+  // Convert exercises object to sorted array
+  const exercises = useMemo(() => {
+    return Object.values(state.exercises).sort((a, b) => a.name.localeCompare(b.name))
+  }, [state.exercises])
+
+  // Note: We don't exclude already-assigned roles from the dropdown.
+  // Instead, we allow selection and show a conflict dialog for swapping.
+
+  // Find exercise that currently has the target role
+  const findExerciseWithRole = (role: ExerciseRole): ExerciseConfig | undefined => {
+    return exercises.find((ex) => ex.role === role)
+  }
+
+  const handleRoleChange = (exercise: ExerciseConfig, newRole: ExerciseRole) => {
+    const oldRole = exercise.role
+
+    // Check if the new role is a main lift role
+    if (MAIN_LIFT_ROLES.includes(newRole as MainLiftRole)) {
+      // Check if another exercise already has this role
+      const conflictingExercise = findExerciseWithRole(newRole)
+
+      if (conflictingExercise && conflictingExercise.id !== exercise.id) {
+        // Show swap confirmation dialog
+        setSwapConflict({
+          sourceExercise: exercise,
+          targetExercise: conflictingExercise,
+          newRole: newRole as MainLiftRole,
+          oldRole,
+        })
+        return
+      }
+    }
+
+    // No conflict - update directly
+    updateExercise(exercise.id, { role: newRole })
+    onRoleChange?.(exercise, oldRole)
+  }
+
+  const handleSwapConfirm = () => {
+    if (!swapConflict) return
+
+    const { sourceExercise, targetExercise, newRole, oldRole } = swapConflict
+
+    // Swap roles between the two exercises
+    updateExercise(sourceExercise.id, { role: newRole })
+    // When oldRole is undefined, fall back to t3 (reasonable default for a swap)
+    updateExercise(targetExercise.id, { role: oldRole ?? 't3' })
+
+    // Notify callbacks
+    onRoleChange?.(sourceExercise, oldRole)
+    onRoleChange?.(targetExercise, newRole)
+
+    // Close dialog
+    setSwapConflict(null)
+  }
+
+  const handleSwapCancel = () => {
+    setSwapConflict(null)
+  }
+
+  if (exercises.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>No exercises have been configured yet.</p>
+        <p className="text-sm mt-2">
+          Import a routine to start configuring exercises.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500">
+          Change exercise roles to adjust how they&apos;re used in your program.
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Exercise
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Role
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {exercises.map((exercise) => {
+                const displayInfo = exercise.role ? ROLE_DISPLAY[exercise.role] : null
+
+                return (
+                  <tr key={exercise.id}>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {displayInfo && (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                              ${displayInfo.color === 'blue' ? 'bg-blue-100 text-blue-700' : displayInfo.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}
+                          >
+                            {displayInfo.label}
+                          </span>
+                        )}
+                        <span className="text-sm font-medium text-gray-900">
+                          {exercise.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <label
+                        htmlFor={`role-${exercise.id}`}
+                        className="sr-only"
+                      >
+                        Role for {exercise.name}
+                      </label>
+                      <RoleDropdown
+                        id={`role-${exercise.id}`}
+                        ariaLabel={`Role for ${exercise.name}`}
+                        value={exercise.role}
+                        onChange={(role) => {
+                          handleRoleChange(exercise, role)
+                        }}
+                        className="w-48"
+                        showPlaceholder={false}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Role Swap Confirmation Dialog */}
+      {swapConflict && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="swap-dialog-title"
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 id="swap-dialog-title" className="text-lg font-semibold text-gray-900 mb-4">
+              Role Conflict
+            </h2>
+            <p className="text-sm text-gray-700 mb-6">
+              {ROLE_DISPLAY[swapConflict.newRole].label} is assigned to{' '}
+              <strong>{swapConflict.targetExercise.name}</strong>. Swap roles?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={handleSwapCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSwapConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Swap Roles
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

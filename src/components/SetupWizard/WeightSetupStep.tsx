@@ -1,20 +1,22 @@
 /**
  * WeightSetupStep Component
  *
- * Configure starting weights for all assigned exercises.
+ * Configure starting weights for all assigned exercises (main lifts + T3s).
  */
 
 import { WeightInput } from './WeightInput'
 import { UnitSelector } from './UnitSelector'
-import { SLOT_NAMES } from '@/lib/constants'
+import { ROLE_DISPLAY } from '@/lib/constants'
+import { MAIN_LIFT_ROLES } from '@/types/state'
+import type { CreatePathAssignments } from './SlotAssignment'
 import type { ExerciseTemplate } from '@/types/hevy'
-import type { GZCLPSlot, WeightUnit } from '@/types/state'
+import type { WeightUnit } from '@/types/state'
 
 export interface WeightSetupStepProps {
-  assignments: Record<GZCLPSlot, string | null>
+  assignments: CreatePathAssignments
   exercises: ExerciseTemplate[]
   weights: Record<string, number>
-  onWeightChange: (slot: GZCLPSlot, weight: number) => void
+  onWeightChange: (key: string, weight: number) => void
   unit: WeightUnit
   onUnitChange: (unit: WeightUnit) => void
 }
@@ -27,19 +29,35 @@ export function WeightSetupStep({
   unit,
   onUnitChange,
 }: WeightSetupStepProps) {
-  // Get assigned slots with exercise info
-  const assignedSlots = Object.entries(assignments)
-    .filter(([, templateId]) => templateId !== null)
-    .map(([slot, templateId]) => {
+  // Get assigned main lifts with exercise info
+  const assignedMainLifts = MAIN_LIFT_ROLES
+    .filter((role) => assignments.mainLifts[role] !== null)
+    .map((role) => {
+      const templateId = assignments.mainLifts[role]!
       const exercise = exercises.find((ex) => ex.id === templateId)
       return {
-        slot: slot as GZCLPSlot,
-        templateId: templateId as string,
+        key: role,
+        label: ROLE_DISPLAY[role].label,
+        exerciseName: exercise?.title ?? 'Unknown Exercise',
+        description: ROLE_DISPLAY[role].description,
+      }
+    })
+
+  // Get assigned T3s with exercise info
+  const assignedT3s = assignments.t3Exercises
+    .filter((templateId) => templateId !== '')
+    .map((templateId, index) => {
+      const exercise = exercises.find((ex) => ex.id === templateId)
+      return {
+        key: `t3_${index}`,
+        label: `T3: ${exercise?.title ?? 'Unknown Exercise'}`,
         exerciseName: exercise?.title ?? 'Unknown Exercise',
       }
     })
 
-  if (assignedSlots.length === 0) {
+  const hasNoAssignments = assignedMainLifts.length === 0 && assignedT3s.length === 0
+
+  if (hasNoAssignments) {
     return (
       <div className="max-w-md mx-auto text-center py-8">
         <p className="text-gray-600">No exercises have been assigned. Please go back and select exercises first.</p>
@@ -59,19 +77,51 @@ export function WeightSetupStep({
         <UnitSelector value={unit} onChange={onUnitChange} />
       </div>
 
-      {/* Weight inputs */}
-      <div className="space-y-6">
-        {assignedSlots.map(({ slot, exerciseName }) => (
-          <WeightInput
-            key={slot}
-            id={`weight-${slot}`}
-            label={`${exerciseName} (${SLOT_NAMES[slot]})`}
-            value={weights[slot] ?? 0}
-            onChange={(weight) => onWeightChange(slot, weight)}
-            unit={unit}
-          />
-        ))}
-      </div>
+      {/* Main Lifts Weight Inputs */}
+      {assignedMainLifts.length > 0 && (
+        <section className="mb-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">
+            Main Lifts
+          </h3>
+          <div className="space-y-6">
+            {assignedMainLifts.map(({ key, label, exerciseName, description }) => (
+              <WeightInput
+                key={key}
+                id={`weight-${key}`}
+                label={`${label}: ${exerciseName}`}
+                hint={description}
+                value={weights[key] ?? 0}
+                onChange={(weight) => { onWeightChange(key, weight) }}
+                unit={unit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* T3 Weight Inputs */}
+      {assignedT3s.length > 0 && (
+        <section>
+          <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">
+            T3 Accessories
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            T3 exercises use 3x15+ rep scheme. Progress when you hit 25+ total reps.
+          </p>
+          <div className="space-y-6">
+            {assignedT3s.map(({ key, label }) => (
+              <WeightInput
+                key={key}
+                id={`weight-${key}`}
+                label={label}
+                value={weights[key] ?? 0}
+                onChange={(weight) => { onWeightChange(key, weight) }}
+                unit={unit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="mt-6 text-sm text-gray-500">
         Tip: If unsure, start lighter. You can always increase weights as you progress.

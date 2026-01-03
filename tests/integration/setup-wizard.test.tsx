@@ -137,46 +137,12 @@ describe('[US1] Setup Wizard Flow', () => {
     })
   })
 
+  // Note: Exercise Selection Step tests were removed in Feature 004
+  // The slot-based exercise selection UI has been replaced with a role-based
+  // assignment system (SlotAssignment.tsx). See import-role-assignment.test.tsx
+  // for role assignment tests.
   describe('Exercise Selection Step', () => {
-    beforeEach(async () => {
-      render(<SetupWizard onComplete={mockOnComplete} />)
-
-      // Complete API key step first
-      const input = screen.getByLabelText(/api key/i)
-      await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
-      const connectButton = screen.getByRole('button', { name: /connect/i })
-      await user.click(connectButton)
-
-      // Wait for routine source step
-      await waitFor(() => {
-        expect(screen.getByText(/how would you like to set up/i)).toBeInTheDocument()
-      })
-
-      // Select "Create New" to proceed to exercises step
-      const createNewButton = screen.getByRole('button', { name: /create new routines/i })
-      await user.click(createNewButton)
-
-      await waitFor(() => {
-        expect(screen.getByText(/select exercises/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should display exercise templates from Hevy when input focused', async () => {
-      // Find T1 Squat slot input and focus it
-      const squatInput = screen.getByLabelText(/squat \(t1\)/i)
-      await user.click(squatInput)
-
-      await waitFor(() => {
-        expect(screen.getByText(/squat \(barbell\)/i)).toBeInTheDocument()
-        expect(screen.getByText(/bench press \(barbell\)/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should allow selecting exercises for each slot', async () => {
-      // Find T1 Squat slot input
-      const squatSlot = screen.getByLabelText(/squat \(t1\)/i)
-      expect(squatSlot).toBeInTheDocument()
-    })
+    it.todo('role-based exercise selection is tested in import-role-assignment.test.tsx')
   })
 
   describe('Weight Input Step', () => {

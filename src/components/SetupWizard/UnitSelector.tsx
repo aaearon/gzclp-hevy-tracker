@@ -19,7 +19,7 @@ export function UnitSelector({ value, onChange, disabled = false }: UnitSelector
       <div className="flex space-x-2">
         <button
           type="button"
-          onClick={() => onChange('kg')}
+          onClick={() => { onChange('kg') }}
           disabled={disabled}
           className={`px-4 py-2 rounded-md font-medium min-h-[44px] min-w-[80px]
                      ${
@@ -33,7 +33,7 @@ export function UnitSelector({ value, onChange, disabled = false }: UnitSelector
         </button>
         <button
           type="button"
-          onClick={() => onChange('lbs')}
+          onClick={() => { onChange('lbs') }}
           disabled={disabled}
           className={`px-4 py-2 rounded-md font-medium min-h-[44px] min-w-[80px]
                      ${

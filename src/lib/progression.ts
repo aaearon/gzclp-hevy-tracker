@@ -4,7 +4,7 @@
  * GZCLP progression calculations for T1, T2, and T3 exercises.
  */
 
-import type { ProgressionState, WeightUnit, MuscleGroupCategory, ChangeType, Stage, PendingChange, ExerciseConfig } from '@/types/state'
+import type { ProgressionState, WeightUnit, MuscleGroupCategory, ChangeType, Stage, PendingChange, ExerciseConfig, ExerciseRole, GZCLPDay, Tier } from '@/types/state'
 import type { WorkoutAnalysisResult } from './workout-analysis'
 import { generateId } from '@/utils/id'
 import {
@@ -15,6 +15,33 @@ import {
   WEIGHT_INCREMENTS,
   WEIGHT_ROUNDING,
 } from './constants'
+import { getTierForDay, isMainLiftRole } from './role-utils'
+
+// =============================================================================
+// Role-Based Utilities
+// =============================================================================
+
+/**
+ * Derive muscle group from exercise role.
+ * Lower body: squat, deadlift
+ * Upper body: bench, ohp, t3, warmup, cooldown
+ */
+function getMuscleGroupForRole(role: ExerciseRole | undefined): MuscleGroupCategory {
+  if (!role) return 'upper'
+  if (role === 'squat' || role === 'deadlift') return 'lower'
+  return 'upper'
+}
+
+/**
+ * Derive tier from exercise role and optional day.
+ * For main lifts, tier depends on day. For T3/warmup/cooldown, always T3.
+ */
+function deriveTierFromRole(role: ExerciseRole | undefined, day?: GZCLPDay): Tier {
+  if (!role) return 'T3'
+  if (!isMainLiftRole(role)) return 'T3'
+  if (!day) return 'T1' // Default to T1 if day not provided
+  return getTierForDay(role, day) ?? 'T3'
+}
 
 // =============================================================================
 // Constants
@@ -297,8 +324,6 @@ export function calculateT3Progression(
 // Generic Progression Calculator
 // =============================================================================
 
-export type Tier = 'T1' | 'T2' | 'T3'
-
 /**
  * Calculate progression for any tier.
  */
@@ -331,13 +356,16 @@ export function createPendingChange(
   progression: ProgressionState,
   result: ProgressionResult,
   workoutId: string,
-  workoutDate: string
+  workoutDate: string,
+  day?: GZCLPDay
 ): PendingChange {
+  // Derive tier from role + day
+  const tier = deriveTierFromRole(exercise.role, day)
   return {
     id: generateId(),
     exerciseId: exercise.id,
     exerciseName: exercise.name,
-    tier: exercise.tier,
+    tier,
     type: result.type,
     currentWeight: progression.currentWeight,
     currentStage: progression.stage,
@@ -359,7 +387,8 @@ export function createPendingChangesFromAnalysis(
   analysisResults: WorkoutAnalysisResult[],
   exercises: Record<string, ExerciseConfig>,
   progression: Record<string, ProgressionState>,
-  unit: WeightUnit
+  unit: WeightUnit,
+  day?: GZCLPDay
 ): PendingChange[] {
   const pendingChanges: PendingChange[] = []
 
@@ -372,6 +401,15 @@ export function createPendingChangesFromAnalysis(
       continue
     }
 
+    // Skip non-GZCLP exercises (no role)
+    if (!exercise.role) {
+      continue
+    }
+
+    // Derive tier and muscle group from role
+    const tier = deriveTierFromRole(exercise.role, day)
+    const muscleGroup = getMuscleGroupForRole(exercise.role)
+
     // When there's a discrepancy, use the actual workout weight for progression calculation
     // but keep the stored weight for reference
     const workoutWeight = result.discrepancy?.actualWeight ?? result.weight
@@ -382,10 +420,10 @@ export function createPendingChangesFromAnalysis(
 
     // Calculate progression based on workout performance
     const progressionResult = calculateProgression(
-      exercise.tier,
+      tier,
       progressionForCalc,
       result.reps,
-      exercise.muscleGroup,
+      muscleGroup,
       unit
     )
 
@@ -395,7 +433,8 @@ export function createPendingChangesFromAnalysis(
       exerciseProgression, // Use original progression for currentWeight display
       progressionResult,
       result.workoutId,
-      result.workoutDate
+      result.workoutDate,
+      day
     )
 
     pendingChanges.push(pendingChange)

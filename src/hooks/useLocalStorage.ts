@@ -22,9 +22,19 @@ export function useLocalStorage<T>(
     try {
       const item = window.localStorage.getItem(key)
       if (item === null) {
+        // DEBUG: Log when no data found
+        if (key === 'gzclp_state') {
+          console.log('[DEBUG localStorage] No existing state found, using initial')
+        }
         return initialValue
       }
-      return JSON.parse(item) as T
+      const parsed = JSON.parse(item) as T
+      // DEBUG: Log read state
+      if (key === 'gzclp_state') {
+        const state = parsed as { exercises?: Record<string, unknown> }
+        console.log('[DEBUG localStorage] Read state with', Object.keys(state.exercises ?? {}).length, 'exercises')
+      }
+      return parsed
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error)
       return initialValue
@@ -37,6 +47,12 @@ export function useLocalStorage<T>(
       try {
         setStoredValue((prev) => {
           const valueToStore = value instanceof Function ? value(prev) : value
+
+          // DEBUG: Log localStorage writes
+          if (key === 'gzclp_state') {
+            const state = valueToStore as { exercises?: Record<string, unknown> }
+            console.log('[DEBUG localStorage] Writing state with', Object.keys(state.exercises ?? {}).length, 'exercises')
+          }
 
           if (typeof window !== 'undefined') {
             window.localStorage.setItem(key, JSON.stringify(valueToStore))

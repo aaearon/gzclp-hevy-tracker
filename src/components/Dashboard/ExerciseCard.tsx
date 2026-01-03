@@ -4,7 +4,7 @@
  * Displays a single exercise with its weight, rep scheme, and tier badge.
  */
 
-import type { ExerciseConfig, ProgressionState, WeightUnit } from '@/types/state'
+import type { ExerciseConfig, ProgressionState, Tier, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
 import { formatWeight } from '@/utils/formatting'
 
@@ -12,6 +12,7 @@ interface ExerciseCardProps {
   exercise: ExerciseConfig
   progression: ProgressionState
   weightUnit: WeightUnit
+  tier: Tier
   hasPendingChange?: boolean
 }
 
@@ -25,9 +26,10 @@ export function ExerciseCard({
   exercise,
   progression,
   weightUnit,
+  tier,
   hasPendingChange = false,
 }: ExerciseCardProps) {
-  const scheme = getRepScheme(exercise.tier, progression.stage)
+  const scheme = getRepScheme(tier, progression.stage)
 
   return (
     <div
@@ -47,10 +49,10 @@ export function ExerciseCard({
         <span
           className={`
             rounded-md border px-2 py-1 text-xs font-semibold
-            ${tierColors[exercise.tier] ?? 'bg-gray-100 text-gray-800'}
+            ${tierColors[tier] ?? 'bg-gray-100 text-gray-800'}
           `}
         >
-          {exercise.tier}
+          {tier}
         </span>
       </div>
 

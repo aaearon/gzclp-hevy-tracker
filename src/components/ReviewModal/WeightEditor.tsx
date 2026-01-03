@@ -47,7 +47,7 @@ export function WeightEditor({ initialWeight, unit, onConfirm, onCancel }: Weigh
           type="number"
           role="spinbutton"
           value={weight}
-          onChange={(e) => setWeight(e.target.value)}
+          onChange={(e) => { setWeight(e.target.value) }}
           onKeyDown={handleKeyDown}
           step={unit === 'kg' ? '2.5' : '5'}
           min="0"

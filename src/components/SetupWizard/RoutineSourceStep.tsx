@@ -44,7 +44,7 @@ export function RoutineSourceStep({
         {/* Create New Option */}
         <button
           type="button"
-          onClick={() => onSelect('create')}
+          onClick={() => { onSelect('create') }}
           className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500
                      hover:bg-blue-50 transition-colors text-left min-h-[44px]
                      focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -80,7 +80,7 @@ export function RoutineSourceStep({
         {/* Use Existing Option */}
         <button
           type="button"
-          onClick={() => hasRoutines && onSelect('import')}
+          onClick={() => { if (hasRoutines) onSelect('import') }}
           disabled={!hasRoutines}
           className={`w-full p-4 border-2 rounded-lg text-left min-h-[44px]
                       focus:outline-none focus:ring-2 focus:ring-blue-500

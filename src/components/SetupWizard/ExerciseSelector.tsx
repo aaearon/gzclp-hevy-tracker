@@ -66,7 +66,7 @@ export function ExerciseSelector({
             setSearch(e.target.value)
             setIsOpen(true)
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => { setIsOpen(true) }}
           placeholder={placeholder}
           disabled={disabled}
           className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm
@@ -108,7 +108,7 @@ export function ExerciseSelector({
               <button
                 key={exercise.id}
                 type="button"
-                onClick={() => handleSelect(exercise.id)}
+                onClick={() => { handleSelect(exercise.id) }}
                 className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50
                            focus:outline-none min-h-[44px]"
               >
@@ -124,7 +124,7 @@ export function ExerciseSelector({
 
       {/* Click outside handler */}
       {isOpen && (
-        <div className="fixed inset-0 z-0" onClick={() => setIsOpen(false)} aria-hidden="true" />
+        <div className="fixed inset-0 z-0" onClick={() => { setIsOpen(false) }} aria-hidden="true" />
       )}
     </div>
   )

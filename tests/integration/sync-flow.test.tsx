@@ -76,31 +76,25 @@ function createWorkout(
   }
 }
 
-// Sample exercise configs
+// Sample exercise configs (role-based)
 const mockExercises: Record<string, ExerciseConfig> = {
   'ex-squat': {
     id: 'ex-squat',
     hevyTemplateId: 'hevy-squat',
     name: 'Squat',
-    tier: 'T1',
-    slot: 't1_squat',
-    muscleGroup: 'lower',
+    role: 'squat',
   },
   'ex-bench': {
     id: 'ex-bench',
     hevyTemplateId: 'hevy-bench',
     name: 'Bench Press',
-    tier: 'T2',
-    slot: 't2_bench',
-    muscleGroup: 'upper',
+    role: 'bench',
   },
   'ex-lat': {
     id: 'ex-lat',
     hevyTemplateId: 'hevy-lat',
     name: 'Lat Pulldown',
-    tier: 'T3',
-    slot: 't3_1',
-    muscleGroup: 'upper',
+    role: 't3',
   },
 }
 

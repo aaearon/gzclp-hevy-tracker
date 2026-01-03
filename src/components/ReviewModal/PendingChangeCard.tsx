@@ -89,7 +89,7 @@ export function PendingChangeCard({
             initialWeight={change.newWeight}
             unit={unit}
             onConfirm={handleModify}
-            onCancel={() => setIsEditing(false)}
+            onCancel={() => { setIsEditing(false) }}
           />
         ) : (
           <div className="text-center">
@@ -124,7 +124,7 @@ export function PendingChangeCard({
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => onApply(change)}
+          onClick={() => { onApply(change) }}
           aria-label="Apply change"
           className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600
                      hover:bg-blue-700 rounded-md min-h-[44px] transition-colors"
@@ -135,7 +135,7 @@ export function PendingChangeCard({
         {!isEditing && (
           <button
             type="button"
-            onClick={() => setIsEditing(true)}
+            onClick={() => { setIsEditing(true) }}
             aria-label="Modify weight"
             className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100
                        hover:bg-gray-200 rounded-md min-h-[44px] transition-colors"
@@ -146,7 +146,7 @@ export function PendingChangeCard({
 
         <button
           type="button"
-          onClick={() => onReject(change.id)}
+          onClick={() => { onReject(change.id) }}
           aria-label="Reject change"
           className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50
                      hover:bg-red-100 rounded-md min-h-[44px] transition-colors"

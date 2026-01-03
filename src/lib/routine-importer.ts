@@ -2,20 +2,21 @@
  * Routine Importer
  *
  * Extracts exercises and progression state from assigned Hevy routines.
- * Maps exercises to GZCLP slots based on position and day.
+ * Maps exercises to GZCLP roles based on position and day.
  */
 
 import type { Routine, RoutineExerciseRead } from '@/types/hevy'
 import type {
+  ExerciseRole,
   GZCLPDay,
-  GZCLPSlot,
   AvailableRoutine,
   RoutineAssignment,
   ImportedExercise,
   ImportWarning,
   ImportResult,
+  Tier,
 } from '@/types/state'
-import { SLOT_MAPPING, T3_SLOTS } from './constants'
+import { getT1RoleForDay, getT2RoleForDay } from './role-utils'
 import { detectStage, extractWeight } from './stage-detector'
 
 // =============================================================================
@@ -46,23 +47,16 @@ export function toAvailableRoutine(routine: Routine): AvailableRoutine {
 // =============================================================================
 
 /**
- * Determine the tier from a slot name.
- */
-function getTierFromSlot(slot: GZCLPSlot): 'T1' | 'T2' | 'T3' {
-  if (slot.startsWith('t1_')) return 'T1'
-  if (slot.startsWith('t2_')) return 'T2'
-  return 'T3'
-}
-
-/**
  * Extract a single exercise from a routine position.
+ * The tier is derived from the position (T1, T2, or T3).
+ * The role is optionally assigned based on day position.
  */
 function extractExercise(
   exercise: RoutineExerciseRead,
-  slot: GZCLPSlot,
-  warnings: ImportWarning[]
+  tier: Tier,
+  warnings: ImportWarning[],
+  role?: ExerciseRole
 ): ImportedExercise {
-  const tier = getTierFromSlot(slot)
   const stageResult = detectStage(exercise.sets, tier)
   const weight = extractWeight(exercise.sets)
 
@@ -70,7 +64,6 @@ function extractExercise(
   if (stageResult === null) {
     warnings.push({
       type: 'stage_unknown',
-      slot,
       message: `${exercise.title}: Could not detect stage. Please select manually.`,
     })
   }
@@ -78,7 +71,6 @@ function extractExercise(
   if (weight === 0) {
     warnings.push({
       type: 'weight_null',
-      slot,
       message: `${exercise.title}: No weight found. Set to 0.`,
     })
   }
@@ -89,7 +81,7 @@ function extractExercise(
   const modalReps = getModalReps(normalSets)
 
   return {
-    slot,
+    ...(role !== undefined && { role }),
     templateId: exercise.exercise_template_id,
     name: exercise.title,
     detectedWeight: weight,
@@ -133,18 +125,21 @@ function extractDayExercises(
   warnings: ImportWarning[]
 ): ImportedExercise[] {
   const exercises: ImportedExercise[] = []
-  const slots = SLOT_MAPPING[day]
 
-  // Position 0 (first exercise) → T1 slot
+  // Get the T1 and T2 roles for this day
+  const t1Role = getT1RoleForDay(day)
+  const t2Role = getT2RoleForDay(day)
+
+  // Position 0 (first exercise) → T1 with the day's T1 role
   const t1Exercise = routine.exercises[0]
   if (t1Exercise) {
-    exercises.push(extractExercise(t1Exercise, slots.t1, warnings))
+    exercises.push(extractExercise(t1Exercise, 'T1', warnings, t1Role))
   }
 
-  // Position 1 (second exercise) → T2 slot
+  // Position 1 (second exercise) → T2 with the day's T2 role
   const t2Exercise = routine.exercises[1]
   if (t2Exercise) {
-    exercises.push(extractExercise(t2Exercise, slots.t2, warnings))
+    exercises.push(extractExercise(t2Exercise, 'T2', warnings, t2Role))
   } else {
     warnings.push({
       type: 'no_t2',
@@ -169,12 +164,11 @@ function extractT3Exercises(
   const exercises: ImportedExercise[] = []
 
   // T3s start at position 2 (after T1 and T2)
+  // Import up to 3 T3 exercises from positions 2, 3, 4
   for (let i = 2; i < a1Routine.exercises.length && i < 5; i++) {
     const exercise = a1Routine.exercises[i]
-    const slot = T3_SLOTS[i - 2] // t3_1, t3_2, t3_3
-
-    if (slot && exercise) {
-      exercises.push(extractExercise(exercise, slot, warnings))
+    if (exercise) {
+      exercises.push(extractExercise(exercise, 'T3', warnings, 't3'))
     }
   }
 
@@ -187,6 +181,7 @@ function extractT3Exercises(
 
 /**
  * Extract exercises and progression state from assigned routines.
+ * Deduplicates exercises by templateId to avoid role conflicts.
  *
  * @param routines - Map of routine ID to full Routine object
  * @param assignment - Which routine is assigned to which day
@@ -196,13 +191,13 @@ export function extractFromRoutines(
   routines: Map<string, Routine>,
   assignment: RoutineAssignment
 ): ImportResult {
-  const exercises: ImportedExercise[] = []
+  const rawExercises: ImportedExercise[] = []
   const warnings: ImportWarning[] = []
 
   // Check for duplicate routines
   const assignedIds = Object.entries(assignment)
-    .filter(([_, id]) => id !== null)
-    .map(([day, id]) => ({ day: day as GZCLPDay, id: id as string }))
+    .filter((entry): entry is [string, string] => entry[1] !== null)
+    .map(([day, id]) => ({ day: day as GZCLPDay, id }))
 
   const idCounts = new Map<string, GZCLPDay[]>()
   for (const { day, id } of assignedIds) {
@@ -229,18 +224,65 @@ export function extractFromRoutines(
     if (!routine) continue
 
     const dayExercises = extractDayExercises(day, routine, warnings)
-    exercises.push(...dayExercises)
+    rawExercises.push(...dayExercises)
   }
 
   // Extract T3s from A1 only
   const a1RoutineId = assignment.A1
   const a1Routine = a1RoutineId ? routines.get(a1RoutineId) : undefined
   const t3Exercises = extractT3Exercises(a1Routine, warnings)
-  exercises.push(...t3Exercises)
+  rawExercises.push(...t3Exercises)
+
+  // Deduplicate by templateId - keep first occurrence's data but clear
+  // auto-assigned role if there would be a conflict
+  const seen = new Map<string, ImportedExercise>()
+  const assignedMainLifts = new Set<ExerciseRole>()
+
+  for (const exercise of rawExercises) {
+    const existing = seen.get(exercise.templateId)
+
+    if (!existing) {
+      // First time seeing this templateId
+      // Only keep the role if it's a main lift AND not already assigned
+      let roleToAssign = exercise.role
+      if (roleToAssign && isMainLift(roleToAssign)) {
+        if (assignedMainLifts.has(roleToAssign)) {
+          // This role is already assigned to another exercise - leave unassigned
+          roleToAssign = undefined
+        } else {
+          assignedMainLifts.add(roleToAssign)
+        }
+      }
+      // Build the deduplicated exercise, conditionally including role
+      const deduped: ImportedExercise = {
+        templateId: exercise.templateId,
+        name: exercise.name,
+        detectedWeight: exercise.detectedWeight,
+        detectedStage: exercise.detectedStage,
+        stageConfidence: exercise.stageConfidence,
+        originalSetCount: exercise.originalSetCount,
+        originalRepScheme: exercise.originalRepScheme,
+        ...(exercise.userWeight !== undefined && { userWeight: exercise.userWeight }),
+        ...(exercise.userStage !== undefined && { userStage: exercise.userStage }),
+        ...(roleToAssign !== undefined && { role: roleToAssign }),
+      }
+      seen.set(exercise.templateId, deduped)
+    }
+    // If duplicate templateId, skip it (keep first occurrence)
+  }
+
+  const exercises = Array.from(seen.values())
 
   return {
     exercises,
     warnings,
     routineIds: assignment,
   }
+}
+
+/**
+ * Check if a role is a main lift (exclusive) role.
+ */
+function isMainLift(role: ExerciseRole): boolean {
+  return role === 'squat' || role === 'bench' || role === 'ohp' || role === 'deadlift'
 }

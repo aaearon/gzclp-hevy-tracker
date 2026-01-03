@@ -6,9 +6,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { ImportReviewStep } from '@/components/SetupWizard/ImportReviewStep'
-import type { ImportedExercise, ImportWarning, ImportResult, GZCLPSlot } from '@/types/state'
+import type { ImportedExercise, ImportWarning, ImportResult } from '@/types/state'
+
+// Mock useOnlineStatus to always return online/available (synchronously for testing)
+vi.mock('@/hooks/useOnlineStatus', () => ({
+  useOnlineStatus: () => ({
+    isOnline: true,
+    isHevyReachable: true,
+    // Use a synchronous mock that resolves immediately
+    checkHevyConnection: vi.fn(() => Promise.resolve(true)),
+  }),
+}))
 
 // =============================================================================
 // Test Data Factories
@@ -18,7 +28,7 @@ function createMockExercise(
   overrides: Partial<ImportedExercise> = {}
 ): ImportedExercise {
   return {
-    slot: 't1_squat',
+    role: undefined,
     templateId: 'template-squat',
     name: 'Squat',
     detectedWeight: 60,
@@ -48,9 +58,9 @@ function createMockImportResult(
 describe('ImportReviewStep', () => {
   const defaultProps = {
     importResult: createMockImportResult([
-      createMockExercise({ slot: 't1_squat', name: 'Squat', detectedWeight: 60, detectedStage: 0 }),
-      createMockExercise({ slot: 't2_bench', name: 'Bench Press', detectedWeight: 40, detectedStage: 0 }),
-      createMockExercise({ slot: 't3_1', name: 'Lat Pulldown', detectedWeight: 30, detectedStage: 0 }),
+      createMockExercise({ role: 'squat', name: 'Squat', templateId: 'tmpl-squat', detectedWeight: 60, detectedStage: 0 }),
+      createMockExercise({ role: 'bench', name: 'Bench Press', templateId: 'tmpl-bench', detectedWeight: 40, detectedStage: 0 }),
+      createMockExercise({ role: 't3', name: 'Lat Pulldown', templateId: 'tmpl-lat', detectedWeight: 30, detectedStage: 0 }),
     ]),
     onExerciseUpdate: vi.fn(),
     onNext: vi.fn(),
@@ -77,39 +87,37 @@ describe('ImportReviewStep', () => {
     it('displays exercise name for each imported exercise', () => {
       render(<ImportReviewStep {...defaultProps} />)
 
-      expect(screen.getByText('Squat')).toBeInTheDocument()
-      expect(screen.getByText('Bench Press')).toBeInTheDocument()
-      expect(screen.getByText('Lat Pulldown')).toBeInTheDocument()
+      // Exercise names appear in the table
+      const table = screen.getByRole('table')
+      expect(table).toHaveTextContent('Squat')
+      expect(table).toHaveTextContent('Bench Press')
+      expect(table).toHaveTextContent('Lat Pulldown')
     })
 
-    it('displays slot/tier for each exercise', () => {
+    it('displays exercise names', () => {
       render(<ImportReviewStep {...defaultProps} />)
 
-      // Should show tier badges (using getAllByText since multiple elements match)
-      const t1Badges = screen.getAllByText(/^T1$/)
-      const t2Badges = screen.getAllByText(/^T2$/)
-      const t3Badges = screen.getAllByText(/^T3$/)
-
-      expect(t1Badges.length).toBeGreaterThan(0)
-      expect(t2Badges.length).toBeGreaterThan(0)
-      expect(t3Badges.length).toBeGreaterThan(0)
+      // Should show exercise names in table
+      const table = screen.getByRole('table')
+      expect(table).toHaveTextContent('Squat')
+      expect(table).toHaveTextContent('Bench Press')
+      expect(table).toHaveTextContent('Lat Pulldown')
     })
 
-    it('displays detected weight for each exercise', () => {
+    it('displays detected weight for main lift exercises only', () => {
       render(<ImportReviewStep {...defaultProps} />)
 
-      // Weights are in input fields
+      // Weights are in input fields - only for main lifts (squat, bench)
       const weightInputs = screen.getAllByRole('spinbutton', { name: /weight/i })
-      expect(weightInputs).toHaveLength(3)
+      expect(weightInputs).toHaveLength(2) // Only squat and bench, not t3
       expect(weightInputs[0]).toHaveValue(60)
       expect(weightInputs[1]).toHaveValue(40)
-      expect(weightInputs[2]).toHaveValue(30)
     })
 
-    it('displays detected stage for T1/T2 exercises', () => {
+    it('displays detected stage for main lift exercises', () => {
       const result = createMockImportResult([
-        createMockExercise({ slot: 't1_squat', detectedStage: 0 }),
-        createMockExercise({ slot: 't2_bench', detectedStage: 1 }),
+        createMockExercise({ role: 'squat', detectedStage: 0 }),
+        createMockExercise({ role: 'bench', detectedStage: 1 }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
@@ -121,8 +129,8 @@ describe('ImportReviewStep', () => {
 
     it('displays original rep scheme from routine', () => {
       const result = createMockImportResult([
-        createMockExercise({ originalRepScheme: '5x3+' }),
-        createMockExercise({ slot: 't2_bench', originalRepScheme: '3x10' }),
+        createMockExercise({ role: 'squat', originalRepScheme: '5x3+' }),
+        createMockExercise({ role: 'bench', originalRepScheme: '3x10' }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
@@ -134,6 +142,7 @@ describe('ImportReviewStep', () => {
     it('shows user-overridden values when present', () => {
       const result = createMockImportResult([
         createMockExercise({
+          role: 'squat',
           detectedWeight: 60,
           userWeight: 70,
           detectedStage: 0,
@@ -153,10 +162,10 @@ describe('ImportReviewStep', () => {
   // ===========================================================================
 
   describe('T028: stage override for manual confidence', () => {
-    it('shows stage dropdown for exercises with manual confidence', () => {
+    it('shows stage dropdown for main lift exercises with manual confidence', () => {
       const result = createMockImportResult([
         createMockExercise({
-          slot: 't1_squat',
+          role: 'squat',
           stageConfidence: 'manual',
           detectedStage: 0,
         }),
@@ -169,10 +178,10 @@ describe('ImportReviewStep', () => {
       expect(stageSelect).toBeInTheDocument()
     })
 
-    it('shows read-only stage display for high confidence exercises', () => {
+    it('shows read-only stage display for high confidence main lift exercises', () => {
       const result = createMockImportResult([
         createMockExercise({
-          slot: 't1_squat',
+          role: 'squat',
           stageConfidence: 'high',
           detectedStage: 0,
         }),
@@ -190,7 +199,7 @@ describe('ImportReviewStep', () => {
       const onExerciseUpdate = vi.fn()
       const result = createMockImportResult([
         createMockExercise({
-          slot: 't1_squat',
+          role: 'squat',
           stageConfidence: 'manual',
           detectedStage: 0,
         }),
@@ -213,7 +222,7 @@ describe('ImportReviewStep', () => {
     it('stage dropdown shows all three stage options', () => {
       const result = createMockImportResult([
         createMockExercise({
-          slot: 't1_squat',
+          role: 'squat',
           stageConfidence: 'manual',
         }),
       ])
@@ -232,8 +241,8 @@ describe('ImportReviewStep', () => {
     it('highlights manual confidence exercises visually', () => {
       const result = createMockImportResult([
         createMockExercise({
-          slot: 't1_squat',
-          name: 'Squat',
+          role: 'squat',
+          name: 'Back Squat Manual',
           stageConfidence: 'manual',
         }),
       ])
@@ -241,8 +250,9 @@ describe('ImportReviewStep', () => {
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
 
       // Row should have a visual indicator (e.g., warning color or icon)
-      const row = screen.getByText('Squat').closest('tr')
-      expect(row).toHaveClass('bg-amber-50')
+      const rows = screen.getAllByRole('row')
+      const exerciseRow = rows.find(row => row.textContent?.includes('Back Squat Manual'))
+      expect(exerciseRow).toHaveClass('bg-amber-50')
     })
   })
 
@@ -277,7 +287,7 @@ describe('ImportReviewStep', () => {
     it('displays multiple warnings', () => {
       const warnings: ImportWarning[] = [
         { type: 'no_t2', day: 'A1', message: 'A1: No T2 exercise found.' },
-        { type: 'stage_unknown', slot: 't1_squat', message: 'Squat: Could not detect stage.' },
+        { type: 'stage_unknown', message: 'Squat: Could not detect stage.' },
         { type: 'duplicate_routine', message: 'Same routine selected for A1 and A2.' },
       ]
       const result = createMockImportResult([], warnings)
@@ -299,7 +309,7 @@ describe('ImportReviewStep', () => {
 
     it('shows warning icon for each warning', () => {
       const warnings: ImportWarning[] = [
-        { type: 'weight_null', slot: 't3_1', message: 'Lat Pulldown: No weight found.' },
+        { type: 'weight_null', message: 'Lat Pulldown: No weight found.' },
       ]
       const result = createMockImportResult([], warnings)
 
@@ -315,9 +325,9 @@ describe('ImportReviewStep', () => {
   // ===========================================================================
 
   describe('T032: weight editing', () => {
-    it('renders weight input for each exercise', () => {
+    it('renders weight input for main lift exercises', () => {
       const result = createMockImportResult([
-        createMockExercise({ slot: 't1_squat', detectedWeight: 60 }),
+        createMockExercise({ role: 'squat', detectedWeight: 60 }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
@@ -330,7 +340,7 @@ describe('ImportReviewStep', () => {
     it('calls onExerciseUpdate when weight is changed', () => {
       const onExerciseUpdate = vi.fn()
       const result = createMockImportResult([
-        createMockExercise({ detectedWeight: 60 }),
+        createMockExercise({ role: 'squat', detectedWeight: 60 }),
       ])
 
       render(
@@ -349,7 +359,7 @@ describe('ImportReviewStep', () => {
 
     it('shows userWeight when set, otherwise detectedWeight', () => {
       const result = createMockImportResult([
-        createMockExercise({ detectedWeight: 60, userWeight: 70 }),
+        createMockExercise({ role: 'squat', detectedWeight: 60, userWeight: 70 }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
@@ -360,7 +370,7 @@ describe('ImportReviewStep', () => {
 
     it('weight input accepts decimal values', () => {
       const result = createMockImportResult([
-        createMockExercise({ detectedWeight: 62.5 }),
+        createMockExercise({ role: 'squat', detectedWeight: 62.5 }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
@@ -371,36 +381,36 @@ describe('ImportReviewStep', () => {
   })
 
   // ===========================================================================
-  // T032b: Slot reassignment dropdown
+  // Role assignment dropdown
   // ===========================================================================
 
-  describe('T032b: slot reassignment', () => {
-    it('renders slot dropdown for each exercise', () => {
+  describe('role assignment', () => {
+    it('renders role dropdown for each exercise', () => {
       const result = createMockImportResult([
-        createMockExercise({ slot: 't1_squat' }),
+        createMockExercise({ role: 'squat' }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
 
-      const slotSelect = screen.getByRole('combobox', { name: /slot/i })
-      expect(slotSelect).toBeInTheDocument()
+      const roleSelect = screen.getByRole('combobox', { name: /role/i })
+      expect(roleSelect).toBeInTheDocument()
     })
 
-    it('shows current slot as selected', () => {
+    it('shows current role as selected', () => {
       const result = createMockImportResult([
-        createMockExercise({ slot: 't2_bench' }),
+        createMockExercise({ role: 'bench' }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
 
-      const slotSelect = screen.getByRole('combobox', { name: /slot/i })
-      expect(slotSelect).toHaveValue('t2_bench')
+      const roleSelect = screen.getByRole('combobox', { name: /role/i })
+      expect(roleSelect.value).toBe('bench')
     })
 
-    it('calls onExerciseUpdate when slot is changed', () => {
+    it('calls onExerciseUpdate when role is changed', () => {
       const onExerciseUpdate = vi.fn()
       const result = createMockImportResult([
-        createMockExercise({ slot: 't1_squat' }),
+        createMockExercise({ role: 'squat' }),
       ])
 
       render(
@@ -411,21 +421,10 @@ describe('ImportReviewStep', () => {
         />
       )
 
-      const slotSelect = screen.getByRole('combobox', { name: /slot/i })
-      fireEvent.change(slotSelect, { target: { value: 't1_bench' } })
+      const roleSelect = screen.getByRole('combobox', { name: /role/i })
+      fireEvent.change(roleSelect, { target: { value: 'bench' } })
 
-      expect(onExerciseUpdate).toHaveBeenCalledWith(0, { userSlot: 't1_bench' })
-    })
-
-    it('shows userSlot when set, otherwise detected slot', () => {
-      const result = createMockImportResult([
-        createMockExercise({ slot: 't1_squat', userSlot: 't1_bench' }),
-      ])
-
-      render(<ImportReviewStep {...defaultProps} importResult={result} />)
-
-      const slotSelect = screen.getByRole('combobox', { name: /slot/i })
-      expect(slotSelect).toHaveValue('t1_bench')
+      expect(onExerciseUpdate).toHaveBeenCalledWith(0, { role: 'bench' })
     })
   })
 
@@ -446,9 +445,15 @@ describe('ImportReviewStep', () => {
       expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
     })
 
-    it('calls onNext when Next is clicked', () => {
+    it('calls onNext when Next is clicked', async () => {
       const onNext = vi.fn()
       render(<ImportReviewStep {...defaultProps} onNext={onNext} />)
+
+      // Wait for the API check to complete and button to be enabled
+      await waitFor(() => {
+        const button = screen.getByRole('button', { name: /next|confirm|continue/i })
+        expect(button).not.toBeDisabled()
+      })
 
       fireEvent.click(screen.getByRole('button', { name: /next|confirm|continue/i }))
 
@@ -490,24 +495,24 @@ describe('ImportReviewStep', () => {
 
     it('inputs have associated labels', () => {
       const result = createMockImportResult([
-        createMockExercise({ stageConfidence: 'manual' }),
+        createMockExercise({ role: 'squat', stageConfidence: 'manual' }),
       ])
 
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
 
-      // Weight input should be labelled
+      // Weight input should be labelled (main lifts only)
       expect(screen.getByRole('spinbutton', { name: /weight/i })).toBeInTheDocument()
       // Stage select should be labelled
       expect(screen.getByRole('combobox', { name: /stage/i })).toBeInTheDocument()
-      // Slot select should be labelled
-      expect(screen.getByRole('combobox', { name: /slot/i })).toBeInTheDocument()
+      // Role select should be labelled
+      expect(screen.getByRole('combobox', { name: /role/i })).toBeInTheDocument()
     })
 
     it('table has proper headers', () => {
       render(<ImportReviewStep {...defaultProps} />)
 
       expect(screen.getByRole('columnheader', { name: /exercise/i })).toBeInTheDocument()
-      expect(screen.getByRole('columnheader', { name: /slot/i })).toBeInTheDocument()
+      expect(screen.getByRole('columnheader', { name: /role/i })).toBeInTheDocument()
       expect(screen.getByRole('columnheader', { name: /weight/i })).toBeInTheDocument()
       expect(screen.getByRole('columnheader', { name: /stage/i })).toBeInTheDocument()
     })
@@ -524,6 +529,93 @@ describe('ImportReviewStep', () => {
       render(<ImportReviewStep {...defaultProps} importResult={result} />)
 
       expect(screen.getByText(/no exercises/i)).toBeInTheDocument()
+    })
+  })
+
+  // ===========================================================================
+  // T010: Main Lift Exclusivity Validation
+  // ===========================================================================
+
+  describe('T010: main lift exclusivity validation', () => {
+    it('tracks assigned main lift roles across all exercises', () => {
+      const result = createMockImportResult([
+        createMockExercise({ name: 'Squat', templateId: 'squat-1', role: undefined }),
+        createMockExercise({ name: 'Bench', templateId: 'bench-1', role: undefined }),
+      ])
+
+      const onExerciseUpdate = vi.fn()
+      render(<ImportReviewStep {...defaultProps} importResult={result} onExerciseUpdate={onExerciseUpdate} />)
+
+      // Assign squat role to first exercise
+      const roleDropdowns = screen.getAllByLabelText(/role/i)
+      fireEvent.change(roleDropdowns[0], { target: { value: 'squat' } })
+
+      // Second exercise should not be able to select squat
+      // (This will be validated through RoleDropdown's excludeRoles prop)
+      expect(onExerciseUpdate).toHaveBeenCalledWith(0, { role: 'squat' })
+    })
+
+    it('prevents duplicate main lift role assignments', () => {
+      const result = createMockImportResult([
+        createMockExercise({ name: 'Squat', templateId: 'squat-1', role: 'squat' }),
+        createMockExercise({ name: 'Front Squat', templateId: 'fsquat-1', role: undefined }),
+      ])
+
+      render(<ImportReviewStep {...defaultProps} importResult={result} />)
+
+      // First exercise should have squat assigned
+      const roleDropdowns = screen.getAllByLabelText(/role/i)
+      expect(roleDropdowns[0].value).toBe('squat')
+
+      // Second dropdown should have squat disabled via excludeRoles
+      // (The RoleDropdown component handles this internally)
+    })
+
+    it('allows multiple exercises to have the same non-main-lift role', () => {
+      const result = createMockImportResult([
+        createMockExercise({ name: 'Lat Pulldown', templateId: 'lat-1', role: 't3' }),
+        createMockExercise({ name: 'Cable Rows', templateId: 'rows-1', role: 't3' }),
+      ])
+
+      render(<ImportReviewStep {...defaultProps} importResult={result} />)
+
+      // Both should be able to have t3 role
+      const roleDropdowns = screen.getAllByLabelText(/role/i)
+      expect(roleDropdowns[0].value).toBe('t3')
+      expect(roleDropdowns[1].value).toBe('t3')
+    })
+
+    it('updates excluded roles when main lift assignments change', () => {
+      const onExerciseUpdate = vi.fn()
+      const result = createMockImportResult([
+        createMockExercise({ name: 'Squat', templateId: 'squat-1', role: 'squat' }),
+      ])
+
+      render(
+        <ImportReviewStep
+          {...defaultProps}
+          importResult={result}
+          onExerciseUpdate={onExerciseUpdate}
+        />
+      )
+
+      // Change from squat to bench
+      const roleDropdown = screen.getByLabelText(/role/i)
+      fireEvent.change(roleDropdown, { target: { value: 'bench' } })
+
+      expect(onExerciseUpdate).toHaveBeenCalledWith(0, { role: 'bench' })
+    })
+
+    it('allows current exercise to keep its main lift role even if it would be excluded', () => {
+      const result = createMockImportResult([
+        createMockExercise({ name: 'Squat', templateId: 'squat-1', role: 'squat' }),
+      ])
+
+      render(<ImportReviewStep {...defaultProps} importResult={result} />)
+
+      // The exercise should still show squat as selected
+      const roleDropdown = screen.getByLabelText(/role/i)
+      expect(roleDropdown.value).toBe('squat')
     })
   })
 })

@@ -14,8 +14,8 @@ if (typeof File !== 'undefined' && !File.prototype.text) {
   File.prototype.text = function () {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = () => reject(reader.error)
+      reader.onload = () => { resolve(reader.result as string); }
+      reader.onerror = () => { reject(reader.error); }
       reader.readAsText(this)
     })
   }

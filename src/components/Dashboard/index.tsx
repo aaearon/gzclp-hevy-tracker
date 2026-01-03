@@ -18,7 +18,9 @@ import { createHevyClient } from '@/lib/hevy-client'
 import { ensureGZCLPRoutines } from '@/lib/routine-manager'
 import type { ExerciseConfig, Tier, ProgressionState } from '@/types/state'
 import { TIERS } from '@/lib/constants'
+import { getExercisesForDay } from '@/lib/role-utils'
 import { TierSection } from './TierSection'
+import { CollapsibleSection } from '@/components/common/CollapsibleSection'
 import { NextWorkout } from './NextWorkout'
 import { PendingBadge } from './PendingBadge'
 import { SyncButton } from './SyncButton'
@@ -189,20 +191,14 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     }
   }, [hevyClient, exercises, progression, settings, setHevyRoutineIds])
 
-  // Group exercises by tier
+  // Get exercises for current day using role-based grouping
+  const dayExercises = getExercisesForDay(exercises, program.currentDay)
+
+  // Create exercisesByTier for TierSection compatibility
   const exercisesByTier: Record<Tier, ExerciseConfig[]> = {
-    T1: [],
-    T2: [],
-    T3: [],
-  }
-
-  for (const exercise of Object.values(exercises)) {
-    exercisesByTier[exercise.tier].push(exercise)
-  }
-
-  // Sort exercises within each tier by slot
-  for (const tier of TIERS) {
-    exercisesByTier[tier].sort((a, b) => a.slot.localeCompare(b.slot))
+    T1: dayExercises.t1 ? [dayExercises.t1] : [],
+    T2: dayExercises.t2 ? [dayExercises.t2] : [],
+    T3: dayExercises.t3,
   }
 
   // Disable sync/update when offline
@@ -322,8 +318,25 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
             />
           </div>
 
-          {/* Exercise Tiers - Main content */}
+          {/* Exercise Sections - Main content */}
           <div className="space-y-8 lg:order-1 lg:col-span-2">
+            {/* Warmup Section (Collapsible, collapsed by default) */}
+            {dayExercises.warmup.length > 0 && (
+              <CollapsibleSection title="Warmup" defaultOpen={false} className="bg-white rounded-lg shadow p-4">
+                <div className="space-y-2">
+                  {dayExercises.warmup.map((exercise) => (
+                    <div
+                      key={exercise.id}
+                      className="flex items-center justify-between py-2 px-3 bg-green-50 rounded"
+                    >
+                      <span className="text-sm font-medium text-gray-900">{exercise.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* GZCLP Tier Sections (T1, T2, T3) */}
             {TIERS.map((tier) => (
               <TierSection
                 key={tier}
@@ -334,6 +347,22 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
                 pendingChanges={pendingChanges.filter((c) => c.tier === tier)}
               />
             ))}
+
+            {/* Cooldown Section (Collapsible, collapsed by default) */}
+            {dayExercises.cooldown.length > 0 && (
+              <CollapsibleSection title="Cooldown" defaultOpen={false} className="bg-white rounded-lg shadow p-4">
+                <div className="space-y-2">
+                  {dayExercises.cooldown.map((exercise) => (
+                    <div
+                      key={exercise.id}
+                      className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded"
+                    >
+                      <span className="text-sm font-medium text-gray-900">{exercise.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
           </div>
         </div>
       </main>

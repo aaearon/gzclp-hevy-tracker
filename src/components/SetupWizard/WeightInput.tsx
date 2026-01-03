@@ -13,6 +13,7 @@ export interface WeightInputProps {
   unit: WeightUnit
   label: string
   id?: string
+  hint?: string
   disabled?: boolean
 }
 
@@ -22,6 +23,7 @@ export function WeightInput({
   unit,
   label,
   id,
+  hint,
   disabled = false,
 }: WeightInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +48,9 @@ export function WeightInput({
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
+      {hint && (
+        <p className="text-xs text-gray-500 mb-1">{hint}</p>
+      )}
       <div className="flex items-center space-x-2">
         <input
           id={id}

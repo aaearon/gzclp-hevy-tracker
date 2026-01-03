@@ -3,6 +3,8 @@
  *
  * Tests for building Hevy routine payloads from GZCLP program state.
  * [US4] User Story 4 - Update Hevy Routines
+ *
+ * Updated for role-based system (Feature 004).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -13,7 +15,6 @@ import {
   buildDayRoutine,
 } from '@/lib/routine-builder'
 import type { ExerciseConfig, ProgressionState, UserSettings, GZCLPDay } from '@/types/state'
-import type { RoutineExerciseWrite, RoutineSetWrite } from '@/types/hevy'
 
 describe('[US4] Routine Builder', () => {
   const defaultSettings: UserSettings = {
@@ -22,100 +23,55 @@ describe('[US4] Routine Builder', () => {
     restTimers: { t1: 180, t2: 120, t3: 60 },
   }
 
+  // Role-based exercise configs
   const mockExercises: Record<string, ExerciseConfig> = {
-    'ex-squat-t1': {
-      id: 'ex-squat-t1',
+    'ex-squat': {
+      id: 'ex-squat',
       hevyTemplateId: 'hevy-squat',
       name: 'Squat (Barbell)',
-      tier: 'T1',
-      slot: 't1_squat',
-      muscleGroup: 'lower',
+      role: 'squat',
     },
-    'ex-bench-t1': {
-      id: 'ex-bench-t1',
+    'ex-bench': {
+      id: 'ex-bench',
       hevyTemplateId: 'hevy-bench',
       name: 'Bench Press (Barbell)',
-      tier: 'T1',
-      slot: 't1_bench',
-      muscleGroup: 'upper',
+      role: 'bench',
     },
-    'ex-ohp-t1': {
-      id: 'ex-ohp-t1',
+    'ex-ohp': {
+      id: 'ex-ohp',
       hevyTemplateId: 'hevy-ohp',
       name: 'Overhead Press (Barbell)',
-      tier: 'T1',
-      slot: 't1_ohp',
-      muscleGroup: 'upper',
+      role: 'ohp',
     },
-    'ex-deadlift-t1': {
-      id: 'ex-deadlift-t1',
+    'ex-deadlift': {
+      id: 'ex-deadlift',
       hevyTemplateId: 'hevy-deadlift',
       name: 'Deadlift (Barbell)',
-      tier: 'T1',
-      slot: 't1_deadlift',
-      muscleGroup: 'lower',
-    },
-    'ex-squat-t2': {
-      id: 'ex-squat-t2',
-      hevyTemplateId: 'hevy-squat',
-      name: 'Squat (Barbell)',
-      tier: 'T2',
-      slot: 't2_squat',
-      muscleGroup: 'lower',
-    },
-    'ex-bench-t2': {
-      id: 'ex-bench-t2',
-      hevyTemplateId: 'hevy-bench',
-      name: 'Bench Press (Barbell)',
-      tier: 'T2',
-      slot: 't2_bench',
-      muscleGroup: 'upper',
-    },
-    'ex-ohp-t2': {
-      id: 'ex-ohp-t2',
-      hevyTemplateId: 'hevy-ohp',
-      name: 'Overhead Press (Barbell)',
-      tier: 'T2',
-      slot: 't2_ohp',
-      muscleGroup: 'upper',
-    },
-    'ex-deadlift-t2': {
-      id: 'ex-deadlift-t2',
-      hevyTemplateId: 'hevy-deadlift',
-      name: 'Deadlift (Barbell)',
-      tier: 'T2',
-      slot: 't2_deadlift',
-      muscleGroup: 'lower',
+      role: 'deadlift',
     },
     'ex-curl-t3': {
       id: 'ex-curl-t3',
       hevyTemplateId: 'hevy-curl',
       name: 'Bicep Curl',
-      tier: 'T3',
-      slot: 't3_1',
-      muscleGroup: 'upper',
+      role: 't3',
     },
     'ex-row-t3': {
       id: 'ex-row-t3',
       hevyTemplateId: 'hevy-row',
       name: 'Cable Row',
-      tier: 'T3',
-      slot: 't3_2',
-      muscleGroup: 'upper',
+      role: 't3',
     },
     'ex-legcurl-t3': {
       id: 'ex-legcurl-t3',
       hevyTemplateId: 'hevy-legcurl',
       name: 'Leg Curl',
-      tier: 'T3',
-      slot: 't3_3',
-      muscleGroup: 'lower',
+      role: 't3',
     },
   }
 
   const mockProgression: Record<string, ProgressionState> = {
-    'ex-squat-t1': {
-      exerciseId: 'ex-squat-t1',
+    'ex-squat': {
+      exerciseId: 'ex-squat',
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
@@ -123,8 +79,8 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-bench-t1': {
-      exerciseId: 'ex-bench-t1',
+    'ex-bench': {
+      exerciseId: 'ex-bench',
       currentWeight: 80,
       stage: 0,
       baseWeight: 80,
@@ -132,8 +88,8 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-ohp-t1': {
-      exerciseId: 'ex-ohp-t1',
+    'ex-ohp': {
+      exerciseId: 'ex-ohp',
       currentWeight: 50,
       stage: 1,
       baseWeight: 50,
@@ -141,47 +97,11 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-deadlift-t1': {
-      exerciseId: 'ex-deadlift-t1',
+    'ex-deadlift': {
+      exerciseId: 'ex-deadlift',
       currentWeight: 120,
       stage: 2,
       baseWeight: 120,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
-      amrapRecord: 0,
-    },
-    'ex-squat-t2': {
-      exerciseId: 'ex-squat-t2',
-      currentWeight: 80,
-      stage: 0,
-      baseWeight: 80,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
-      amrapRecord: 0,
-    },
-    'ex-bench-t2': {
-      exerciseId: 'ex-bench-t2',
-      currentWeight: 60,
-      stage: 1,
-      baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
-      amrapRecord: 0,
-    },
-    'ex-ohp-t2': {
-      exerciseId: 'ex-ohp-t2',
-      currentWeight: 40,
-      stage: 2,
-      baseWeight: 40,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
-      amrapRecord: 0,
-    },
-    'ex-deadlift-t2': {
-      exerciseId: 'ex-deadlift-t2',
-      currentWeight: 100,
-      stage: 0,
-      baseWeight: 100,
       lastWorkoutId: null,
       lastWorkoutDate: null,
       amrapRecord: 0,
@@ -241,11 +161,13 @@ describe('[US4] Routine Builder', () => {
   })
 
   describe('buildRoutineExercise', () => {
-    it('should build T1 stage 0 exercise (5x3)', () => {
+    it('should build T1 stage 0 exercise (5x3) on A1 day', () => {
+      // Squat is T1 on A1
       const exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t1']!,
-        mockProgression['ex-squat-t1']!,
-        defaultSettings
+        mockExercises['ex-squat']!,
+        mockProgression['ex-squat']!,
+        defaultSettings,
+        'A1'
       )
 
       expect(exercise.exercise_template_id).toBe('hevy-squat')
@@ -255,33 +177,39 @@ describe('[US4] Routine Builder', () => {
       expect(exercise.sets[0]?.reps).toBe(3)
     })
 
-    it('should build T1 stage 1 exercise (6x2)', () => {
+    it('should build T1 stage 1 exercise (6x2) on B1 day', () => {
+      // OHP is T1 on B1, and it's at stage 1
       const exercise = buildRoutineExercise(
-        mockExercises['ex-ohp-t1']!,
-        mockProgression['ex-ohp-t1']!,
-        defaultSettings
+        mockExercises['ex-ohp']!,
+        mockProgression['ex-ohp']!,
+        defaultSettings,
+        'B1'
       )
 
       expect(exercise.sets).toHaveLength(6) // 6x2
       expect(exercise.sets[0]?.reps).toBe(2)
     })
 
-    it('should build T1 stage 2 exercise (10x1)', () => {
+    it('should build T1 stage 2 exercise (10x1) on B2 day', () => {
+      // Deadlift is T1 on B2, and it's at stage 2
       const exercise = buildRoutineExercise(
-        mockExercises['ex-deadlift-t1']!,
-        mockProgression['ex-deadlift-t1']!,
-        defaultSettings
+        mockExercises['ex-deadlift']!,
+        mockProgression['ex-deadlift']!,
+        defaultSettings,
+        'B2'
       )
 
       expect(exercise.sets).toHaveLength(10) // 10x1
       expect(exercise.sets[0]?.reps).toBe(1)
     })
 
-    it('should build T2 stage 0 exercise (3x10)', () => {
+    it('should build T2 stage 0 exercise (3x10) on A1 day', () => {
+      // Bench is T2 on A1
       const exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t2']!,
-        mockProgression['ex-squat-t2']!,
-        defaultSettings
+        mockExercises['ex-bench']!,
+        mockProgression['ex-bench']!,
+        defaultSettings,
+        'A1'
       )
 
       expect(exercise.rest_seconds).toBe(120) // T2 rest
@@ -289,22 +217,26 @@ describe('[US4] Routine Builder', () => {
       expect(exercise.sets[0]?.reps).toBe(10)
     })
 
-    it('should build T2 stage 1 exercise (3x8)', () => {
+    it('should build T2 stage 1 exercise (3x8) on B2 day', () => {
+      // OHP is T2 on B2, and it's at stage 1
       const exercise = buildRoutineExercise(
-        mockExercises['ex-bench-t2']!,
-        mockProgression['ex-bench-t2']!,
-        defaultSettings
+        mockExercises['ex-ohp']!,
+        mockProgression['ex-ohp']!,
+        defaultSettings,
+        'B2'
       )
 
       expect(exercise.sets).toHaveLength(3) // 3x8
       expect(exercise.sets[0]?.reps).toBe(8)
     })
 
-    it('should build T2 stage 2 exercise (3x6)', () => {
+    it('should build T2 stage 2 exercise (3x6) on B1 day', () => {
+      // Deadlift is T2 on B1, and it's at stage 2
       const exercise = buildRoutineExercise(
-        mockExercises['ex-ohp-t2']!,
-        mockProgression['ex-ohp-t2']!,
-        defaultSettings
+        mockExercises['ex-deadlift']!,
+        mockProgression['ex-deadlift']!,
+        defaultSettings,
+        'B1'
       )
 
       expect(exercise.sets).toHaveLength(3) // 3x6
@@ -315,7 +247,8 @@ describe('[US4] Routine Builder', () => {
       const exercise = buildRoutineExercise(
         mockExercises['ex-curl-t3']!,
         mockProgression['ex-curl-t3']!,
-        defaultSettings
+        defaultSettings,
+        'A1'
       )
 
       expect(exercise.rest_seconds).toBe(60) // T3 rest
@@ -330,19 +263,22 @@ describe('[US4] Routine Builder', () => {
       }
 
       const t1Exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t1']!,
-        mockProgression['ex-squat-t1']!,
-        customSettings
+        mockExercises['ex-squat']!,
+        mockProgression['ex-squat']!,
+        customSettings,
+        'A1'
       )
       const t2Exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t2']!,
-        mockProgression['ex-squat-t2']!,
-        customSettings
+        mockExercises['ex-bench']!,
+        mockProgression['ex-bench']!,
+        customSettings,
+        'A1'
       )
       const t3Exercise = buildRoutineExercise(
         mockExercises['ex-curl-t3']!,
         mockProgression['ex-curl-t3']!,
-        customSettings
+        customSettings,
+        'A1'
       )
 
       expect(t1Exercise.rest_seconds).toBe(240)
@@ -427,12 +363,12 @@ describe('[US4] Routine Builder', () => {
 
     it('should handle missing T3 exercises gracefully', () => {
       const exercisesWithoutT3: Record<string, ExerciseConfig> = {
-        'ex-squat-t1': mockExercises['ex-squat-t1']!,
-        'ex-bench-t2': mockExercises['ex-bench-t2']!,
+        'ex-squat': mockExercises['ex-squat']!,
+        'ex-bench': mockExercises['ex-bench']!,
       }
       const progressionWithoutT3: Record<string, ProgressionState> = {
-        'ex-squat-t1': mockProgression['ex-squat-t1']!,
-        'ex-bench-t2': mockProgression['ex-bench-t2']!,
+        'ex-squat': mockProgression['ex-squat']!,
+        'ex-bench': mockProgression['ex-bench']!,
       }
 
       const routine = buildDayRoutine(
@@ -494,16 +430,17 @@ describe('[US4] Routine Builder', () => {
       // Progression stores weight in the user's unit (lbs in this case)
       // But Hevy API always expects kg
       const lbsProgression: Record<string, ProgressionState> = {
-        'ex-squat-t1': {
-          ...mockProgression['ex-squat-t1']!,
+        'ex-squat': {
+          ...mockProgression['ex-squat']!,
           currentWeight: 225, // 225 lbs
         },
       }
 
       const exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t1']!,
-        lbsProgression['ex-squat-t1']!,
-        lbsSettings
+        mockExercises['ex-squat']!,
+        lbsProgression['ex-squat']!,
+        lbsSettings,
+        'A1'
       )
 
       // Should convert to kg (225 lbs = ~102 kg)
@@ -514,9 +451,10 @@ describe('[US4] Routine Builder', () => {
 
     it('should pass through kg weights unchanged', () => {
       const exercise = buildRoutineExercise(
-        mockExercises['ex-squat-t1']!,
-        mockProgression['ex-squat-t1']!,
-        defaultSettings
+        mockExercises['ex-squat']!,
+        mockProgression['ex-squat']!,
+        defaultSettings,
+        'A1'
       )
 
       expect(exercise.sets[0]?.weight_kg).toBe(100) // Unchanged

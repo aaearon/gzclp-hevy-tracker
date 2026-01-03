@@ -164,7 +164,9 @@ export function useProgram(): UseProgramResult {
   const removeExercise = useCallback(
     (id: string) => {
       setRawState((prev) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [id]: removedExercise, ...remainingExercises } = prev.exercises
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [id]: removedProgression, ...remainingProgression } = prev.progression
 
         return {

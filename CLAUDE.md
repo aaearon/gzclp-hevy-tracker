@@ -5,6 +5,7 @@ Auto-generated from all feature plans. Last updated: 2026-01-02
 ## Active Technologies
 - TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1 (002-routine-selection-wizard)
 - Browser localStorage (key: `gzclp_state`) (002-routine-selection-wizard)
+- Browser localStorage (key: `gzclp_state`, extended with classifications store) (003-exercise-classification)
 
 - TypeScript 5.x (strict mode enabled) + React 18, Vite 5, Tailwind CSS 3.4 (001-gzclp-hevy-tracker)
 
@@ -25,6 +26,7 @@ npm test && npm run lint
 TypeScript 5.x (strict mode enabled): Follow standard conventions
 
 ## Recent Changes
+- 003-exercise-classification: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 - 002-routine-selection-wizard: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 
 - 001-gzclp-hevy-tracker: Added TypeScript 5.x (strict mode enabled) + React 18, Vite 5, Tailwind CSS 3.4

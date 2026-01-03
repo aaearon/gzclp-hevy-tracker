@@ -5,7 +5,8 @@
  */
 
 import type { GZCLPDay } from '@/types/state'
-import { DAY_EXERCISES, SLOT_NAMES } from '@/lib/constants'
+import { ROLE_DISPLAY } from '@/lib/constants'
+import { getT1RoleForDay, getT2RoleForDay } from '@/lib/role-utils'
 
 export interface NextWorkoutStepProps {
   selectedDay: GZCLPDay
@@ -15,15 +16,6 @@ export interface NextWorkoutStepProps {
 }
 
 const DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
-
-/**
- * Get display name for a slot (e.g., 't1_squat' -> 'Squat')
- */
-function getExerciseName(slot: string): string {
-  const name = SLOT_NAMES[slot as keyof typeof SLOT_NAMES]
-  // Remove the tier suffix like "(T1)" from the display name
-  return name?.replace(/\s*\(T[123]\)$/, '') ?? slot
-}
 
 export function NextWorkoutStep({
   selectedDay,
@@ -44,16 +36,17 @@ export function NextWorkoutStep({
       {/* Day Selection Grid */}
       <div className="grid grid-cols-2 gap-4">
         {DAYS.map((day) => {
-          const exercises = DAY_EXERCISES[day]
-          const t1Name = getExerciseName(exercises.t1)
-          const t2Name = getExerciseName(exercises.t2)
+          const t1Role = getT1RoleForDay(day)
+          const t2Role = getT2RoleForDay(day)
+          const t1Name = ROLE_DISPLAY[t1Role].label
+          const t2Name = ROLE_DISPLAY[t2Role].label
           const isSelected = selectedDay === day
 
           return (
             <button
               key={day}
               type="button"
-              onClick={() => onDaySelect(day)}
+              onClick={() => { onDaySelect(day) }}
               aria-pressed={isSelected}
               className={`
                 flex flex-col items-center justify-center p-4 rounded-lg border-2

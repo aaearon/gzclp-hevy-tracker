@@ -8,12 +8,10 @@ import { useState, useCallback, useMemo } from 'react'
 import type { Routine } from '@/types/hevy'
 import type {
   GZCLPDay,
-  GZCLPSlot,
   AvailableRoutine,
   RoutineAssignment,
   ImportedExercise,
   ImportResult,
-  ImportWarning,
 } from '@/types/state'
 import { toAvailableRoutine, extractFromRoutines } from '@/lib/routine-importer'
 
@@ -86,7 +84,10 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
       setImportResult((prev) => {
         if (!prev) return prev
         const newExercises = [...prev.exercises]
-        newExercises[index] = { ...newExercises[index], ...updates }
+        const current = newExercises[index]
+        if (current) {
+          newExercises[index] = { ...current, ...updates } as ImportedExercise
+        }
         return { ...prev, exercises: newExercises }
       })
     },

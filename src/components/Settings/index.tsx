@@ -11,6 +11,7 @@ import { ExportButton } from './ExportButton'
 import { ImportButton } from './ImportButton'
 import { ImportConfirmDialog } from './ImportConfirmDialog'
 import { DeleteDataButton } from './DeleteDataButton'
+import { ExerciseManager } from './ExerciseManager'
 
 interface SettingsProps {
   onBack?: () => void
@@ -32,7 +33,7 @@ export function Settings({ onBack }: SettingsProps) {
       importState(pendingImport)
       setPendingImport(null)
       setSuccessMessage('Data imported successfully!')
-      setTimeout(() => setSuccessMessage(null), 3000)
+      setTimeout(() => { setSuccessMessage(null) }, 3000)
     }
   }
 
@@ -42,13 +43,13 @@ export function Settings({ onBack }: SettingsProps) {
 
   const handleImportError = (error: string) => {
     setImportError(error)
-    setTimeout(() => setImportError(null), 5000)
+    setTimeout(() => { setImportError(null) }, 5000)
   }
 
   const handleDelete = () => {
     resetState()
     setSuccessMessage('All data has been reset.')
-    setTimeout(() => setSuccessMessage(null), 3000)
+    setTimeout(() => { setSuccessMessage(null) }, 3000)
   }
 
   const handleUnitChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -100,6 +101,14 @@ export function Settings({ onBack }: SettingsProps) {
             <p className="text-sm text-red-800">{importError}</p>
           </div>
         )}
+
+        {/* Exercise Roles */}
+        <section className="mb-8">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Exercise Roles</h2>
+          <div className="bg-white rounded-lg shadow p-4">
+            <ExerciseManager />
+          </div>
+        </section>
 
         {/* Unit Preference */}
         <section className="mb-8">
@@ -197,3 +206,4 @@ export { ExportButton } from './ExportButton'
 export { ImportButton } from './ImportButton'
 export { ImportConfirmDialog } from './ImportConfirmDialog'
 export { DeleteDataButton } from './DeleteDataButton'
+export { ExerciseManager } from './ExerciseManager'

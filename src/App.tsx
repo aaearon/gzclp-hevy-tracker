@@ -14,15 +14,15 @@ function AppContent() {
 
   // Show setup wizard if needed
   if (isSetupRequired && !showDashboard) {
-    return <SetupWizard onComplete={() => setShowDashboard(true)} />
+    return <SetupWizard onComplete={() => { setShowDashboard(true) }} />
   }
 
   // Render current view
   if (currentView === 'settings') {
-    return <Settings onBack={() => setCurrentView('dashboard')} />
+    return <Settings onBack={() => { setCurrentView('dashboard') }} />
   }
 
-  return <Dashboard onNavigateToSettings={() => setCurrentView('settings')} />
+  return <Dashboard onNavigateToSettings={() => { setCurrentView('settings') }} />
 }
 
 function App() {

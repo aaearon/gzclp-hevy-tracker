@@ -2,6 +2,8 @@
  * Tests for PendingChange Generator
  *
  * Tests for creating PendingChange objects from progression results.
+ *
+ * Updated for role-based system (Feature 004).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -12,19 +14,17 @@ import {
 import type {
   ExerciseConfig,
   ProgressionState,
-  PendingChange,
   WeightUnit,
 } from '@/types/state'
 import type { WorkoutAnalysisResult } from '@/lib/workout-analysis'
 
 describe('createPendingChange', () => {
+  // Role-based exercise config
   const mockExercise: ExerciseConfig = {
     id: 'ex-1',
     hevyTemplateId: 'hevy-1',
     name: 'Squat',
-    tier: 'T1',
-    slot: 't1_squat',
-    muscleGroup: 'lower',
+    role: 'squat',
   }
 
   const mockProgression: ProgressionState = {
@@ -38,6 +38,7 @@ describe('createPendingChange', () => {
   }
 
   it('should create a PendingChange for T1 weight progression', () => {
+    // Squat is T1 on A1 day
     const result = createPendingChange(
       mockExercise,
       mockProgression,
@@ -49,7 +50,8 @@ describe('createPendingChange', () => {
         reason: 'Completed 5x3+ at 100kg. Adding 5kg.',
       },
       'workout-123',
-      '2024-01-15T10:00:00Z'
+      '2024-01-15T10:00:00Z',
+      'A1' // day parameter - squat is T1 on A1
     )
 
     expect(result.id).toBeDefined()
@@ -81,7 +83,8 @@ describe('createPendingChange', () => {
         reason: 'Failed to complete 5x3+ at 100kg. Moving to 6x2+.',
       },
       'workout-456',
-      '2024-01-16T10:00:00Z'
+      '2024-01-16T10:00:00Z',
+      'A1'
     )
 
     expect(result.type).toBe('stage_change')
@@ -108,7 +111,8 @@ describe('createPendingChange', () => {
         reason: 'Failed 10x1+ at 100kg. Deloading to 85kg and restarting at 5x3+.',
       },
       'workout-789',
-      '2024-01-17T10:00:00Z'
+      '2024-01-17T10:00:00Z',
+      'A1'
     )
 
     expect(result.type).toBe('deload')
@@ -122,9 +126,7 @@ describe('createPendingChange', () => {
       id: 'ex-t3',
       hevyTemplateId: 'hevy-t3',
       name: 'Lat Pulldown',
-      tier: 'T3',
-      slot: 't3_1',
-      muscleGroup: 'upper',
+      role: 't3',
     }
 
     const t3Progression: ProgressionState = {
@@ -148,7 +150,8 @@ describe('createPendingChange', () => {
         reason: 'Hit 20 total reps (need 25+) at 50kg. Repeat same weight.',
       },
       'workout-t3',
-      '2024-01-18T10:00:00Z'
+      '2024-01-18T10:00:00Z',
+      'A1' // day doesn't matter for t3 - always T3
     )
 
     expect(result.type).toBe('repeat')
@@ -168,7 +171,8 @@ describe('createPendingChange', () => {
         reason: 'Test',
       },
       'workout-1',
-      '2024-01-15T10:00:00Z'
+      '2024-01-15T10:00:00Z',
+      'A1'
     )
 
     const result2 = createPendingChange(
@@ -182,7 +186,8 @@ describe('createPendingChange', () => {
         reason: 'Test',
       },
       'workout-2',
-      '2024-01-16T10:00:00Z'
+      '2024-01-16T10:00:00Z',
+      'A1'
     )
 
     expect(result1.id).not.toBe(result2.id)
@@ -190,30 +195,25 @@ describe('createPendingChange', () => {
 })
 
 describe('createPendingChangesFromAnalysis', () => {
+  // Role-based exercise configs
   const mockExercises: Record<string, ExerciseConfig> = {
     'ex-squat': {
       id: 'ex-squat',
       hevyTemplateId: 'hevy-squat',
       name: 'Squat',
-      tier: 'T1',
-      slot: 't1_squat',
-      muscleGroup: 'lower',
+      role: 'squat',
     },
     'ex-bench': {
       id: 'ex-bench',
       hevyTemplateId: 'hevy-bench',
       name: 'Bench Press',
-      tier: 'T2',
-      slot: 't2_bench',
-      muscleGroup: 'upper',
+      role: 'bench',
     },
     'ex-lat': {
       id: 'ex-lat',
       hevyTemplateId: 'hevy-lat',
       name: 'Lat Pulldown',
-      tier: 'T3',
-      slot: 't3_1',
-      muscleGroup: 'upper',
+      role: 't3',
     },
   }
 
@@ -262,11 +262,13 @@ describe('createPendingChangesFromAnalysis', () => {
       },
     ]
 
+    // Pass day 'A1' so squat is treated as T1
     const changes = createPendingChangesFromAnalysis(
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(1)
@@ -297,11 +299,13 @@ describe('createPendingChangesFromAnalysis', () => {
       },
     ]
 
+    // On A1, squat=T1, bench=T2
     const changes = createPendingChangesFromAnalysis(
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(2)
@@ -326,7 +330,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(1)
@@ -352,7 +357,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(1)
@@ -377,7 +383,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(0)
@@ -402,7 +409,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       emptyProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(0)
@@ -413,7 +421,8 @@ describe('createPendingChangesFromAnalysis', () => {
       [],
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(0)
@@ -448,7 +457,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       lbsProgression,
-      'lbs'
+      'lbs',
+      'A1'
     )
 
     expect(changes).toHaveLength(1)
@@ -478,7 +488,8 @@ describe('createPendingChangesFromAnalysis', () => {
       analysisResults,
       mockExercises,
       mockProgression,
-      unit
+      unit,
+      'A1'
     )
 
     expect(changes).toHaveLength(1)

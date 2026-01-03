@@ -97,70 +97,70 @@ describe('[US6] Data Import - validateImportStructure', () => {
 
   it('should accept valid export data structure', () => {
     const validData = createValidExportData()
-    expect(() => validateImportStructure(validData)).not.toThrow()
+    expect(() => { validateImportStructure(validData); }).not.toThrow()
   })
 
   it('should reject missing version field', () => {
     const invalidData = createValidExportData()
     delete invalidData.version
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: version')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: version')
   })
 
   it('should reject missing apiKey field', () => {
     const invalidData = createValidExportData()
     delete invalidData.apiKey
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: apiKey')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: apiKey')
   })
 
   it('should reject missing program field', () => {
     const invalidData = createValidExportData()
     delete invalidData.program
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: program')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: program')
   })
 
   it('should reject missing exercises field', () => {
     const invalidData = createValidExportData()
     delete invalidData.exercises
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: exercises')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: exercises')
   })
 
   it('should reject missing progression field', () => {
     const invalidData = createValidExportData()
     delete invalidData.progression
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: progression')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: progression')
   })
 
   it('should reject missing settings field', () => {
     const invalidData = createValidExportData()
     delete invalidData.settings
-    expect(() => validateImportStructure(invalidData)).toThrow('missing required field: settings')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('missing required field: settings')
   })
 
   it('should reject invalid version format', () => {
     const invalidData = createValidExportData()
     invalidData.version = 'not-a-version'
-    expect(() => validateImportStructure(invalidData)).toThrow('invalid version format')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('invalid version format')
   })
 
   it('should accept valid semver versions', () => {
     const validData = createValidExportData()
     validData.version = '0.1.0'
-    expect(() => validateImportStructure(validData)).not.toThrow()
+    expect(() => { validateImportStructure(validData); }).not.toThrow()
 
     validData.version = '2.10.15'
-    expect(() => validateImportStructure(validData)).not.toThrow()
+    expect(() => { validateImportStructure(validData); }).not.toThrow()
   })
 
   it('should reject invalid program structure', () => {
     const invalidData = createValidExportData()
     invalidData.program = { name: 'Test' } // Missing required fields
-    expect(() => validateImportStructure(invalidData)).toThrow('invalid program structure')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('invalid program structure')
   })
 
   it('should reject invalid settings structure', () => {
     const invalidData = createValidExportData()
     invalidData.settings = { weightUnit: 'kg' } // Missing increments and restTimers
-    expect(() => validateImportStructure(invalidData)).toThrow('invalid settings structure')
+    expect(() => { validateImportStructure(invalidData); }).toThrow('invalid settings structure')
   })
 })
 

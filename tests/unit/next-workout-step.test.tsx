@@ -156,7 +156,7 @@ describe('NextWorkoutStep', () => {
       render(<NextWorkoutStep {...defaultProps} />)
 
       const dayButtons = screen.getAllByRole('button').filter(
-        (btn) => btn.textContent?.match(/^[AB][12]/)
+        (btn) => /^[AB][12]/.exec(btn.textContent)
       )
 
       dayButtons.forEach((button) => {

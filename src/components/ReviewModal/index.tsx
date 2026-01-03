@@ -70,7 +70,7 @@ function PendingChangeCard({
               type="number"
               role="spinbutton"
               value={editWeight}
-              onChange={(e) => setEditWeight(parseFloat(e.target.value))}
+              onChange={(e) => { setEditWeight(parseFloat(e.target.value)) }}
               className="w-20 rounded border px-2 py-1"
               step="2.5"
             />
@@ -108,7 +108,7 @@ function PendingChangeCard({
         </button>
         <button
           type="button"
-          onClick={() => setIsEditing(true)}
+          onClick={() => { setIsEditing(true) }}
           className="rounded bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
         >
           Edit
@@ -141,7 +141,7 @@ export function ReviewModal({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => { document.removeEventListener('keydown', handleKeyDown) }
   }, [isOpen, onClose])
 
   // Focus trap and initial focus [T104]
@@ -156,7 +156,7 @@ export function ReviewModal({
 
     return () => {
       // Restore focus when modal closes
-      previouslyFocused?.focus()
+      previouslyFocused.focus()
     }
   }, [isOpen])
 
@@ -198,7 +198,7 @@ export function ReviewModal({
       <div
         ref={modalRef}
         className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white p-6"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation() }}
       >
         <div className="flex items-center justify-between border-b pb-4">
           <h2 id="review-modal-title" className="text-xl font-semibold text-gray-900">Review Changes</h2>
@@ -229,9 +229,9 @@ export function ReviewModal({
                   key={change.id}
                   change={change}
                   unit={unit}
-                  onApply={() => onApply(change)}
-                  onReject={() => onReject(change.id)}
-                  onModify={(newWeight) => onModify(change.id, newWeight)}
+                  onApply={() => { onApply(change) }}
+                  onReject={() => { onReject(change.id) }}
+                  onModify={(newWeight) => { onModify(change.id, newWeight) }}
                 />
               ))}
 

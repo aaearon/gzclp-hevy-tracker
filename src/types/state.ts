@@ -11,18 +11,29 @@
 
 export type Tier = 'T1' | 'T2' | 'T3'
 
-export type GZCLPSlot =
-  | 't1_squat'
-  | 't1_bench'
-  | 't1_ohp'
-  | 't1_deadlift'
-  | 't2_squat'
-  | 't2_bench'
-  | 't2_ohp'
-  | 't2_deadlift'
-  | 't3_1'
-  | 't3_2'
-  | 't3_3'
+// =============================================================================
+// Exercise Role System (NEW - Replaces slots + categories)
+// =============================================================================
+
+/**
+ * 7 roles replacing 11 slots + 6 categories.
+ * Main lifts are exclusive (one exercise each), others allow multiple.
+ */
+export type ExerciseRole =
+  | 'squat'
+  | 'bench'
+  | 'ohp'
+  | 'deadlift'
+  | 't3'
+  | 'warmup'
+  | 'cooldown'
+
+/** Main lift roles - exclusive, one exercise each */
+export const MAIN_LIFT_ROLES = ['squat', 'bench', 'ohp', 'deadlift'] as const
+export type MainLiftRole = (typeof MAIN_LIFT_ROLES)[number]
+
+/** Multi-assign roles - unlimited exercises allowed */
+export const MULTI_ASSIGN_ROLES = ['t3', 'warmup', 'cooldown'] as const
 
 export type GZCLPDay = 'A1' | 'B1' | 'A2' | 'B2'
 
@@ -58,9 +69,8 @@ export interface ExerciseConfig {
   id: string
   hevyTemplateId: string
   name: string
-  tier: Tier
-  slot: GZCLPSlot
-  muscleGroup: MuscleGroupCategory
+  /** Exercise role - the new simplified role system */
+  role?: ExerciseRole
 }
 
 // =============================================================================
@@ -175,7 +185,8 @@ export type StageConfidence = 'high' | 'manual'
  * Represents an exercise extracted from a routine, pending user confirmation.
  */
 export interface ImportedExercise {
-  slot: GZCLPSlot
+  /** Exercise role - assigned by user during import */
+  role?: ExerciseRole
   templateId: string
   name: string
 
@@ -192,7 +203,6 @@ export interface ImportedExercise {
   /** User overrides set during review */
   userWeight?: number
   userStage?: Stage
-  userSlot?: GZCLPSlot
 }
 
 /**
@@ -210,7 +220,6 @@ export type ImportWarningType =
 export interface ImportWarning {
   type: ImportWarningType
   day?: GZCLPDay
-  slot?: GZCLPSlot
   message: string
 }
 

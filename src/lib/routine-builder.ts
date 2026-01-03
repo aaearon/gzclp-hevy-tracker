@@ -12,18 +12,14 @@ import type {
 } from '@/types/hevy'
 import type {
   ExerciseConfig,
+  ExerciseRole,
   GZCLPDay,
-  GZCLPSlot,
   ProgressionState,
+  Tier,
   UserSettings,
 } from '@/types/state'
-import {
-  DAY_EXERCISES,
-  T1_SCHEMES,
-  T2_SCHEMES,
-  T3_SCHEME,
-  T3_SLOTS,
-} from './constants'
+import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME } from './constants'
+import { getT1RoleForDay, getT2RoleForDay, getTierForDay } from './role-utils'
 
 // =============================================================================
 // Constants
@@ -66,14 +62,25 @@ export function buildRoutineSet(weightKg: number, reps: number): RoutineSetWrite
 // =============================================================================
 
 /**
+ * Derive tier from exercise role and workout day.
+ */
+function deriveTier(role: ExerciseRole | undefined, day: GZCLPDay): Tier {
+  if (!role) return 'T3'
+  const tier = getTierForDay(role, day)
+  return tier ?? 'T3'
+}
+
+/**
  * Build a routine exercise with correct sets based on tier and stage.
  */
 export function buildRoutineExercise(
   exercise: ExerciseConfig,
   progression: ProgressionState,
-  settings: UserSettings
+  settings: UserSettings,
+  day: GZCLPDay
 ): RoutineExerciseWrite {
-  const { tier } = exercise
+  // Derive tier from role + day
+  const tier = deriveTier(exercise.role, day)
   const { currentWeight, stage } = progression
 
   // Convert weight to kg for Hevy API
@@ -121,13 +128,20 @@ export function buildRoutineExercise(
 // =============================================================================
 
 /**
- * Find exercise config by slot.
+ * Find exercise config by role.
  */
-function findExerciseBySlot(
-  slot: GZCLPSlot,
+function findExerciseByRole(
+  role: ExerciseRole,
   exercises: Record<string, ExerciseConfig>
 ): ExerciseConfig | undefined {
-  return Object.values(exercises).find((ex) => ex.slot === slot)
+  return Object.values(exercises).find((ex) => ex.role === role)
+}
+
+/**
+ * Get all T3 exercises.
+ */
+function getT3Exercises(exercises: Record<string, ExerciseConfig>): ExerciseConfig[] {
+  return Object.values(exercises).filter((ex) => ex.role === 't3')
 }
 
 /**
@@ -139,31 +153,34 @@ export function buildDayRoutine(
   progression: Record<string, ProgressionState>,
   settings: UserSettings
 ): { title: string; exercises: RoutineExerciseWrite[] } {
-  const dayConfig = DAY_EXERCISES[day]
   const routineExercises: RoutineExerciseWrite[] = []
 
+  // Get T1 and T2 roles for this day
+  const t1Role = getT1RoleForDay(day)
+  const t2Role = getT2RoleForDay(day)
+
   // Add T1 exercise
-  const t1Exercise = findExerciseBySlot(dayConfig.t1, exercises)
+  const t1Exercise = findExerciseByRole(t1Role, exercises)
   if (t1Exercise && progression[t1Exercise.id]) {
     routineExercises.push(
-      buildRoutineExercise(t1Exercise, progression[t1Exercise.id]!, settings)
+      buildRoutineExercise(t1Exercise, progression[t1Exercise.id]!, settings, day)
     )
   }
 
   // Add T2 exercise
-  const t2Exercise = findExerciseBySlot(dayConfig.t2, exercises)
+  const t2Exercise = findExerciseByRole(t2Role, exercises)
   if (t2Exercise && progression[t2Exercise.id]) {
     routineExercises.push(
-      buildRoutineExercise(t2Exercise, progression[t2Exercise.id]!, settings)
+      buildRoutineExercise(t2Exercise, progression[t2Exercise.id]!, settings, day)
     )
   }
 
   // Add all T3 exercises
-  for (const slot of T3_SLOTS) {
-    const t3Exercise = findExerciseBySlot(slot, exercises)
-    if (t3Exercise && progression[t3Exercise.id]) {
+  const t3Exercises = getT3Exercises(exercises)
+  for (const t3Exercise of t3Exercises) {
+    if (progression[t3Exercise.id]) {
       routineExercises.push(
-        buildRoutineExercise(t3Exercise, progression[t3Exercise.id]!, settings)
+        buildRoutineExercise(t3Exercise, progression[t3Exercise.id]!, settings, day)
       )
     }
   }

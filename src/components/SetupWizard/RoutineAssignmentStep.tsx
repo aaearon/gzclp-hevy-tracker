@@ -95,7 +95,8 @@ export function RoutineAssignmentStep({
       <div className="space-y-4">
         {DAY_SLOTS.map(({ day, label, description }) => {
           const assignedRoutine = getRoutineById(assignment[day])
-          const isDuplicate = assignment[day] !== null && duplicates.has(assignment[day]!)
+          const assignedId = assignment[day]
+          const isDuplicate = assignedId !== null && duplicates.has(assignedId)
 
           return (
             <div
@@ -126,7 +127,7 @@ export function RoutineAssignmentStep({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onAssign(day, null)}
+                    onClick={() => { onAssign(day, null) }}
                     className="text-sm text-red-600 hover:text-red-700 px-3 py-1 min-h-[44px]"
                     aria-label="Clear"
                   >
@@ -136,7 +137,7 @@ export function RoutineAssignmentStep({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setSelectorOpen(day)}
+                  onClick={() => { setSelectorOpen(day) }}
                   className="w-full mt-3 px-4 py-3 border-2 border-dashed border-gray-300
                              rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600
                              transition-colors min-h-[44px]"
@@ -176,7 +177,7 @@ export function RoutineAssignmentStep({
         routines={routines}
         selectedId={selectorOpen ? assignment[selectorOpen] : null}
         onSelect={handleSelectRoutine}
-        onClose={() => setSelectorOpen(null)}
+        onClose={() => { setSelectorOpen(null) }}
         isOpen={selectorOpen !== null}
       />
     </div>

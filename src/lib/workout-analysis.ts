@@ -5,7 +5,8 @@
  */
 
 import type { Workout, WorkoutSet, WorkoutExercise } from '@/types/hevy'
-import type { ExerciseConfig, ProgressionState } from '@/types/state'
+import type { ExerciseConfig, GZCLPDay, ProgressionState, Tier } from '@/types/state'
+import { getTierForDay, isMainLiftRole } from './role-utils'
 
 // =============================================================================
 // Types
@@ -98,18 +99,34 @@ export function extractWorkingWeight(sets: WorkoutSet[]): number {
 // =============================================================================
 
 /**
+ * Derive tier from exercise role and optional day.
+ */
+function deriveTier(role: ExerciseConfig['role'], day?: GZCLPDay): Tier {
+  if (!role) return 'T3'
+  if (!isMainLiftRole(role)) return 'T3'
+  if (!day) return 'T1' // Default to T1 if day not provided
+  return getTierForDay(role, day) ?? 'T3'
+}
+
+/**
  * Analyze a workout and extract progression-relevant data for each configured exercise.
  */
 export function analyzeWorkout(
   workout: Workout,
   exercises: Record<string, ExerciseConfig>,
-  progression: Record<string, ProgressionState>
+  progression: Record<string, ProgressionState>,
+  day?: GZCLPDay
 ): WorkoutAnalysisResult[] {
   const matches = matchWorkoutToExercises(workout, exercises)
   const results: WorkoutAnalysisResult[] = []
 
   for (const match of matches) {
     const { exerciseId, exerciseConfig, workoutExercise } = match
+
+    // Skip non-GZCLP exercises (no role)
+    if (!exerciseConfig.role) {
+      continue
+    }
 
     const reps = extractRepsFromSets(workoutExercise.sets)
     const weight = extractWorkingWeight(workoutExercise.sets)
@@ -124,10 +141,13 @@ export function analyzeWorkout(
       }
     }
 
+    // Derive tier from role + day
+    const tier = deriveTier(exerciseConfig.role, day)
+
     results.push({
       exerciseId,
       exerciseName: exerciseConfig.name,
-      tier: exerciseConfig.tier,
+      tier,
       reps,
       weight,
       workoutId: workout.id,

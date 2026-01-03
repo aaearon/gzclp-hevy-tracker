@@ -22,7 +22,7 @@ async function checkHevyReachability(): Promise<boolean> {
   try {
     // Use a simple fetch with a short timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000)
+    const timeoutId = setTimeout(() => { controller.abort() }, 5000)
 
     // We just try to reach the base URL - even a 401 means the server is up
     const response = await fetch('https://api.hevyapp.com/v1/workouts/count', {
@@ -33,7 +33,7 @@ async function checkHevyReachability(): Promise<boolean> {
     clearTimeout(timeoutId)
     // Any response (even 401) means the server is reachable
     return response.ok || response.status === 401 || response.status === 403
-  } catch (error) {
+  } catch {
     // Network error or CORS - assume offline for Hevy
     // CORS errors will show as TypeError, which we catch
     return false

@@ -57,56 +57,55 @@ describe('toAvailableRoutine', () => {
 })
 
 describe('extractFromRoutines', () => {
-  describe('slot mapping', () => {
-    it('maps A1 position 1 to t1_squat slot', () => {
+  describe('exercise extraction', () => {
+    // Note: With the new role-based system, exercises are extracted from routines
+    // without slot assignment. Users assign roles (squat, bench, ohp, deadlift, t3, etc.)
+    // during the import review step.
+
+    it('extracts exercises from A1 routine by position', () => {
       const routine = createGZCLPA1Routine()
       const routines = new Map([[routine.id, routine]])
       const assignment = createPartialAssignment({ A1: routine.id })
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise).toBeDefined()
-      expect(t1Exercise!.name).toBe('Squat')
+      // First position exercise (Squat)
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise).toBeDefined()
+      expect(squatExercise!.templateId).toBe('template-squat')
     })
 
-    it('maps A1 position 2 to t2_bench slot', () => {
+    it('extracts bench from A1 routine', () => {
       const routine = createGZCLPA1Routine()
       const routines = new Map([[routine.id, routine]])
       const assignment = createPartialAssignment({ A1: routine.id })
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t2Exercise = result.exercises.find((ex) => ex.slot === 't2_bench')
-      expect(t2Exercise).toBeDefined()
-      expect(t2Exercise!.name).toBe('Bench Press')
+      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      expect(benchExercise).toBeDefined()
+      // Template ID is auto-generated from title
+      expect(benchExercise!.templateId).toBe('template-bench-press')
     })
 
-    it('maps B1 position 1 to t1_ohp slot', () => {
+    it('extracts exercises from B1 routine', () => {
       const routine = createGZCLPB1Routine()
       const routines = new Map([[routine.id, routine]])
       const assignment = createPartialAssignment({ B1: routine.id })
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_ohp')
-      expect(t1Exercise).toBeDefined()
-      expect(t1Exercise!.name).toBe('Overhead Press')
+      const ohpExercise = result.exercises.find((ex) => ex.name === 'Overhead Press')
+      expect(ohpExercise).toBeDefined()
+      // Template ID is auto-generated from title
+      expect(ohpExercise!.templateId).toBe('template-overhead-press')
+
+      const deadliftExercise = result.exercises.find((ex) => ex.name === 'Deadlift')
+      expect(deadliftExercise).toBeDefined()
+      expect(deadliftExercise!.templateId).toBe('template-deadlift')
     })
 
-    it('maps B1 position 2 to t2_deadlift slot', () => {
-      const routine = createGZCLPB1Routine()
-      const routines = new Map([[routine.id, routine]])
-      const assignment = createPartialAssignment({ B1: routine.id })
-
-      const result = extractFromRoutines(routines, assignment)
-
-      const t2Exercise = result.exercises.find((ex) => ex.slot === 't2_deadlift')
-      expect(t2Exercise).toBeDefined()
-      expect(t2Exercise!.name).toBe('Deadlift')
-    })
-
-    it('extracts T3 exercises from A1 routine only', () => {
+    it('extracts accessory exercises from A1 routine', () => {
       const a1 = createGZCLPA1Routine()
       const b1 = createGZCLPB1Routine()
       const routines = new Map([
@@ -117,14 +116,10 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t3Exercises = result.exercises.filter((ex) => ex.slot.startsWith('t3_'))
-      expect(t3Exercises).toHaveLength(3)
-      // T3s should come from A1's positions 3, 4, 5
-      expect(t3Exercises.map((ex) => ex.name)).toEqual([
-        'Lat Pulldown',
-        'Cable Row',
-        'Leg Curl',
-      ])
+      // Verify accessory exercises were extracted
+      expect(result.exercises.find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Cable Row')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Leg Curl')).toBeDefined()
     })
   })
 
@@ -136,11 +131,12 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.detectedWeight).toBe(60)
+      // Find by name since slot is no longer part of ImportedExercise
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.detectedWeight).toBe(60)
 
-      const t2Exercise = result.exercises.find((ex) => ex.slot === 't2_bench')
-      expect(t2Exercise!.detectedWeight).toBe(40)
+      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      expect(benchExercise!.detectedWeight).toBe(40)
     })
   })
 
@@ -152,9 +148,10 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.detectedStage).toBe(0)
-      expect(t1Exercise!.stageConfidence).toBe('high')
+      // Find by name since slot is no longer part of ImportedExercise
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.detectedStage).toBe(0)
+      expect(squatExercise!.stageConfidence).toBe('high')
     })
 
     it('detects Stage 1 from 6x2 T1 pattern', () => {
@@ -164,9 +161,9 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.detectedStage).toBe(1)
-      expect(t1Exercise!.stageConfidence).toBe('high')
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.detectedStage).toBe(1)
+      expect(squatExercise!.stageConfidence).toBe('high')
     })
 
     it('detects Stage 2 from 10x1 T1 pattern', () => {
@@ -176,9 +173,9 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.detectedStage).toBe(2)
-      expect(t1Exercise!.stageConfidence).toBe('high')
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.detectedStage).toBe(2)
+      expect(squatExercise!.stageConfidence).toBe('high')
     })
 
     it('sets manual confidence for unknown stage pattern', () => {
@@ -192,8 +189,9 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.stageConfidence).toBe('manual')
+      // Find by name since slot is no longer part of ImportedExercise
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.stageConfidence).toBe('manual')
 
       // Should also generate a warning
       const warning = result.warnings.find((w) => w.type === 'stage_unknown')
@@ -264,7 +262,7 @@ describe('extractFromRoutines', () => {
   })
 
   describe('full routine assignment', () => {
-    it('extracts exercises from all 4 routines', () => {
+    it('extracts and deduplicates exercises from all 4 routines', () => {
       const a1 = createGZCLPA1Routine()
       const b1 = createGZCLPB1Routine()
       const a2 = createGZCLPA2Routine()
@@ -284,25 +282,33 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      // Should have 4 T1 + 4 T2 + 3 T3 = 11 exercises
-      expect(result.exercises).toHaveLength(11)
+      // Exercises are deduplicated by templateId:
+      // - 4 unique main lifts: Squat, Bench Press, Overhead Press, Deadlift
+      // - 3 unique T3s from A1: Lat Pulldown, Cable Row, Leg Curl
+      // Total: 7 unique exercises
+      expect(result.exercises).toHaveLength(7)
 
-      // Check all T1 slots are filled
-      expect(result.exercises.find((ex) => ex.slot === 't1_squat')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't1_bench')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't1_ohp')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't1_deadlift')).toBeDefined()
+      // Check main lift exercises are extracted (by name)
+      expect(result.exercises.find((ex) => ex.name === 'Squat')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Bench Press')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Overhead Press')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Deadlift')).toBeDefined()
 
-      // Check all T2 slots are filled
-      expect(result.exercises.find((ex) => ex.slot === 't2_squat')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't2_bench')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't2_ohp')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't2_deadlift')).toBeDefined()
+      // Main lifts should have roles auto-assigned from first occurrence
+      const squat = result.exercises.find((ex) => ex.name === 'Squat')
+      const bench = result.exercises.find((ex) => ex.name === 'Bench Press')
+      const ohp = result.exercises.find((ex) => ex.name === 'Overhead Press')
+      const deadlift = result.exercises.find((ex) => ex.name === 'Deadlift')
 
-      // Check T3 slots are filled
-      expect(result.exercises.find((ex) => ex.slot === 't3_1')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't3_2')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't3_3')).toBeDefined()
+      expect(squat?.role).toBe('squat') // First occurrence A1 T1
+      expect(bench?.role).toBe('bench') // First occurrence A1 T2
+      expect(ohp?.role).toBe('ohp') // First occurrence B1 T1
+      expect(deadlift?.role).toBe('deadlift') // First occurrence B1 T2
+
+      // Check T3/accessory exercises are extracted
+      expect(result.exercises.find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Cable Row')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Leg Curl')).toBeDefined()
     })
 
     it('stores routine IDs in result', () => {
@@ -330,8 +336,9 @@ describe('extractFromRoutines', () => {
 
       // Should have 1 T1 + 1 T2 + 3 T3 = 5 exercises
       expect(result.exercises).toHaveLength(5)
-      expect(result.exercises.find((ex) => ex.slot === 't1_squat')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.slot === 't2_bench')).toBeDefined()
+      // Find by name since slot is no longer part of ImportedExercise
+      expect(result.exercises.find((ex) => ex.name === 'Squat')).toBeDefined()
+      expect(result.exercises.find((ex) => ex.name === 'Bench Press')).toBeDefined()
     })
 
     it('returns empty exercises for empty assignment', () => {
@@ -353,13 +360,14 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.originalSetCount).toBe(5)
-      expect(t1Exercise!.originalRepScheme).toBe('5x3+')
+      // Find by name since slot is no longer part of ImportedExercise
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise!.originalSetCount).toBe(5)
+      expect(squatExercise!.originalRepScheme).toBe('5x3+')
 
-      const t2Exercise = result.exercises.find((ex) => ex.slot === 't2_bench')
-      expect(t2Exercise!.originalSetCount).toBe(3)
-      expect(t2Exercise!.originalRepScheme).toBe('3x10')
+      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      expect(benchExercise!.originalSetCount).toBe(3)
+      expect(benchExercise!.originalRepScheme).toBe('3x10')
     })
   })
 
@@ -371,8 +379,10 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const t1Exercise = result.exercises.find((ex) => ex.slot === 't1_squat')
-      expect(t1Exercise!.templateId).toBe('template-squat')
+      // Find by name or verify templateId exists on any exercise
+      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      expect(squatExercise).toBeDefined()
+      expect(squatExercise!.templateId).toBe('template-squat')
     })
   })
 })

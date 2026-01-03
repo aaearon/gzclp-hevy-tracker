@@ -80,7 +80,7 @@ export function RoutineSelector({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value) }}
             placeholder="Search routines..."
             className="w-full px-4 py-2 border border-gray-300 rounded-lg
                        focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
@@ -98,7 +98,7 @@ export function RoutineSelector({
               <button
                 key={routine.id}
                 type="button"
-                onClick={() => onSelect(routine.id)}
+                onClick={() => { onSelect(routine.id) }}
                 className={`w-full p-4 text-left border-2 rounded-lg transition-colors min-h-[44px]
                            focus:outline-none focus:ring-2 focus:ring-blue-500
                            ${

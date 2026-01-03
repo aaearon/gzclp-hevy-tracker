@@ -121,6 +121,7 @@ export function importData(data: string): GZCLPState {
   validateImportStructure(parsed)
 
   // Remove export metadata before importing
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { _exportMeta, ...stateData } = parsed
 
   // Check version and log warning if newer

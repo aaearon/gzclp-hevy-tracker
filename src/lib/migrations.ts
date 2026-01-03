@@ -7,6 +7,7 @@
 
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION } from './constants'
+import { createInitialState } from './state-factory'
 
 /**
  * Migration function type.
@@ -22,11 +23,18 @@ const MIGRATIONS: Record<string, MigrationFn> = {
   // Initial version - no migration needed
   '1.0.0': (state) => state,
 
-  // Future migrations example:
-  // '1.1.0': (state) => ({
-  //   ...(state as Record<string, unknown>),
-  //   newField: 'defaultValue',
-  // }),
+  // v2.0.0: Complete data model change - role-based system replaces slot/category
+  // FR-014: Clear all existing stored data on first load after upgrade
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  '2.0.0': (_state) => {
+    // Clear all additional localStorage keys that may exist
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('gzclp_classifications')
+      localStorage.removeItem('gzclp_sync_queue')
+    }
+    // Return fresh initial state - user must re-setup
+    return createInitialState()
+  },
 }
 
 /**

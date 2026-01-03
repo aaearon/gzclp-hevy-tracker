@@ -59,6 +59,7 @@ export function TierSection({
               exercise={exercise}
               progression={prog}
               weightUnit={weightUnit}
+              tier={tier}
               hasPendingChange={pendingExerciseIds.has(exercise.id)}
             />
           )

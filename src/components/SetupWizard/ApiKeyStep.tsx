@@ -49,7 +49,7 @@ export function ApiKeyStep({ onConnect, isConnecting, connectionError }: ApiKeyS
         .
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
         <div>
           <label htmlFor="api-key" className="block text-sm font-medium text-gray-700 mb-1">
             API Key
@@ -58,7 +58,7 @@ export function ApiKeyStep({ onConnect, isConnecting, connectionError }: ApiKeyS
             id="api-key"
             type="text"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => { setApiKey(e.target.value) }}
             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             disabled={isConnecting}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm

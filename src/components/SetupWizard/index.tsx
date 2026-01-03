@@ -10,14 +10,14 @@ import { RoutineSourceStep } from './RoutineSourceStep'
 import { RoutineAssignmentStep } from './RoutineAssignmentStep'
 import { ImportReviewStep } from './ImportReviewStep'
 import { NextWorkoutStep } from './NextWorkoutStep'
-import { SlotAssignmentStep } from './SlotAssignment'
+import { SlotAssignmentStep, type CreatePathAssignments } from './SlotAssignment'
 import { WeightSetupStep } from './WeightSetupStep'
 import { SetupComplete } from './SetupComplete'
 import { useHevyApi } from '@/hooks/useHevyApi'
 import { useProgram } from '@/hooks/useProgram'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
-import { ALL_SLOTS, SLOT_DEFAULT_MUSCLE_GROUP } from '@/lib/constants'
-import type { GZCLPSlot, GZCLPDay, WeightUnit, Tier, RoutineSourceMode, ImportedExercise } from '@/types/state'
+import { MAIN_LIFT_ROLES, type MainLiftRole } from '@/types/state'
+import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
 
 type SetupStep =
   | 'api-key'
@@ -33,22 +33,15 @@ export interface SetupWizardProps {
   onComplete: () => void
 }
 
-function getTierFromSlot(slot: GZCLPSlot): Tier {
-  if (slot.startsWith('t1_')) return 'T1'
-  if (slot.startsWith('t2_')) return 'T2'
-  return 'T3'
+const initialAssignments: CreatePathAssignments = {
+  mainLifts: { squat: null, bench: null, ohp: null, deadlift: null },
+  t3Exercises: [],
 }
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [currentStep, setCurrentStep] = useState<SetupStep>('api-key')
   const [routineSourceMode, setRoutineSourceMode] = useState<RoutineSourceMode | null>(null)
-  const [assignments, setAssignments] = useState<Record<GZCLPSlot, string | null>>(() => {
-    const initial: Record<string, string | null> = {}
-    for (const slot of ALL_SLOTS) {
-      initial[slot] = null
-    }
-    return initial as Record<GZCLPSlot, string | null>
-  })
+  const [assignments, setAssignments] = useState<CreatePathAssignments>(initialAssignments)
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [unit, setUnit] = useState<WeightUnit>('kg')
   const [selectedDay, setSelectedDay] = useState<GZCLPDay>('A1')
@@ -127,30 +120,49 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   }, [])
 
   const handleNextWorkoutComplete = useCallback(() => {
-    if (routineSourceMode === 'import' && routineImport.importResult) {
-      // Import path: save imported exercises
-      const { exercises: importedExercises } = routineImport.importResult
+    // DEBUG: Log all values at the start
+    console.log('[DEBUG] handleNextWorkoutComplete called')
+    console.log('[DEBUG] routineSourceMode:', routineSourceMode)
+    console.log('[DEBUG] importResult:', routineImport.importResult)
+    console.log('[DEBUG] importResult?.exercises:', routineImport.importResult?.exercises)
 
+    if (routineSourceMode === 'import' && routineImport.importResult) {
+      // Import path: save imported exercises with roles
+      const { exercises: importedExercises } = routineImport.importResult
+      console.log('[DEBUG] Processing', importedExercises.length, 'exercises')
+
+      let savedCount = 0
       for (const imported of importedExercises) {
-        const confirmedSlot = imported.userSlot ?? imported.slot
+        console.log('[DEBUG] Exercise:', imported.name, 'role:', imported.role)
+        if (!imported.role) {
+          console.log('[DEBUG] Skipping exercise without role:', imported.name)
+          continue // Skip exercises without roles
+        }
+
         const confirmedWeight = imported.userWeight ?? imported.detectedWeight
         const confirmedStage = imported.userStage ?? imported.detectedStage
 
-        // Add exercise to program
+        // Add exercise to program with role
         const exerciseId = program.addExercise({
           hevyTemplateId: imported.templateId,
           name: imported.name,
-          tier: getTierFromSlot(confirmedSlot),
-          slot: confirmedSlot,
-          muscleGroup: SLOT_DEFAULT_MUSCLE_GROUP[confirmedSlot],
+          role: imported.role,
         })
+        savedCount++
+        console.log('[DEBUG] Saved exercise:', imported.name, 'with id:', exerciseId)
 
-        // Set initial weight and stage
-        program.setInitialWeight(exerciseId, confirmedWeight, confirmedStage)
+        // Set initial weight and stage only for main lifts
+        const isMainLift = ['squat', 'bench', 'ohp', 'deadlift'].includes(imported.role)
+        if (isMainLift) {
+          program.setInitialWeight(exerciseId, confirmedWeight, confirmedStage)
+        }
       }
+      console.log('[DEBUG] Total exercises saved:', savedCount)
 
       // Save routine IDs to program
       program.setRoutineIds(routineImport.assignment)
+    } else {
+      console.log('[DEBUG] Condition failed - routineSourceMode:', routineSourceMode, 'importResult exists:', !!routineImport.importResult)
     }
 
     // Set current day and complete
@@ -163,17 +175,38 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setCurrentStep(routineSourceMode === 'import' ? 'import-review' : 'weights')
   }, [routineSourceMode])
 
-  const handleAssignment = useCallback((slot: GZCLPSlot, templateId: string | null) => {
+  const handleMainLiftAssign = useCallback((role: MainLiftRole, templateId: string | null) => {
     setAssignments((prev) => ({
       ...prev,
-      [slot]: templateId,
+      mainLifts: { ...prev.mainLifts, [role]: templateId },
     }))
   }, [])
 
-  const handleWeightChange = useCallback((slot: GZCLPSlot, weight: number) => {
+  const handleT3Add = useCallback((templateId: string) => {
+    setAssignments((prev) => ({
+      ...prev,
+      t3Exercises: [...prev.t3Exercises, templateId],
+    }))
+  }, [])
+
+  const handleT3Remove = useCallback((index: number) => {
+    setAssignments((prev) => ({
+      ...prev,
+      t3Exercises: prev.t3Exercises.filter((_, i) => i !== index),
+    }))
+  }, [])
+
+  const handleT3Update = useCallback((index: number, templateId: string | null) => {
+    setAssignments((prev) => ({
+      ...prev,
+      t3Exercises: prev.t3Exercises.map((t, i) => (i === index ? (templateId ?? '') : t)),
+    }))
+  }, [])
+
+  const handleWeightChange = useCallback((key: string, weight: number) => {
     setWeights((prev) => ({
       ...prev,
-      [slot]: weight,
+      [key]: weight,
     }))
   }, [])
 
@@ -186,35 +219,48 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   )
 
   const handleExercisesNext = useCallback(() => {
-    // Check if at least one exercise is assigned
-    const hasAssignments = Object.values(assignments).some((id) => id !== null)
-    if (!hasAssignments) {
+    // Check if at least one main lift is assigned
+    const hasMainLift = MAIN_LIFT_ROLES.some((role) => assignments.mainLifts[role] !== null)
+    if (!hasMainLift) {
       return
     }
     setCurrentStep('weights')
   }, [assignments])
 
   const handleWeightsNext = useCallback(() => {
-    // Save all exercises and weights to program state
-    for (const [slot, templateId] of Object.entries(assignments)) {
+    // Save main lifts with role field
+    for (const role of MAIN_LIFT_ROLES) {
+      const templateId = assignments.mainLifts[role]
       if (!templateId) continue
 
       const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
       if (!exercise) continue
 
-      const gzclpSlot = slot as GZCLPSlot
-
-      // Add exercise to program
       const exerciseId = program.addExercise({
         hevyTemplateId: templateId,
         name: exercise.title,
-        tier: getTierFromSlot(gzclpSlot),
-        slot: gzclpSlot,
-        muscleGroup: SLOT_DEFAULT_MUSCLE_GROUP[gzclpSlot],
+        role: role,
       })
 
-      // Set initial weight
-      const weight = weights[slot] ?? 0
+      const weight = weights[role] ?? 0
+      program.setInitialWeight(exerciseId, weight)
+    }
+
+    // Save T3s with role='t3' and their weights
+    for (let i = 0; i < assignments.t3Exercises.length; i++) {
+      const templateId = assignments.t3Exercises[i]
+      if (!templateId) continue
+
+      const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
+      if (!exercise) continue
+
+      const exerciseId = program.addExercise({
+        hevyTemplateId: templateId,
+        name: exercise.title,
+        role: 't3',
+      })
+
+      const weight = weights[`t3_${i}`] ?? 0
       program.setInitialWeight(exerciseId, weight)
     }
 
@@ -222,7 +268,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setCurrentStep('next-workout')
   }, [assignments, weights, hevy.exerciseTemplates, program])
 
-  const assignedCount = Object.values(assignments).filter((id) => id !== null).length
+  // Count assigned exercises (main lifts + T3s)
+  const assignedMainLifts = MAIN_LIFT_ROLES.filter((role) => assignments.mainLifts[role] !== null).length
+  const assignedT3s = assignments.t3Exercises.filter((id) => id !== '').length
+  const assignedCount = assignedMainLifts + assignedT3s
 
   const handleBack = useCallback(() => {
     switch (currentStep) {
@@ -332,6 +381,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               onExerciseUpdate={handleImportReviewUpdate}
               onNext={handleImportReviewNext}
               onBack={handleImportReviewBack}
+              apiKey={program.state.apiKey}
             />
           )}
 
@@ -348,7 +398,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             <SlotAssignmentStep
               exercises={hevy.exerciseTemplates}
               assignments={assignments}
-              onAssign={handleAssignment}
+              onMainLiftAssign={handleMainLiftAssign}
+              onT3Add={handleT3Add}
+              onT3Remove={handleT3Remove}
+              onT3Update={handleT3Update}
               isLoading={hevy.isLoadingTemplates}
             />
           )}

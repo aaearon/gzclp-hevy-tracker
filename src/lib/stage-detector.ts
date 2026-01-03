@@ -1,12 +1,12 @@
 /**
  * Stage Detector
  *
- * Detects GZCLP progression stage from routine set configurations.
+ * Detects GZCLP progression stage from routine set configurations and workout history.
  * Handles T1, T2, and T3 exercises with different detection patterns.
  */
 
-import type { RoutineSetRead } from '@/types/hevy'
-import type { Stage, StageConfidence } from '@/types/state'
+import type { RoutineSetRead, Workout, WorkoutSet } from '@/types/hevy'
+import type { Stage, StageConfidence, Tier } from '@/types/state'
 import { T1_STAGE_PATTERNS, T2_STAGE_PATTERNS, STAGE_SCHEMES } from './constants'
 
 // =============================================================================
@@ -123,6 +123,7 @@ export function detectStage(
  */
 export function extractWeight(
   sets: RoutineSetRead[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _userUnit?: 'kg' | 'lbs'
 ): number {
   const normalSets = filterNormalSets(sets)
@@ -141,4 +142,69 @@ export function extractWeight(
   }
 
   return Math.max(...weights)
+}
+
+// =============================================================================
+// Workout History Stage Detection (T016)
+// =============================================================================
+
+/**
+ * Filter workout sets to only include normal sets.
+ */
+function filterNormalWorkoutSets(sets: WorkoutSet[]): WorkoutSet[] {
+  return sets.filter((set) => set.type === 'normal')
+}
+
+/**
+ * Detect stage from workout history for a specific exercise.
+ * Searches recent workouts for the exercise and analyzes set/rep patterns.
+ *
+ * @param workouts - Array of workouts to search (most recent first)
+ * @param exerciseTemplateId - Hevy exercise template ID to find
+ * @param tier - The tier to use for pattern matching (T1 or T2)
+ * @returns Detected stage (0, 1, or 2) or null if no match found
+ */
+export function detectStageFromWorkoutHistory(
+  workouts: Workout[],
+  exerciseTemplateId: string,
+  tier: Tier
+): Stage | null {
+  // T3 exercises are always stage 0
+  if (tier === 'T3') {
+    return 0
+  }
+
+  // Find the most recent workout containing this exercise
+  for (const workout of workouts) {
+    const exercise = workout.exercises.find(
+      (ex) => ex.exercise_template_id === exerciseTemplateId
+    )
+
+    if (!exercise) continue
+
+    // Analyze the sets
+    const normalSets = filterNormalWorkoutSets(exercise.sets)
+    if (normalSets.length === 0) continue
+
+    const setCount = normalSets.length
+    const repCounts = normalSets.map((set) => set.reps ?? 0)
+    const modalReps = getMode(repCounts)
+
+    // Select patterns based on tier
+    const patterns = tier === 'T1' ? T1_STAGE_PATTERNS : T2_STAGE_PATTERNS
+
+    // Try to match against known patterns
+    for (const [patternSets, patternReps, stageIndex] of patterns) {
+      if (setCount === patternSets && modalReps === patternReps) {
+        return stageIndex
+      }
+    }
+
+    // Found the exercise but couldn't match pattern - return null
+    // This will trigger manual confidence and default to stage 0
+    return null
+  }
+
+  // Exercise not found in workout history - default to stage 0
+  return null
 }

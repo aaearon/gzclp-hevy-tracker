@@ -90,9 +90,9 @@ export function DiscrepancyAlert({
                   <div className="flex gap-2 flex-wrap">
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight)
-                      }
+                      }}
                       className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100
                                  hover:bg-green-200 rounded-md min-h-[44px]
                                  transition-colors"
@@ -102,7 +102,7 @@ export function DiscrepancyAlert({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onKeepStoredWeight(discrepancy.exerciseId)}
+                      onClick={() => { onKeepStoredWeight(discrepancy.exerciseId) }}
                       className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100
                                  hover:bg-gray-200 rounded-md min-h-[44px]
                                  transition-colors"
