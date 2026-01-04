@@ -14,9 +14,15 @@ import type {
   ImportedExercise,
   ImportWarning,
   ImportResult,
+  DayImportData,
   Tier,
+  MainLiftWeights,
+  DetectedWeight,
+  MainLiftRole,
 } from '@/types/state'
-import { getT1RoleForDay, getT2RoleForDay } from './role-utils'
+import { MAIN_LIFT_ROLES } from '@/types/state'
+import { getT1RoleForDay, getT2RoleForDay, T1_MAPPING, T2_MAPPING } from './role-utils'
+import { WEIGHT_ROUNDING } from './constants'
 import { detectStage, extractWeight } from './stage-detector'
 
 // =============================================================================
@@ -117,29 +123,29 @@ function getModalReps(sets: RoutineExerciseRead['sets']): number {
 }
 
 /**
- * Extract T1 and T2 exercises from a routine assigned to a specific day.
+ * Extract T1, T2, and T3 exercises from a routine assigned to a specific day.
+ * Returns a DayImportData structure with t1, t2, and t3s.
  */
 function extractDayExercises(
   day: GZCLPDay,
   routine: Routine,
   warnings: ImportWarning[]
-): ImportedExercise[] {
-  const exercises: ImportedExercise[] = []
-
+): DayImportData {
   // Get the T1 and T2 roles for this day
   const t1Role = getT1RoleForDay(day)
   const t2Role = getT2RoleForDay(day)
 
   // Position 0 (first exercise) → T1 with the day's T1 role
   const t1Exercise = routine.exercises[0]
-  if (t1Exercise) {
-    exercises.push(extractExercise(t1Exercise, 'T1', warnings, t1Role))
-  }
+  const t1: ImportedExercise | null = t1Exercise
+    ? extractExercise(t1Exercise, 'T1', warnings, t1Role)
+    : null
 
   // Position 1 (second exercise) → T2 with the day's T2 role
   const t2Exercise = routine.exercises[1]
+  let t2: ImportedExercise | null = null
   if (t2Exercise) {
-    exercises.push(extractExercise(t2Exercise, 'T2', warnings, t2Role))
+    t2 = extractExercise(t2Exercise, 'T2', warnings, t2Role)
   } else {
     warnings.push({
       type: 'no_t2',
@@ -148,31 +154,16 @@ function extractDayExercises(
     })
   }
 
-  return exercises
-}
-
-/**
- * Extract T3 exercises from the A1 routine only.
- * T3s are shared across all days in GZCLP.
- */
-function extractT3Exercises(
-  a1Routine: Routine | undefined,
-  warnings: ImportWarning[]
-): ImportedExercise[] {
-  if (!a1Routine) return []
-
-  const exercises: ImportedExercise[] = []
-
-  // T3s start at position 2 (after T1 and T2)
-  // Import up to 3 T3 exercises from positions 2, 3, 4
-  for (let i = 2; i < a1Routine.exercises.length && i < 5; i++) {
-    const exercise = a1Routine.exercises[i]
+  // Positions 2+ → T3s (no limit)
+  const t3s: ImportedExercise[] = []
+  for (let i = 2; i < routine.exercises.length; i++) {
+    const exercise = routine.exercises[i]
     if (exercise) {
-      exercises.push(extractExercise(exercise, 'T3', warnings, 't3'))
+      t3s.push(extractExercise(exercise, 'T3', warnings, 't3'))
     }
   }
 
-  return exercises
+  return { day, t1, t2, t3s }
 }
 
 // =============================================================================
@@ -180,18 +171,25 @@ function extractT3Exercises(
 // =============================================================================
 
 /**
+ * Create an empty DayImportData for unassigned days.
+ */
+function createEmptyDayData(day: GZCLPDay): DayImportData {
+  return { day, t1: null, t2: null, t3s: [] }
+}
+
+/**
  * Extract exercises and progression state from assigned routines.
- * Deduplicates exercises by templateId to avoid role conflicts.
+ * Returns per-day structure with T1, T2, and T3s for each day.
+ * Deduplicates exercises by templateId using "first wins" strategy.
  *
  * @param routines - Map of routine ID to full Routine object
  * @param assignment - Which routine is assigned to which day
- * @returns Extracted exercises and any warnings
+ * @returns Per-day import data, warnings, and routine IDs
  */
 export function extractFromRoutines(
   routines: Map<string, Routine>,
   assignment: RoutineAssignment
 ): ImportResult {
-  const rawExercises: ImportedExercise[] = []
   const warnings: ImportWarning[] = []
 
   // Check for duplicate routines
@@ -215,7 +213,14 @@ export function extractFromRoutines(
     }
   }
 
-  // Extract T1/T2 from each assigned day
+  // Extract T1/T2/T3s from each assigned day
+  const rawByDay: Record<GZCLPDay, DayImportData> = {
+    A1: createEmptyDayData('A1'),
+    B1: createEmptyDayData('B1'),
+    A2: createEmptyDayData('A2'),
+    B2: createEmptyDayData('B2'),
+  }
+
   for (const day of GZCLP_DAYS) {
     const routineId = assignment[day]
     if (!routineId) continue
@@ -223,61 +228,86 @@ export function extractFromRoutines(
     const routine = routines.get(routineId)
     if (!routine) continue
 
-    const dayExercises = extractDayExercises(day, routine, warnings)
-    rawExercises.push(...dayExercises)
+    rawByDay[day] = extractDayExercises(day, routine, warnings)
   }
 
-  // Extract T3s from A1 only
-  const a1RoutineId = assignment.A1
-  const a1Routine = a1RoutineId ? routines.get(a1RoutineId) : undefined
-  const t3Exercises = extractT3Exercises(a1Routine, warnings)
-  rawExercises.push(...t3Exercises)
-
-  // Deduplicate by templateId - keep first occurrence's data but clear
-  // auto-assigned role if there would be a conflict
+  // Deduplicate exercises by templateId - "first wins" strategy
+  // Collect all exercises from all days, dedupe, then replace references
   const seen = new Map<string, ImportedExercise>()
   const assignedMainLifts = new Set<ExerciseRole>()
 
-  for (const exercise of rawExercises) {
-    const existing = seen.get(exercise.templateId)
+  // Process in order: A1, B1, A2, B2 (first occurrence wins)
+  for (const day of GZCLP_DAYS) {
+    const dayData = rawByDay[day]
 
-    if (!existing) {
-      // First time seeing this templateId
-      // Only keep the role if it's a main lift AND not already assigned
-      let roleToAssign = exercise.role
-      if (roleToAssign && isMainLift(roleToAssign)) {
-        if (assignedMainLifts.has(roleToAssign)) {
-          // This role is already assigned to another exercise - leave unassigned
-          roleToAssign = undefined
-        } else {
-          assignedMainLifts.add(roleToAssign)
-        }
-      }
-      // Build the deduplicated exercise, conditionally including role
-      const deduped: ImportedExercise = {
-        templateId: exercise.templateId,
-        name: exercise.name,
-        detectedWeight: exercise.detectedWeight,
-        detectedStage: exercise.detectedStage,
-        stageConfidence: exercise.stageConfidence,
-        originalSetCount: exercise.originalSetCount,
-        originalRepScheme: exercise.originalRepScheme,
-        ...(exercise.userWeight !== undefined && { userWeight: exercise.userWeight }),
-        ...(exercise.userStage !== undefined && { userStage: exercise.userStage }),
-        ...(roleToAssign !== undefined && { role: roleToAssign }),
-      }
-      seen.set(exercise.templateId, deduped)
+    // Process T1
+    if (dayData.t1) {
+      dayData.t1 = dedupeExercise(dayData.t1, seen, assignedMainLifts)
     }
-    // If duplicate templateId, skip it (keep first occurrence)
+
+    // Process T2
+    if (dayData.t2) {
+      dayData.t2 = dedupeExercise(dayData.t2, seen, assignedMainLifts)
+    }
+
+    // Process T3s
+    dayData.t3s = dayData.t3s.map((t3) => dedupeExercise(t3, seen, assignedMainLifts))
   }
 
-  const exercises = Array.from(seen.values())
+  // Build the final byDay structure (already deduplicated in place)
+  const byDay = rawByDay as Record<GZCLPDay, DayImportData>
 
   return {
-    exercises,
+    byDay,
     warnings,
     routineIds: assignment,
   }
+}
+
+/**
+ * Deduplicate an exercise using "first wins" strategy.
+ * Returns the deduplicated exercise (either existing or newly added).
+ */
+function dedupeExercise(
+  exercise: ImportedExercise,
+  seen: Map<string, ImportedExercise>,
+  assignedMainLifts: Set<ExerciseRole>
+): ImportedExercise {
+  const existing = seen.get(exercise.templateId)
+
+  if (existing) {
+    // Already seen - return existing (first wins)
+    return existing
+  }
+
+  // First time seeing this templateId
+  // Only keep the role if it's a main lift AND not already assigned
+  let roleToAssign = exercise.role
+  if (roleToAssign && isMainLift(roleToAssign)) {
+    if (assignedMainLifts.has(roleToAssign)) {
+      // This role is already assigned to another exercise - leave unassigned
+      roleToAssign = undefined
+    } else {
+      assignedMainLifts.add(roleToAssign)
+    }
+  }
+
+  // Build the deduplicated exercise, conditionally including role
+  const deduped: ImportedExercise = {
+    templateId: exercise.templateId,
+    name: exercise.name,
+    detectedWeight: exercise.detectedWeight,
+    detectedStage: exercise.detectedStage,
+    stageConfidence: exercise.stageConfidence,
+    originalSetCount: exercise.originalSetCount,
+    originalRepScheme: exercise.originalRepScheme,
+    ...(exercise.userWeight !== undefined && { userWeight: exercise.userWeight }),
+    ...(exercise.userStage !== undefined && { userStage: exercise.userStage }),
+    ...(roleToAssign !== undefined && { role: roleToAssign }),
+  }
+
+  seen.set(exercise.templateId, deduped)
+  return deduped
 }
 
 /**
@@ -285,4 +315,157 @@ export function extractFromRoutines(
  */
 function isMainLift(role: ExerciseRole): boolean {
   return role === 'squat' || role === 'bench' || role === 'ohp' || role === 'deadlift'
+}
+
+// =============================================================================
+// Main Lift Weight Detection
+// =============================================================================
+
+/**
+ * T2/T1 ratio for estimation when only one tier is detected.
+ * T2 is typically ~70% of T1 weight.
+ */
+const T2_T1_RATIO = 0.7
+
+/**
+ * Round weight to nearest increment.
+ */
+function roundToIncrement(weight: number): number {
+  const increment = WEIGHT_ROUNDING.kg // Default to kg
+  return Math.round(weight / increment) * increment
+}
+
+/**
+ * Get the day where a role is T1.
+ */
+function getT1Day(role: MainLiftRole): GZCLPDay {
+  for (const [day, r] of Object.entries(T1_MAPPING)) {
+    if (r === role) return day as GZCLPDay
+  }
+  return 'A1' // Fallback
+}
+
+/**
+ * Get the day where a role is T2.
+ */
+function getT2Day(role: MainLiftRole): GZCLPDay {
+  for (const [day, r] of Object.entries(T2_MAPPING)) {
+    if (r === role) return day as GZCLPDay
+  }
+  return 'A2' // Fallback
+}
+
+/**
+ * Detect T1 and T2 weights for all four main lifts from assigned routines.
+ *
+ * Returns an array of MainLiftWeights, one for each main lift role.
+ * If a tier is not detected (routine not assigned), it will be estimated
+ * from the other tier and hasWarning will be true.
+ *
+ * @param routines - Map of routine ID to full Routine object
+ * @param assignment - Which routine is assigned to which day
+ * @returns Array of detected weights for each main lift
+ */
+export function detectMainLiftWeights(
+  routines: Map<string, Routine>,
+  assignment: RoutineAssignment
+): MainLiftWeights[] {
+  const results: MainLiftWeights[] = []
+
+  for (const role of MAIN_LIFT_ROLES) {
+    // Find which days this role is T1 and T2
+    const t1Day = getT1Day(role)
+    const t2Day = getT2Day(role)
+
+    // Try to get T1 weight from the routine assigned to the T1 day
+    let t1Detected: DetectedWeight | null = null
+    const t1RoutineId = assignment[t1Day]
+    if (t1RoutineId) {
+      const t1Routine = routines.get(t1RoutineId)
+      if (t1Routine && t1Routine.exercises.length > 0) {
+        // T1 is position 0
+        const t1Exercise = t1Routine.exercises[0]
+        if (t1Exercise) {
+          const weight = extractWeight(t1Exercise.sets)
+          const stageResult = detectStage(t1Exercise.sets, 'T1')
+          t1Detected = {
+            weight,
+            source: `${t1Day}, position 1`,
+            stage: stageResult?.stage ?? 0,
+          }
+        }
+      }
+    }
+
+    // Try to get T2 weight from the routine assigned to the T2 day
+    let t2Detected: DetectedWeight | null = null
+    const t2RoutineId = assignment[t2Day]
+    if (t2RoutineId) {
+      const t2Routine = routines.get(t2RoutineId)
+      if (t2Routine && t2Routine.exercises.length > 1) {
+        // T2 is position 1
+        const t2Exercise = t2Routine.exercises[1]
+        if (t2Exercise) {
+          const weight = extractWeight(t2Exercise.sets)
+          const stageResult = detectStage(t2Exercise.sets, 'T2')
+          t2Detected = {
+            weight,
+            source: `${t2Day}, position 2`,
+            stage: stageResult?.stage ?? 0,
+          }
+        }
+      }
+    }
+
+    // Determine hasWarning and estimate missing tier if needed
+    let hasWarning = false
+    let t1Final: DetectedWeight
+    let t2Final: DetectedWeight
+
+    if (t1Detected && t2Detected) {
+      // Both detected
+      t1Final = t1Detected
+      t2Final = t2Detected
+    } else if (t1Detected && !t2Detected) {
+      // Only T1 detected, estimate T2
+      hasWarning = true
+      t1Final = t1Detected
+      t2Final = {
+        weight: roundToIncrement(t1Detected.weight * T2_T1_RATIO),
+        source: `Estimated from T1 (${t1Day})`,
+        stage: 0,
+      }
+    } else if (!t1Detected && t2Detected) {
+      // Only T2 detected, estimate T1
+      hasWarning = true
+      t1Final = {
+        weight: roundToIncrement(t2Detected.weight / T2_T1_RATIO),
+        source: `Estimated from T2 (${t2Day})`,
+        stage: 0,
+      }
+      t2Final = t2Detected
+    } else {
+      // Neither detected - use placeholder with warning
+      hasWarning = true
+      t1Final = {
+        weight: 0,
+        source: 'Not detected',
+        stage: 0,
+      }
+      t2Final = {
+        weight: 0,
+        source: 'Not detected',
+        stage: 0,
+      }
+    }
+
+    results.push({
+      role,
+      t1: t1Final,
+      t2: t2Final,
+      hasWarning,
+    })
+  }
+
+  return results
 }

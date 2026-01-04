@@ -277,3 +277,46 @@ export function createPartialAssignment(
     ...assignments,
   }
 }
+
+// =============================================================================
+// Per-Day T3 Test Helpers (Phase 2)
+// =============================================================================
+
+/**
+ * Create a routine with unique T3s for per-day testing.
+ * Each routine gets different T3 exercises so we can verify per-day extraction.
+ */
+export function createRoutineWithUniqueT3s(
+  day: 'A1' | 'B1' | 'A2' | 'B2',
+  t3Names: string[]
+): Routine {
+  const dayConfig = {
+    A1: { t1: 'Squat', t2: 'Bench Press' },
+    B1: { t1: 'Overhead Press', t2: 'Deadlift' },
+    A2: { t1: 'Bench Press', t2: 'Squat' },
+    B2: { t1: 'Deadlift', t2: 'Overhead Press' },
+  }
+
+  const config = dayConfig[day]
+  const exercises = [
+    createT1Exercise(config.t1, 0),
+    createT2Exercise(config.t2, 0),
+    ...t3Names.map((name) => createT3Exercise(name)),
+  ]
+
+  return createMockRoutine(`GZCLP ${day} Unique`, exercises, `routine-${day.toLowerCase()}-unique`)
+}
+
+/**
+ * Create a routine with many T3s (5+) to test unlimited extraction.
+ */
+export function createRoutineWithManyT3s(numT3s: number): Routine {
+  const t3Names = Array.from({ length: numT3s }, (_, i) => `T3 Exercise ${i + 1}`)
+  const exercises = [
+    createT1Exercise('Squat', 0),
+    createT2Exercise('Bench Press', 0),
+    ...t3Names.map((name) => createT3Exercise(name)),
+  ]
+
+  return createMockRoutine('Many T3s Routine', exercises, 'routine-many-t3s')
+}

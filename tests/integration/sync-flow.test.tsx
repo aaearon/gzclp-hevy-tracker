@@ -98,10 +98,12 @@ const mockExercises: Record<string, ExerciseConfig> = {
   },
 }
 
-// Sample progression states
+// Sample progression states (use role-tier keys for main lifts, exerciseId for T3)
+// Note: useProgression hook doesn't pass day context, so tier defaults to T1
+// We need both T1 keys since without day context, both exercises are treated as T1
 const mockProgression: Record<string, ProgressionState> = {
-  'ex-squat': {
-    exerciseId: 'ex-squat',
+  'squat-T1': {
+    exerciseId: 'squat',
     currentWeight: 100,
     stage: 0,
     baseWeight: 100,
@@ -109,8 +111,8 @@ const mockProgression: Record<string, ProgressionState> = {
     lastWorkoutDate: null,
     amrapRecord: 5,
   },
-  'ex-bench': {
-    exerciseId: 'ex-bench',
+  'bench-T1': {
+    exerciseId: 'bench',
     currentWeight: 60,
     stage: 0,
     baseWeight: 60,
@@ -254,8 +256,10 @@ describe('[US2] Sync Flow Integration', () => {
 
       await waitFor(() => {
         expect(result.current.pendingChanges).toHaveLength(2)
-        expect(result.current.pendingChanges.find(c => c.exerciseName === 'Squat')).toBeDefined()
-        expect(result.current.pendingChanges.find(c => c.exerciseName === 'Bench Press')).toBeDefined()
+        // Exercise names now include tier prefix for main lifts
+        // Note: Without day context, useProgression defaults all main lifts to T1
+        expect(result.current.pendingChanges.find(c => c.exerciseName === 'T1 Squat')).toBeDefined()
+        expect(result.current.pendingChanges.find(c => c.exerciseName === 'T1 Bench Press')).toBeDefined()
       })
     })
   })

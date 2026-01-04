@@ -21,7 +21,30 @@ import {
   createFullAssignment,
   createPartialAssignment,
   createEmptyAssignment,
+  createRoutineWithUniqueT3s,
+  createRoutineWithManyT3s,
 } from '../helpers/routine-mocks'
+import type { ImportResult, ImportedExercise, GZCLPDay } from '@/types/state'
+
+/**
+ * Helper to get all exercises from byDay structure for easier testing.
+ * Collects T1, T2, and T3s from all days, deduplicating by templateId.
+ */
+function getAllExercises(result: ImportResult): ImportedExercise[] {
+  const seen = new Map<string, ImportedExercise>()
+  const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
+
+  for (const day of days) {
+    const dayData = result.byDay[day]
+    if (dayData.t1) seen.set(dayData.t1.templateId, dayData.t1)
+    if (dayData.t2) seen.set(dayData.t2.templateId, dayData.t2)
+    for (const t3 of dayData.t3s) {
+      seen.set(t3.templateId, t3)
+    }
+  }
+
+  return Array.from(seen.values())
+}
 
 describe('toAvailableRoutine', () => {
   it('converts a Routine to AvailableRoutine summary', () => {
@@ -70,7 +93,7 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // First position exercise (Squat)
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise).toBeDefined()
       expect(squatExercise!.templateId).toBe('template-squat')
     })
@@ -82,7 +105,7 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      const benchExercise = getAllExercises(result).find((ex) => ex.name === 'Bench Press')
       expect(benchExercise).toBeDefined()
       // Template ID is auto-generated from title
       expect(benchExercise!.templateId).toBe('template-bench-press')
@@ -95,12 +118,12 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const ohpExercise = result.exercises.find((ex) => ex.name === 'Overhead Press')
+      const ohpExercise = getAllExercises(result).find((ex) => ex.name === 'Overhead Press')
       expect(ohpExercise).toBeDefined()
       // Template ID is auto-generated from title
       expect(ohpExercise!.templateId).toBe('template-overhead-press')
 
-      const deadliftExercise = result.exercises.find((ex) => ex.name === 'Deadlift')
+      const deadliftExercise = getAllExercises(result).find((ex) => ex.name === 'Deadlift')
       expect(deadliftExercise).toBeDefined()
       expect(deadliftExercise!.templateId).toBe('template-deadlift')
     })
@@ -117,9 +140,9 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Verify accessory exercises were extracted
-      expect(result.exercises.find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Cable Row')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Leg Curl')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Cable Row')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Leg Curl')).toBeDefined()
     })
   })
 
@@ -132,10 +155,10 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Find by name since slot is no longer part of ImportedExercise
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.detectedWeight).toBe(60)
 
-      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      const benchExercise = getAllExercises(result).find((ex) => ex.name === 'Bench Press')
       expect(benchExercise!.detectedWeight).toBe(40)
     })
   })
@@ -149,7 +172,7 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Find by name since slot is no longer part of ImportedExercise
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.detectedStage).toBe(0)
       expect(squatExercise!.stageConfidence).toBe('high')
     })
@@ -161,7 +184,7 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.detectedStage).toBe(1)
       expect(squatExercise!.stageConfidence).toBe('high')
     })
@@ -173,7 +196,7 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.detectedStage).toBe(2)
       expect(squatExercise!.stageConfidence).toBe('high')
     })
@@ -190,7 +213,7 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Find by name since slot is no longer part of ImportedExercise
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.stageConfidence).toBe('manual')
 
       // Should also generate a warning
@@ -286,19 +309,19 @@ describe('extractFromRoutines', () => {
       // - 4 unique main lifts: Squat, Bench Press, Overhead Press, Deadlift
       // - 3 unique T3s from A1: Lat Pulldown, Cable Row, Leg Curl
       // Total: 7 unique exercises
-      expect(result.exercises).toHaveLength(7)
+      expect(getAllExercises(result)).toHaveLength(7)
 
       // Check main lift exercises are extracted (by name)
-      expect(result.exercises.find((ex) => ex.name === 'Squat')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Bench Press')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Overhead Press')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Deadlift')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Squat')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Bench Press')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Overhead Press')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Deadlift')).toBeDefined()
 
       // Main lifts should have roles auto-assigned from first occurrence
-      const squat = result.exercises.find((ex) => ex.name === 'Squat')
-      const bench = result.exercises.find((ex) => ex.name === 'Bench Press')
-      const ohp = result.exercises.find((ex) => ex.name === 'Overhead Press')
-      const deadlift = result.exercises.find((ex) => ex.name === 'Deadlift')
+      const squat = getAllExercises(result).find((ex) => ex.name === 'Squat')
+      const bench = getAllExercises(result).find((ex) => ex.name === 'Bench Press')
+      const ohp = getAllExercises(result).find((ex) => ex.name === 'Overhead Press')
+      const deadlift = getAllExercises(result).find((ex) => ex.name === 'Deadlift')
 
       expect(squat?.role).toBe('squat') // First occurrence A1 T1
       expect(bench?.role).toBe('bench') // First occurrence A1 T2
@@ -306,9 +329,9 @@ describe('extractFromRoutines', () => {
       expect(deadlift?.role).toBe('deadlift') // First occurrence B1 T2
 
       // Check T3/accessory exercises are extracted
-      expect(result.exercises.find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Cable Row')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Leg Curl')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Lat Pulldown')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Cable Row')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Leg Curl')).toBeDefined()
     })
 
     it('stores routine IDs in result', () => {
@@ -335,10 +358,10 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Should have 1 T1 + 1 T2 + 3 T3 = 5 exercises
-      expect(result.exercises).toHaveLength(5)
+      expect(getAllExercises(result)).toHaveLength(5)
       // Find by name since slot is no longer part of ImportedExercise
-      expect(result.exercises.find((ex) => ex.name === 'Squat')).toBeDefined()
-      expect(result.exercises.find((ex) => ex.name === 'Bench Press')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Squat')).toBeDefined()
+      expect(getAllExercises(result).find((ex) => ex.name === 'Bench Press')).toBeDefined()
     })
 
     it('returns empty exercises for empty assignment', () => {
@@ -347,7 +370,7 @@ describe('extractFromRoutines', () => {
 
       const result = extractFromRoutines(routines, assignment)
 
-      expect(result.exercises).toHaveLength(0)
+      expect(getAllExercises(result)).toHaveLength(0)
       expect(result.warnings).toHaveLength(0)
     })
   })
@@ -361,11 +384,11 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Find by name since slot is no longer part of ImportedExercise
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise!.originalSetCount).toBe(5)
       expect(squatExercise!.originalRepScheme).toBe('5x3+')
 
-      const benchExercise = result.exercises.find((ex) => ex.name === 'Bench Press')
+      const benchExercise = getAllExercises(result).find((ex) => ex.name === 'Bench Press')
       expect(benchExercise!.originalSetCount).toBe(3)
       expect(benchExercise!.originalRepScheme).toBe('3x10')
     })
@@ -380,9 +403,214 @@ describe('extractFromRoutines', () => {
       const result = extractFromRoutines(routines, assignment)
 
       // Find by name or verify templateId exists on any exercise
-      const squatExercise = result.exercises.find((ex) => ex.name === 'Squat')
+      const squatExercise = getAllExercises(result).find((ex) => ex.name === 'Squat')
       expect(squatExercise).toBeDefined()
       expect(squatExercise!.templateId).toBe('template-squat')
+    })
+  })
+
+  // ===========================================================================
+  // Phase 2: Per-day byDay structure
+  // ===========================================================================
+
+  describe('Phase 2: per-day byDay structure', () => {
+    describe('byDay structure returned', () => {
+      it('returns byDay with keys A1, B1, A2, B2', () => {
+        const a1 = createGZCLPA1Routine()
+        const routines = new Map([[a1.id, a1]])
+        const assignment = createPartialAssignment({ A1: a1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        expect(result.byDay).toBeDefined()
+        expect(result.byDay).toHaveProperty('A1')
+        expect(result.byDay).toHaveProperty('B1')
+        expect(result.byDay).toHaveProperty('A2')
+        expect(result.byDay).toHaveProperty('B2')
+      })
+
+      it('each day has t1, t2, t3s fields', () => {
+        const a1 = createGZCLPA1Routine()
+        const routines = new Map([[a1.id, a1]])
+        const assignment = createPartialAssignment({ A1: a1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // A1 should have populated data
+        expect(result.byDay.A1).toHaveProperty('day', 'A1')
+        expect(result.byDay.A1).toHaveProperty('t1')
+        expect(result.byDay.A1).toHaveProperty('t2')
+        expect(result.byDay.A1).toHaveProperty('t3s')
+        expect(Array.isArray(result.byDay.A1.t3s)).toBe(true)
+
+        // Unassigned days should have null t1/t2 and empty t3s
+        expect(result.byDay.B1.t1).toBeNull()
+        expect(result.byDay.B1.t2).toBeNull()
+        expect(result.byDay.B1.t3s).toEqual([])
+      })
+
+      it('populates T1/T2 correctly for assigned day', () => {
+        const a1 = createGZCLPA1Routine()
+        const routines = new Map([[a1.id, a1]])
+        const assignment = createPartialAssignment({ A1: a1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        expect(result.byDay.A1.t1).not.toBeNull()
+        expect(result.byDay.A1.t1!.name).toBe('Squat')
+        expect(result.byDay.A1.t1!.role).toBe('squat')
+
+        expect(result.byDay.A1.t2).not.toBeNull()
+        expect(result.byDay.A1.t2!.name).toBe('Bench Press')
+        expect(result.byDay.A1.t2!.role).toBe('bench')
+      })
+    })
+
+    describe('T3 extraction from all 4 routines', () => {
+      it('extracts T3s from each assigned routine into its day', () => {
+        // Create routines with UNIQUE T3s for each day
+        const a1 = createRoutineWithUniqueT3s('A1', ['A1 Lat Pulldown', 'A1 Cable Row'])
+        const b1 = createRoutineWithUniqueT3s('B1', ['B1 Leg Press', 'B1 Calf Raise'])
+        const a2 = createRoutineWithUniqueT3s('A2', ['A2 Face Pull', 'A2 Tricep Pushdown'])
+        const b2 = createRoutineWithUniqueT3s('B2', ['B2 Hamstring Curl', 'B2 Plank'])
+
+        const routines = new Map([
+          [a1.id, a1],
+          [b1.id, b1],
+          [a2.id, a2],
+          [b2.id, b2],
+        ])
+        const assignment = createFullAssignment({
+          A1: a1.id,
+          B1: b1.id,
+          A2: a2.id,
+          B2: b2.id,
+        })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // Verify A1 T3s
+        expect(result.byDay.A1.t3s).toHaveLength(2)
+        expect(result.byDay.A1.t3s.map((t) => t.name)).toEqual(['A1 Lat Pulldown', 'A1 Cable Row'])
+
+        // Verify B1 T3s
+        expect(result.byDay.B1.t3s).toHaveLength(2)
+        expect(result.byDay.B1.t3s.map((t) => t.name)).toEqual(['B1 Leg Press', 'B1 Calf Raise'])
+
+        // Verify A2 T3s
+        expect(result.byDay.A2.t3s).toHaveLength(2)
+        expect(result.byDay.A2.t3s.map((t) => t.name)).toEqual(['A2 Face Pull', 'A2 Tricep Pushdown'])
+
+        // Verify B2 T3s
+        expect(result.byDay.B2.t3s).toHaveLength(2)
+        expect(result.byDay.B2.t3s.map((t) => t.name)).toEqual(['B2 Hamstring Curl', 'B2 Plank'])
+      })
+
+      it('returns empty t3s array for unassigned days', () => {
+        const a1 = createRoutineWithUniqueT3s('A1', ['Lat Pulldown'])
+        const routines = new Map([[a1.id, a1]])
+        const assignment = createPartialAssignment({ A1: a1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        expect(result.byDay.B1.t3s).toEqual([])
+        expect(result.byDay.A2.t3s).toEqual([])
+        expect(result.byDay.B2.t3s).toEqual([])
+      })
+    })
+
+    describe('T3 extraction from positions 2+', () => {
+      it('extracts ALL T3s from positions 2+ (no limit)', () => {
+        // Create routine with 6 T3s (positions 2-7)
+        const routine = createRoutineWithManyT3s(6)
+        const routines = new Map([[routine.id, routine]])
+        const assignment = createPartialAssignment({ A1: routine.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // Should have all 6 T3s, not limited to 3
+        expect(result.byDay.A1.t3s).toHaveLength(6)
+        expect(result.byDay.A1.t3s.map((t) => t.name)).toEqual([
+          'T3 Exercise 1',
+          'T3 Exercise 2',
+          'T3 Exercise 3',
+          'T3 Exercise 4',
+          'T3 Exercise 5',
+          'T3 Exercise 6',
+        ])
+      })
+
+      it('positions 0 and 1 are always T1/T2, never T3', () => {
+        const routine = createRoutineWithManyT3s(3)
+        const routines = new Map([[routine.id, routine]])
+        const assignment = createPartialAssignment({ A1: routine.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // T1 and T2 should be the main lifts, not in t3s
+        expect(result.byDay.A1.t1!.name).toBe('Squat')
+        expect(result.byDay.A1.t2!.name).toBe('Bench Press')
+
+        // T3s should not include Squat or Bench Press
+        const t3Names = result.byDay.A1.t3s.map((t) => t.name)
+        expect(t3Names).not.toContain('Squat')
+        expect(t3Names).not.toContain('Bench Press')
+      })
+    })
+
+    describe('T3 deduplication across days', () => {
+      it('same T3 appearing in multiple days uses first occurrence weight', () => {
+        // Same T3 in A1 (weight 20) and B1 (weight 30)
+        const a1 = createRoutineWithUniqueT3s('A1', ['Lat Pulldown'])
+        const b1Exercises = [
+          createT1Exercise('Overhead Press', 0),
+          createT2Exercise('Deadlift', 0),
+          createT3Exercise('Lat Pulldown', 30), // Same T3, different weight
+        ]
+        const b1 = createMockRoutine('GZCLP B1 Unique', b1Exercises, 'routine-b1-unique')
+
+        const routines = new Map([
+          [a1.id, a1],
+          [b1.id, b1],
+        ])
+        const assignment = createPartialAssignment({ A1: a1.id, B1: b1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // Both days should reference the same exercise with A1's weight (first wins)
+        const a1LatPulldown = result.byDay.A1.t3s.find((t) => t.name === 'Lat Pulldown')
+        const b1LatPulldown = result.byDay.B1.t3s.find((t) => t.name === 'Lat Pulldown')
+
+        expect(a1LatPulldown).toBeDefined()
+        expect(b1LatPulldown).toBeDefined()
+
+        // First wins - A1's weight should be used
+        expect(a1LatPulldown!.detectedWeight).toBe(20)
+        expect(b1LatPulldown!.detectedWeight).toBe(20)
+
+        // Should be the same object reference (shared progression)
+        expect(a1LatPulldown).toBe(b1LatPulldown)
+      })
+
+      it('unique T3s per day are not affected by deduplication', () => {
+        const a1 = createRoutineWithUniqueT3s('A1', ['Lat Pulldown'])
+        const b1 = createRoutineWithUniqueT3s('B1', ['Leg Press'])
+
+        const routines = new Map([
+          [a1.id, a1],
+          [b1.id, b1],
+        ])
+        const assignment = createPartialAssignment({ A1: a1.id, B1: b1.id })
+
+        const result = extractFromRoutines(routines, assignment)
+
+        // Each day has its unique T3
+        expect(result.byDay.A1.t3s).toHaveLength(1)
+        expect(result.byDay.A1.t3s[0].name).toBe('Lat Pulldown')
+
+        expect(result.byDay.B1.t3s).toHaveLength(1)
+        expect(result.byDay.B1.t3s[0].name).toBe('Leg Press')
+      })
     })
   })
 })

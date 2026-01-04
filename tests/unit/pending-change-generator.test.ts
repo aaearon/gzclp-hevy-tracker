@@ -57,9 +57,10 @@ describe('createPendingChange', () => {
     expect(result.id).toBeDefined()
     expect(result.id.length).toBeGreaterThan(0)
     expect(result.exerciseId).toBe('ex-1')
-    expect(result.exerciseName).toBe('Squat')
+    expect(result.exerciseName).toBe('T1 Squat') // Now includes tier prefix for main lifts
     expect(result.tier).toBe('T1')
     expect(result.type).toBe('progress')
+    expect(result.progressionKey).toBe('squat-T1') // Uses role-tier key for main lifts
     expect(result.currentWeight).toBe(100)
     expect(result.currentStage).toBe(0)
     expect(result.newWeight).toBe(105)
@@ -217,9 +218,10 @@ describe('createPendingChangesFromAnalysis', () => {
     },
   }
 
+  // Use role-tier keys for main lifts, exerciseId for T3
   const mockProgression: Record<string, ProgressionState> = {
-    'ex-squat': {
-      exerciseId: 'ex-squat',
+    'squat-T1': {
+      exerciseId: 'squat',
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
@@ -227,8 +229,8 @@ describe('createPendingChangesFromAnalysis', () => {
       lastWorkoutDate: null,
       amrapRecord: 5,
     },
-    'ex-bench': {
-      exerciseId: 'ex-bench',
+    'bench-T2': {
+      exerciseId: 'bench',
       currentWeight: 60,
       stage: 0,
       baseWeight: 60,
@@ -274,7 +276,8 @@ describe('createPendingChangesFromAnalysis', () => {
     expect(changes).toHaveLength(1)
     expect(changes[0].type).toBe('progress')
     expect(changes[0].newWeight).toBe(105)
-    expect(changes[0].exerciseName).toBe('Squat')
+    expect(changes[0].exerciseName).toBe('T1 Squat') // Now includes tier prefix
+    expect(changes[0].progressionKey).toBe('squat-T1') // Uses role-tier key
   })
 
   it('should handle multiple exercises in one workout', () => {
@@ -309,8 +312,8 @@ describe('createPendingChangesFromAnalysis', () => {
     )
 
     expect(changes).toHaveLength(2)
-    expect(changes.find((c) => c.exerciseName === 'Squat')?.type).toBe('progress')
-    expect(changes.find((c) => c.exerciseName === 'Bench Press')?.type).toBe('progress')
+    expect(changes.find((c) => c.exerciseName === 'T1 Squat')?.type).toBe('progress')
+    expect(changes.find((c) => c.exerciseName === 'T2 Bench Press')?.type).toBe('progress')
   })
 
   it('should handle T1 failure with stage change', () => {
@@ -441,9 +444,10 @@ describe('createPendingChangesFromAnalysis', () => {
       },
     ]
 
+    // Use role-tier key for main lifts
     const lbsProgression: Record<string, ProgressionState> = {
-      'ex-squat': {
-        exerciseId: 'ex-squat',
+      'squat-T1': {
+        exerciseId: 'squat',
         currentWeight: 220,
         stage: 0,
         baseWeight: 220,

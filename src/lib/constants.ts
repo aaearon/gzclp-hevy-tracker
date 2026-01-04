@@ -169,6 +169,18 @@ export const CURRENT_STATE_VERSION = '2.0.0'
 export const STORAGE_KEY = 'gzclp_state'
 
 // =============================================================================
+// Initial T3 Schedule
+// =============================================================================
+
+/** Initial empty T3 schedule for new state */
+export const INITIAL_T3_SCHEDULE: Record<GZCLPDay, string[]> = {
+  A1: [],
+  B1: [],
+  A2: [],
+  B2: [],
+}
+
+// =============================================================================
 // Stage Detection Patterns for Import
 // =============================================================================
 

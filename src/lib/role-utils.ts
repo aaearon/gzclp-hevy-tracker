@@ -5,7 +5,7 @@
  * Tier is derived from role + current day rather than being stored.
  */
 
-import type { ExerciseConfig, ExerciseRole, GZCLPDay, MainLiftRole, Tier } from '@/types/state'
+import type { ExerciseConfig, ExerciseRole, GZCLPDay, MainLiftRole, ProgressionKey, Tier } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 
 // =============================================================================
@@ -13,7 +13,7 @@ import { MAIN_LIFT_ROLES } from '@/types/state'
 // =============================================================================
 
 /** Which main lift is T1 on each day */
-const T1_MAPPING: Record<GZCLPDay, MainLiftRole> = {
+export const T1_MAPPING: Record<GZCLPDay, MainLiftRole> = {
   A1: 'squat',
   B1: 'ohp',
   A2: 'bench',
@@ -21,7 +21,7 @@ const T1_MAPPING: Record<GZCLPDay, MainLiftRole> = {
 }
 
 /** Which main lift is T2 on each day */
-const T2_MAPPING: Record<GZCLPDay, MainLiftRole> = {
+export const T2_MAPPING: Record<GZCLPDay, MainLiftRole> = {
   A1: 'bench',
   B1: 'deadlift',
   A2: 'squat',
@@ -37,6 +37,37 @@ const T2_MAPPING: Record<GZCLPDay, MainLiftRole> = {
  */
 export function isMainLiftRole(role: ExerciseRole): role is MainLiftRole {
   return MAIN_LIFT_ROLES.includes(role as MainLiftRole)
+}
+
+// =============================================================================
+// Progression Key Generation
+// =============================================================================
+
+/**
+ * Generate the progression storage key for an exercise.
+ *
+ * @param exerciseId - The exercise's unique ID (uuid)
+ * @param role - The exercise's role (if assigned)
+ * @param tier - The current tier context (T1/T2/T3)
+ * @returns The key to use in the progression record
+ *
+ * @example
+ * getProgressionKey("uuid-123", "squat", "T1") // returns "squat-T1"
+ * getProgressionKey("uuid-456", "squat", "T2") // returns "squat-T2"
+ * getProgressionKey("uuid-789", "t3", "T3")    // returns "uuid-789"
+ * getProgressionKey("uuid-000", undefined, "T3") // returns "uuid-000"
+ */
+export function getProgressionKey(
+  exerciseId: string,
+  role: ExerciseRole | undefined,
+  tier: Tier
+): ProgressionKey {
+  // Main lifts with T1/T2 context use role-tier key
+  if (role && isMainLiftRole(role) && (tier === 'T1' || tier === 'T2')) {
+    return `${role}-${tier}`
+  }
+  // T3 exercises and non-main-lifts use exerciseId
+  return exerciseId
 }
 
 // =============================================================================
@@ -90,11 +121,13 @@ export interface DayExercises {
  *
  * @param exercises - Record of all exercises keyed by ID
  * @param day - The GZCLP workout day
+ * @param t3Schedule - Per-day T3 schedule mapping days to exercise IDs
  * @returns Grouped exercises for display
  */
 export function getExercisesForDay(
   exercises: Record<string, ExerciseConfig>,
-  day: GZCLPDay
+  day: GZCLPDay,
+  t3Schedule: Record<GZCLPDay, string[]>
 ): DayExercises {
   const result: DayExercises = {
     t1: null,
@@ -103,6 +136,8 @@ export function getExercisesForDay(
     warmup: [],
     cooldown: [],
   }
+
+  const dayT3Ids = t3Schedule[day] ?? []
 
   for (const exercise of Object.values(exercises)) {
     const { role } = exercise
@@ -113,7 +148,10 @@ export function getExercisesForDay(
     } else if (role === 'cooldown') {
       result.cooldown.push(exercise)
     } else if (role === 't3') {
-      result.t3.push(exercise)
+      // Only include T3s scheduled for this specific day
+      if (dayT3Ids.includes(exercise.id)) {
+        result.t3.push(exercise)
+      }
     } else {
       // Main lift - check if T1 or T2 for this day
       const tier = getTierForDay(role, day)

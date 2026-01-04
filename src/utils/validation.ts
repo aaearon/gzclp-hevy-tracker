@@ -4,6 +4,17 @@
  * Input validation for API keys, weights, and other user inputs.
  */
 
+import type { WeightUnit } from '@/types/state'
+
+// =============================================================================
+// Weight Input Validation Result
+// =============================================================================
+
+export interface WeightValidationResult {
+  isValid: boolean
+  error: string | null
+}
+
 /**
  * Validate Hevy API key format.
  * API keys are UUIDs in the format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -64,4 +75,55 @@ export function sanitizeInput(input: string): string {
   return input
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .trim()
+}
+
+// =============================================================================
+// Weight Input Validation (Real-time)
+// =============================================================================
+
+/** Maximum weight limits by unit */
+const MAX_WEIGHT = {
+  kg: 500,
+  lbs: 1100,
+} as const
+
+/**
+ * Validate a weight input value for real-time form validation.
+ *
+ * Validation rules:
+ * - Required (not empty)
+ * - Must be numeric
+ * - Must be > 0
+ * - Must be <= max (500kg / 1100lbs)
+ *
+ * @param value - The string value from the input field
+ * @param unit - The weight unit (kg or lbs)
+ * @returns Validation result with isValid and error message
+ */
+export function validateWeight(value: string, unit: WeightUnit): WeightValidationResult {
+  const trimmed = value.trim()
+
+  // Empty check
+  if (!trimmed) {
+    return { isValid: false, error: 'Weight is required' }
+  }
+
+  // Numeric check
+  const num = Number(trimmed)
+  if (isNaN(num)) {
+    return { isValid: false, error: 'Must be a number' }
+  }
+
+  // Positive check
+  if (num <= 0) {
+    return { isValid: false, error: 'Must be greater than 0' }
+  }
+
+  // Upper bound check
+  const maxWeight = MAX_WEIGHT[unit]
+  if (num > maxWeight) {
+    return { isValid: false, error: 'Weight seems too high' }
+  }
+
+  return { isValid: true, error: null }
 }

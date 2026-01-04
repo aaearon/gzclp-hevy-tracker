@@ -15,7 +15,7 @@ import {
   WEIGHT_INCREMENTS,
   WEIGHT_ROUNDING,
 } from './constants'
-import { getTierForDay, isMainLiftRole } from './role-utils'
+import { getTierForDay, isMainLiftRole, getProgressionKey } from './role-utils'
 
 // =============================================================================
 // Role-Based Utilities
@@ -350,6 +350,15 @@ export function calculateProgression(
 
 /**
  * Create a PendingChange object from a progression result.
+ * For main lifts (T1/T2), includes tier prefix in exercise name (e.g., "T1 Squat").
+ *
+ * @param exercise - The exercise configuration
+ * @param progression - Current progression state for the exercise
+ * @param result - The calculated progression result (weight/stage changes)
+ * @param workoutId - ID of the workout that triggered this change
+ * @param workoutDate - ISO date string of the workout
+ * @param day - Optional GZCLP day for tier derivation (A1/B1/A2/B2)
+ * @returns A PendingChange object with tier-specific progressionKey for main lifts
  */
 export function createPendingChange(
   exercise: ExerciseConfig,
@@ -361,12 +370,22 @@ export function createPendingChange(
 ): PendingChange {
   // Derive tier from role + day
   const tier = deriveTierFromRole(exercise.role, day)
+
+  // For main lifts, include tier prefix in exercise name (T039)
+  const exerciseName = isMainLiftRole(exercise.role) && (tier === 'T1' || tier === 'T2')
+    ? `${tier} ${exercise.name}`
+    : exercise.name
+
+  // Get the progression key (role-tier for main lifts, exerciseId for T3)
+  const progressionKey = getProgressionKey(exercise.id, exercise.role, tier)
+
   return {
     id: generateId(),
     exerciseId: exercise.id,
-    exerciseName: exercise.name,
+    exerciseName,
     tier,
     type: result.type,
+    progressionKey,
     currentWeight: progression.currentWeight,
     currentStage: progression.stage,
     newWeight: result.newWeight,
@@ -394,10 +413,9 @@ export function createPendingChangesFromAnalysis(
 
   for (const result of analysisResults) {
     const exercise = exercises[result.exerciseId]
-    const exerciseProgression = progression[result.exerciseId]
 
-    // Skip if exercise or progression not found
-    if (!exercise || !exerciseProgression) {
+    // Skip if exercise not found
+    if (!exercise) {
       continue
     }
 
@@ -409,6 +427,15 @@ export function createPendingChangesFromAnalysis(
     // Derive tier and muscle group from role
     const tier = deriveTierFromRole(exercise.role, day)
     const muscleGroup = getMuscleGroupForRole(exercise.role)
+
+    // Get the progression key (role-tier for main lifts, exerciseId for T3)
+    const progressionKey = getProgressionKey(result.exerciseId, exercise.role, tier)
+    const exerciseProgression = progression[progressionKey]
+
+    // Skip if progression not found
+    if (!exerciseProgression) {
+      continue
+    }
 
     // When there's a discrepancy, use the actual workout weight for progression calculation
     // but keep the stored weight for reference

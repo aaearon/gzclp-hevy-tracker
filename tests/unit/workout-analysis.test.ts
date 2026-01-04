@@ -215,9 +215,10 @@ describe('[US2] Workout Analysis', () => {
         { templateId: 'hevy-squat', sets: [{ reps: 5, weight: 110 }] },
       ])
 
+      // Use role-tier key for main lifts (squat on A1 = T1)
       const storedProgression = {
-        'ex-001': {
-          exerciseId: 'ex-001',
+        'squat-T1': {
+          exerciseId: 'squat',
           currentWeight: 100, // Stored says 100, workout used 110
           stage: 0,
           baseWeight: 100,
@@ -240,9 +241,10 @@ describe('[US2] Workout Analysis', () => {
         { templateId: 'hevy-squat', sets: [{ reps: 5, weight: 100 }] },
       ])
 
+      // Use role-tier key for main lifts (squat on A1 = T1)
       const storedProgression = {
-        'ex-001': {
-          exerciseId: 'ex-001',
+        'squat-T1': {
+          exerciseId: 'squat',
           currentWeight: 100, // Matches
           stage: 0,
           baseWeight: 100,

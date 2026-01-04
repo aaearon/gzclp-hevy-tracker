@@ -17,9 +17,11 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
 import { ensureGZCLPRoutines } from '@/lib/routine-manager'
 import type { ExerciseConfig, Tier, ProgressionState } from '@/types/state'
+import { MAIN_LIFT_ROLES } from '@/types/state'
 import { TIERS } from '@/lib/constants'
 import { getExercisesForDay } from '@/lib/role-utils'
 import { TierSection } from './TierSection'
+import { MainLiftCard } from './MainLiftCard'
 import { CollapsibleSection } from '@/components/common/CollapsibleSection'
 import { NextWorkout } from './NextWorkout'
 import { PendingBadge } from './PendingBadge'
@@ -42,7 +44,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     setLastSync,
     setHevyRoutineIds,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
 
   // Local state for modals and updates
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -192,7 +194,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   }, [hevyClient, exercises, progression, settings, setHevyRoutineIds])
 
   // Get exercises for current day using role-based grouping
-  const dayExercises = getExercisesForDay(exercises, program.currentDay)
+  const dayExercises = getExercisesForDay(exercises, program.currentDay, t3Schedule)
 
   // Create exercisesByTier for TierSection compatibility
   const exercisesByTier: Record<Tier, ExerciseConfig[]> = {
@@ -315,6 +317,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
               exercises={exercises}
               progression={progression}
               weightUnit={settings.weightUnit}
+              t3Schedule={t3Schedule}
             />
           </div>
 
@@ -336,17 +339,42 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
               </CollapsibleSection>
             )}
 
-            {/* GZCLP Tier Sections (T1, T2, T3) */}
-            {TIERS.map((tier) => (
-              <TierSection
-                key={tier}
-                tier={tier}
-                exercises={exercisesByTier[tier]}
-                progression={progression}
-                weightUnit={settings.weightUnit}
-                pendingChanges={pendingChanges.filter((c) => c.tier === tier)}
-              />
-            ))}
+            {/* Main Lifts Overview - T1/T2 Status [T036] */}
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Main Lifts</h2>
+                <p className="text-sm text-gray-500">T1 and T2 progression status for all main lifts</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {MAIN_LIFT_ROLES.map((role) => (
+                  <MainLiftCard
+                    key={role}
+                    role={role}
+                    progression={progression}
+                    weightUnit={settings.weightUnit}
+                    currentDay={program.currentDay}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Today's Workout - Current Day Exercises (T1, T2, T3) */}
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Today&apos;s Workout ({program.currentDay})</h2>
+                <p className="text-sm text-gray-500">Exercises for the current day</p>
+              </div>
+              {TIERS.map((tier) => (
+                <TierSection
+                  key={tier}
+                  tier={tier}
+                  exercises={exercisesByTier[tier]}
+                  progression={progression}
+                  weightUnit={settings.weightUnit}
+                  pendingChanges={pendingChanges.filter((c) => c.tier === tier)}
+                />
+              ))}
+            </section>
 
             {/* Cooldown Section (Collapsible, collapsed by default) */}
             {dayExercises.cooldown.length > 0 && (
@@ -383,6 +411,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 
 // Re-export sub-components for direct imports if needed
 export { ExerciseCard } from './ExerciseCard'
+export { MainLiftCard } from './MainLiftCard'
 export { TierSection } from './TierSection'
 export { NextWorkout } from './NextWorkout'
 export { PendingBadge } from './PendingBadge'

@@ -2,27 +2,30 @@
  * RoleAssignment Component
  *
  * Assign exercises to GZCLP roles (main lifts + T3 accessories).
- * Replaces the old slot-based assignment system.
+ * Phase 9: Updated for per-day T3 assignment with tabbed interface.
  */
 
 import { ExerciseSelector } from './ExerciseSelector'
+import { DayTabBar } from './DayTabBar'
 import { ROLE_DISPLAY } from '@/lib/constants'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import type { ExerciseTemplate } from '@/types/hevy'
-import type { MainLiftRole } from '@/types/state'
+import type { MainLiftRole, GZCLPDay } from '@/types/state'
 
 export interface CreatePathAssignments {
   mainLifts: Record<MainLiftRole, string | null>
-  t3Exercises: string[]
+  t3Exercises: Record<GZCLPDay, string[]>  // Phase 9: per-day T3s
 }
 
 export interface RoleAssignmentProps {
   exercises: ExerciseTemplate[]
   assignments: CreatePathAssignments
   onMainLiftAssign: (role: MainLiftRole, templateId: string | null) => void
-  onT3Add: (templateId: string) => void
-  onT3Remove: (index: number) => void
-  onT3Update: (index: number, templateId: string | null) => void
+  onT3Add: (day: GZCLPDay, templateId: string) => void  // Phase 9: day-aware
+  onT3Remove: (day: GZCLPDay, index: number) => void  // Phase 9: day-aware
+  onT3Update: (day: GZCLPDay, index: number, templateId: string | null) => void  // Phase 9: day-aware
+  selectedDay: GZCLPDay  // Phase 9: current day for T3 selection
+  onDayChange: (day: GZCLPDay) => void  // Phase 9: day tab change
   isLoading?: boolean
 }
 
@@ -33,6 +36,8 @@ export function SlotAssignmentStep({
   onT3Add,
   onT3Remove,
   onT3Update,
+  selectedDay,
+  onDayChange,
   isLoading = false,
 }: RoleAssignmentProps) {
   if (isLoading) {
@@ -43,9 +48,12 @@ export function SlotAssignmentStep({
     )
   }
 
+  // Get T3s for the currently selected day
+  const dayT3s = assignments.t3Exercises[selectedDay] || []
+
   const handleAddT3 = () => {
-    // Add empty T3 slot for user to fill
-    onT3Add('')
+    // Add empty T3 slot for the current day
+    onT3Add(selectedDay, '')
   }
 
   return (
@@ -84,31 +92,40 @@ export function SlotAssignmentStep({
         </div>
       </section>
 
-      {/* T3 Accessories Section */}
+      {/* T3 Accessories Section - Phase 9: Per-day with tabs */}
       <section>
         <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">
           T3 Accessories (Optional)
         </h3>
         <p className="text-sm text-gray-500 mb-4">
-          Add accessory exercises using 3x15+ rep scheme. Progress when you hit 25+ total reps.
+          Add accessory exercises for each day. T3s use 3x15+ scheme. Progress when you hit 25+ total reps.
         </p>
+
+        {/* Day tabs for T3 selection */}
+        <DayTabBar
+          activeDay={selectedDay}
+          validatedDays={[]}
+          onDayChange={onDayChange}
+          className="mb-4"
+        />
+
         <div className="space-y-4">
-          {assignments.t3Exercises.map((templateId, index) => (
-            <div key={index} className="flex items-start gap-2">
+          {dayT3s.map((templateId, index) => (
+            <div key={`${selectedDay}-${index}`} className="flex items-start gap-2">
               <div className="flex-1">
-                <label htmlFor={`t3-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor={`t3-${selectedDay}-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                   T3 Exercise {index + 1}
                 </label>
                 <ExerciseSelector
-                  id={`t3-${index}`}
+                  id={`t3-${selectedDay}-${index}`}
                   exercises={exercises}
                   value={templateId || null}
-                  onChange={(newTemplateId) => { onT3Update(index, newTemplateId) }}
+                  onChange={(newTemplateId) => { onT3Update(selectedDay, index, newTemplateId) }}
                 />
               </div>
               <button
                 type="button"
-                onClick={() => { onT3Remove(index) }}
+                onClick={() => { onT3Remove(selectedDay, index) }}
                 className="mt-6 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md
                            min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label={`Remove T3 exercise ${index + 1}`}
@@ -135,7 +152,7 @@ export function SlotAssignmentStep({
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Add T3 Exercise
+            Add T3 Exercise for {selectedDay}
           </button>
         </div>
       </section>

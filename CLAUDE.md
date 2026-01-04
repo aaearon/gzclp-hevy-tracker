@@ -26,10 +26,10 @@ npm test && npm run lint
 TypeScript 5.x (strict mode enabled): Follow standard conventions
 
 ## Recent Changes
+- 005-t1-t2-progression: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 - 003-exercise-classification: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 - 002-routine-selection-wizard: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 
-- 001-gzclp-hevy-tracker: Added TypeScript 5.x (strict mode enabled) + React 18, Vite 5, Tailwind CSS 3.4
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

@@ -46,6 +46,45 @@ export type Stage = 0 | 1 | 2
 export type ChangeType = 'progress' | 'stage_change' | 'deload' | 'repeat'
 
 // =============================================================================
+// Progression Key (T1/T2 Independence)
+// =============================================================================
+
+/**
+ * Progression key format for main lifts (role-tier) and T3 exercises (exerciseId).
+ * - Main lifts: "squat-T1", "squat-T2", "bench-T1", etc. (format: `${MainLiftRole}-T1` | `${MainLiftRole}-T2`)
+ * - T3 exercises: exerciseId (uuid string)
+ */
+export type ProgressionKey = string
+
+// =============================================================================
+// Main Lift Weight Detection (Import Path)
+// =============================================================================
+
+/**
+ * Detected weight with source information for verification UI.
+ */
+export interface DetectedWeight {
+  /** The detected weight in kg */
+  weight: number
+  /** Human-readable source (e.g., "Day A1, position 1") */
+  source: string
+  /** Detected stage based on rep scheme */
+  stage: Stage
+}
+
+/**
+ * Main lift T1/T2 weight pair detected during import.
+ * One entry per main lift role.
+ */
+export interface MainLiftWeights {
+  role: MainLiftRole
+  t1: DetectedWeight
+  t2: DetectedWeight
+  /** True if only one tier was detected (other is estimated) */
+  hasWarning: boolean
+}
+
+// =============================================================================
 // Program Configuration
 // =============================================================================
 
@@ -98,6 +137,9 @@ export interface PendingChange {
   tier: Tier
   type: ChangeType
 
+  /** Progression key for state lookup (role-tier for main lifts, exerciseId for T3) */
+  progressionKey: ProgressionKey
+
   currentWeight: number
   currentStage: Stage
   newWeight: number
@@ -142,6 +184,9 @@ export interface GZCLPState {
 
   settings: UserSettings
   lastSync: string | null
+
+  /** Per-day T3 schedule - maps each day to its T3 exercise IDs */
+  t3Schedule: Record<GZCLPDay, string[]>
 }
 
 // =============================================================================
@@ -206,6 +251,17 @@ export interface ImportedExercise {
 }
 
 /**
+ * Per-day import data structure for tabbed import review.
+ * Groups T1, T2, and T3 exercises by day.
+ */
+export interface DayImportData {
+  day: GZCLPDay
+  t1: ImportedExercise | null
+  t2: ImportedExercise | null
+  t3s: ImportedExercise[]
+}
+
+/**
  * Types of warnings that can occur during import.
  */
 export type ImportWarningType =
@@ -225,9 +281,10 @@ export interface ImportWarning {
 
 /**
  * Complete result of extraction from assigned routines.
+ * Uses per-day structure for tabbed import review.
  */
 export interface ImportResult {
-  exercises: ImportedExercise[]
+  byDay: Record<GZCLPDay, DayImportData>
   warnings: ImportWarning[]
   routineIds: RoutineAssignment
 }

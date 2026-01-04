@@ -6,7 +6,7 @@
 
 import type { Workout, WorkoutSet, WorkoutExercise } from '@/types/hevy'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, Tier } from '@/types/state'
-import { getTierForDay, isMainLiftRole } from './role-utils'
+import { getTierForDay, isMainLiftRole, getProgressionKey } from './role-utils'
 
 // =============================================================================
 // Types
@@ -130,7 +130,13 @@ export function analyzeWorkout(
 
     const reps = extractRepsFromSets(workoutExercise.sets)
     const weight = extractWorkingWeight(workoutExercise.sets)
-    const storedProgression = progression[exerciseId]
+
+    // Derive tier from role + day
+    const tier = deriveTier(exerciseConfig.role, day)
+
+    // Get the progression key (role-tier for main lifts, exerciseId for T3)
+    const progressionKey = getProgressionKey(exerciseId, exerciseConfig.role, tier)
+    const storedProgression = progression[progressionKey]
 
     // Check for weight discrepancy
     let discrepancy: WorkoutAnalysisResult['discrepancy']
@@ -140,9 +146,6 @@ export function analyzeWorkout(
         actualWeight: weight,
       }
     }
-
-    // Derive tier from role + day
-    const tier = deriveTier(exerciseConfig.role, day)
 
     results.push({
       exerciseId,

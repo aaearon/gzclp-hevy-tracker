@@ -128,20 +128,36 @@ describe('getExercisesForDay', () => {
     foam: createExercise('foam', 'Foam Rolling', 'cooldown'),
   }
 
+  // Helper: Schedule all T3s on all days (for existing tests)
+  const allT3Schedule: Record<GZCLPDay, string[]> = {
+    A1: ['curls', 'rows'],
+    B1: ['curls', 'rows'],
+    A2: ['curls', 'rows'],
+    B2: ['curls', 'rows'],
+  }
+
+  // Helper: Empty T3 schedule
+  const emptyT3Schedule: Record<GZCLPDay, string[]> = {
+    A1: [],
+    B1: [],
+    A2: [],
+    B2: [],
+  }
+
   describe('day A1', () => {
     it('should return squat as T1 and bench as T2', () => {
-      const result = getExercisesForDay(testExercises, 'A1')
+      const result = getExercisesForDay(testExercises, 'A1', allT3Schedule)
       expect(result.t1?.id).toBe('squat')
       expect(result.t2?.id).toBe('bench')
     })
 
-    it('should return T3 exercises', () => {
-      const result = getExercisesForDay(testExercises, 'A1')
+    it('should return T3 exercises scheduled for day', () => {
+      const result = getExercisesForDay(testExercises, 'A1', allT3Schedule)
       expect(result.t3.map(e => e.id)).toEqual(['curls', 'rows'])
     })
 
     it('should return warmup and cooldown exercises', () => {
-      const result = getExercisesForDay(testExercises, 'A1')
+      const result = getExercisesForDay(testExercises, 'A1', allT3Schedule)
       expect(result.warmup.map(e => e.id)).toEqual(['stretch'])
       expect(result.cooldown.map(e => e.id)).toEqual(['foam'])
     })
@@ -149,7 +165,7 @@ describe('getExercisesForDay', () => {
 
   describe('day B1', () => {
     it('should return ohp as T1 and deadlift as T2', () => {
-      const result = getExercisesForDay(testExercises, 'B1')
+      const result = getExercisesForDay(testExercises, 'B1', allT3Schedule)
       expect(result.t1?.id).toBe('ohp')
       expect(result.t2?.id).toBe('deadlift')
     })
@@ -157,7 +173,7 @@ describe('getExercisesForDay', () => {
 
   describe('day A2', () => {
     it('should return bench as T1 and squat as T2', () => {
-      const result = getExercisesForDay(testExercises, 'A2')
+      const result = getExercisesForDay(testExercises, 'A2', allT3Schedule)
       expect(result.t1?.id).toBe('bench')
       expect(result.t2?.id).toBe('squat')
     })
@@ -165,7 +181,7 @@ describe('getExercisesForDay', () => {
 
   describe('day B2', () => {
     it('should return deadlift as T1 and ohp as T2', () => {
-      const result = getExercisesForDay(testExercises, 'B2')
+      const result = getExercisesForDay(testExercises, 'B2', allT3Schedule)
       expect(result.t1?.id).toBe('deadlift')
       expect(result.t2?.id).toBe('ohp')
     })
@@ -176,7 +192,7 @@ describe('getExercisesForDay', () => {
       const partial: Record<string, ExerciseConfig> = {
         curls: createExercise('curls', 'Bicep Curls', 't3'),
       }
-      const result = getExercisesForDay(partial, 'A1')
+      const result = getExercisesForDay(partial, 'A1', { A1: ['curls'], B1: [], A2: [], B2: [] })
       expect(result.t1).toBeNull()
       expect(result.t2).toBeNull()
     })
@@ -185,10 +201,50 @@ describe('getExercisesForDay', () => {
       const mainOnly: Record<string, ExerciseConfig> = {
         squat: createExercise('squat', 'Back Squat', 'squat'),
       }
-      const result = getExercisesForDay(mainOnly, 'A1')
+      const result = getExercisesForDay(mainOnly, 'A1', emptyT3Schedule)
       expect(result.warmup).toEqual([])
       expect(result.cooldown).toEqual([])
       expect(result.t3).toEqual([])
+    })
+  })
+
+  describe('per-day T3 filtering', () => {
+    it('should return only T3s scheduled for the specified day', () => {
+      const daySpecificSchedule: Record<GZCLPDay, string[]> = {
+        A1: ['curls'],
+        B1: ['rows'],
+        A2: [],
+        B2: ['curls', 'rows'],
+      }
+      const result = getExercisesForDay(testExercises, 'A1', daySpecificSchedule)
+      expect(result.t3.map(e => e.id)).toEqual(['curls'])
+    })
+
+    it('should return empty T3 array when day has no scheduled T3s', () => {
+      const result = getExercisesForDay(testExercises, 'A2', emptyT3Schedule)
+      expect(result.t3).toEqual([])
+    })
+
+    it('should return multiple T3s when day has multiple scheduled', () => {
+      const daySpecificSchedule: Record<GZCLPDay, string[]> = {
+        A1: [],
+        B1: [],
+        A2: [],
+        B2: ['curls', 'rows'],
+      }
+      const result = getExercisesForDay(testExercises, 'B2', daySpecificSchedule)
+      expect(result.t3.map(e => e.id)).toEqual(['curls', 'rows'])
+    })
+
+    it('should ignore T3 IDs in schedule that do not exist in exercises', () => {
+      const scheduleWithNonexistent: Record<GZCLPDay, string[]> = {
+        A1: ['curls', 'nonexistent'],
+        B1: [],
+        A2: [],
+        B2: [],
+      }
+      const result = getExercisesForDay(testExercises, 'A1', scheduleWithNonexistent)
+      expect(result.t3.map(e => e.id)).toEqual(['curls'])
     })
   })
 })

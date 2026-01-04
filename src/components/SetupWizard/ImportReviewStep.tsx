@@ -1,71 +1,60 @@
 /**
  * ImportReviewStep Component
  *
- * Displays extracted exercises from assigned routines for user review.
- * Allows editing weights, stages (for manual confidence), and roles.
+ * Tabbed interface for reviewing imported exercises per GZCLP day.
+ * Uses DayTabBar for navigation and DayReviewPanel for day content.
  *
- * T016: Added Hevy API availability check and stage auto-detection.
+ * @see docs/006-per-day-t3-and-import-ux.md - Phase 7
  */
 
-import { useMemo, useEffect, useState, useCallback } from 'react'
-import type { ImportResult, ImportedExercise, Stage, ExerciseRole } from '@/types/state'
-import { MAIN_LIFT_ROLES } from '@/types/state'
-import { STAGE_DISPLAY } from '@/lib/constants'
-import { RoleDropdown } from '@/components/common/RoleDropdown'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import type {
+  ImportResult,
+  ImportedExercise,
+  GZCLPDay,
+  WeightUnit,
+  MainLiftWeights,
+  MainLiftRole,
+} from '@/types/state'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { DayTabBar } from './DayTabBar'
+import { DayReviewPanel } from './DayReviewPanel'
+import { MainLiftVerification } from './MainLiftVerification'
+
+const GZCLP_DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
 export interface ImportReviewStepProps {
   importResult: ImportResult
-  onExerciseUpdate: (index: number, updates: Partial<ImportedExercise>) => void
+  onDayExerciseUpdate: (day: GZCLPDay, position: 'T1' | 'T2', updates: Partial<ImportedExercise>) => void
+  onDayT3Remove: (day: GZCLPDay, index: number) => void
   onNext: () => void
   onBack: () => void
-  /** API key for Hevy API access (reserved for future stage auto-detection) */
+  /** API key for Hevy API access (reserved for future use) */
   apiKey?: string
-}
-
-// Note: apiKey is intentionally unused for now - reserved for T016 stage auto-detection
-// The API availability check uses useOnlineStatus which doesn't require the key
-
-/**
- * Get the display value for a stage.
- */
-function getStageDisplay(stage: Stage): string {
-  return STAGE_DISPLAY[stage]
-}
-
-/**
- * Get the confirmed weight (user override or detected).
- */
-function getConfirmedWeight(exercise: ImportedExercise): number {
-  return exercise.userWeight ?? exercise.detectedWeight
-}
-
-/**
- * Get the confirmed stage (user override or detected).
- */
-function getConfirmedStage(exercise: ImportedExercise): Stage {
-  return exercise.userStage ?? exercise.detectedStage
-}
-
-/**
- * Check if a role is a main lift role.
- */
-function isMainLiftRole(role: ExerciseRole | undefined): boolean {
-  if (!role) return false
-  return (MAIN_LIFT_ROLES as readonly ExerciseRole[]).includes(role)
+  /** Weight unit for display */
+  unit?: WeightUnit
+  /** Detected main lift weights for T1/T2 verification */
+  mainLiftWeights?: MainLiftWeights[]
+  /** Callback to update main lift weights */
+  onMainLiftWeightsUpdate?: (role: MainLiftRole, updates: { t1Weight: number; t2Weight: number }) => void
 }
 
 export function ImportReviewStep({
   importResult,
-  onExerciseUpdate,
+  onDayExerciseUpdate,
+  onDayT3Remove,
   onNext,
   onBack,
-  // apiKey is reserved for future stage auto-detection (T016)
+  unit = 'kg',
+  mainLiftWeights = [],
+  onMainLiftWeightsUpdate,
 }: ImportReviewStepProps) {
-  const { exercises, warnings } = importResult
-  const hasExercises = exercises.length > 0
+  const { warnings, byDay } = importResult
 
-  // Track API availability (T016: FR-015)
+  // Active day tab state
+  const [activeDay, setActiveDay] = useState<GZCLPDay>('A1')
+
+  // API availability check
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
   const [isCheckingApi, setIsCheckingApi] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -84,27 +73,45 @@ export function ImportReviewStep({
     void checkApi()
   }, [checkHevyConnection])
 
-  // Track assigned main lift roles for exclusivity validation
-  const assignedMainLifts = useMemo(() => {
-    const assigned = new Set<ExerciseRole>()
-    exercises.forEach((ex) => {
-      if (ex.role && isMainLiftRole(ex.role)) {
-        assigned.add(ex.role)
-      }
+  // Calculate validated days (days with both T1 and T2)
+  const validatedDays = useMemo(() => {
+    return GZCLP_DAYS.filter((day) => {
+      const dayData = byDay[day]
+      return dayData.t1 !== null && dayData.t2 !== null
     })
-    return assigned
-  }, [exercises])
+  }, [byDay])
 
-  // Check if all exercises have roles assigned
-  const allRolesAssigned = exercises.every((ex) => ex.role !== undefined)
-  // T016: Block continue if API is unavailable
+  // Check if all days are validated
+  const allDaysValidated = validatedDays.length === 4
+
+  // Check if continue is allowed
   const isApiAvailable = isOnline && isHevyReachable && !apiError
-  const canContinue = hasExercises && allRolesAssigned && isApiAvailable && !isCheckingApi
+  const canContinue = allDaysValidated && isApiAvailable && !isCheckingApi
 
-  // Handle continue
-  const handleContinue = () => {
-    onNext()
-  }
+  // Get current day data
+  const currentDayData = byDay[activeDay]
+
+  // Callbacks for DayReviewPanel
+  const handleT1Update = useCallback(
+    (updates: Partial<ImportedExercise>) => {
+      onDayExerciseUpdate(activeDay, 'T1', updates)
+    },
+    [activeDay, onDayExerciseUpdate]
+  )
+
+  const handleT2Update = useCallback(
+    (updates: Partial<ImportedExercise>) => {
+      onDayExerciseUpdate(activeDay, 'T2', updates)
+    },
+    [activeDay, onDayExerciseUpdate]
+  )
+
+  const handleT3Remove = useCallback(
+    (index: number) => {
+      onDayT3Remove(activeDay, index)
+    },
+    [activeDay, onDayT3Remove]
+  )
 
   // Handle retry API check
   const handleRetryApiCheck = useCallback(async () => {
@@ -119,15 +126,15 @@ export function ImportReviewStep({
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900">Review Imported Exercises</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Assign a role to each exercise. Main lifts (Squat, Bench, OHP, Deadlift) can only be
-          assigned once.
+          Review each day's exercises. Verify T1 and T2 weights for each workout day.
         </p>
       </div>
 
-      {/* API Error Section (T016: FR-015) */}
+      {/* API Error Section */}
       {apiError && (
         <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
@@ -191,166 +198,34 @@ export function ImportReviewStep({
         </div>
       )}
 
-      {/* Exercises Table */}
-      {hasExercises ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  role="columnheader"
-                >
-                  Exercise
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  role="columnheader"
-                >
-                  Role
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  role="columnheader"
-                >
-                  Weight (kg)
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  role="columnheader"
-                >
-                  Stage
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Original
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {exercises.map((exercise, index) => {
-                const isManualConfidence = exercise.stageConfidence === 'manual'
-                const hasMainLiftRole = isMainLiftRole(exercise.role)
-
-                // Calculate which main lifts to exclude for this exercise
-                const excludeRoles: ExerciseRole[] = []
-                assignedMainLifts.forEach((role) => {
-                  // Don't exclude this exercise's own role
-                  if (role !== exercise.role) {
-                    excludeRoles.push(role)
-                  }
-                })
-
-                return (
-                  <tr
-                    key={`${exercise.templateId}-${String(index)}`}
-                    className={isManualConfidence ? 'bg-amber-50' : ''}
-                  >
-                    {/* Exercise Name */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">{exercise.name}</span>
-                    </td>
-
-                    {/* Role Dropdown */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <label htmlFor={`role-${String(index)}`} className="sr-only">
-                        Role
-                      </label>
-                      <RoleDropdown
-                        id={`role-${String(index)}`}
-                        ariaLabel="Role"
-                        value={exercise.role}
-                        onChange={(role) => { onExerciseUpdate(index, { role }) }}
-                        excludeRoles={excludeRoles}
-                        className="w-40"
-                      />
-                    </td>
-
-                    {/* Weight Input - only for main lifts */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {hasMainLiftRole ? (
-                        <>
-                          <label htmlFor={`weight-${String(index)}`} className="sr-only">
-                            Weight
-                          </label>
-                          <input
-                            type="number"
-                            id={`weight-${String(index)}`}
-                            aria-label="Weight"
-                            value={getConfirmedWeight(exercise)}
-                            onChange={(e) => {
-                              onExerciseUpdate(index, {
-                                userWeight: parseFloat(e.target.value) || 0,
-                              })
-                            }}
-                            step="0.5"
-                            min="0"
-                            className="block w-20 rounded-md border-gray-300 shadow-sm text-sm
-                                       focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-
-                    {/* Stage */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {isManualConfidence && hasMainLiftRole ? (
-                        <>
-                          <label htmlFor={`stage-${String(index)}`} className="sr-only">
-                            Stage
-                          </label>
-                          <select
-                            id={`stage-${String(index)}`}
-                            aria-label="Stage"
-                            value={getConfirmedStage(exercise)}
-                            onChange={(e) => {
-                              onExerciseUpdate(index, {
-                                userStage: parseInt(e.target.value, 10) as Stage,
-                              })
-                            }}
-                            className="block w-full rounded-md border-gray-300 shadow-sm text-sm
-                                       focus:border-blue-500 focus:ring-blue-500"
-                          >
-                            <option value={0}>Stage 1</option>
-                            <option value={1}>Stage 2</option>
-                            <option value={2}>Stage 3</option>
-                          </select>
-                        </>
-                      ) : (
-                        <span className="text-sm text-gray-700">
-                          {hasMainLiftRole ? getStageDisplay(getConfirmedStage(exercise)) : 'N/A'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Original Rep Scheme */}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {exercise.originalRepScheme}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500">
-          <p>No exercises to review. Please go back and assign routines.</p>
-        </div>
+      {/* Main Lift Weight Verification Section */}
+      {mainLiftWeights.length > 0 && onMainLiftWeightsUpdate && (
+        <MainLiftVerification
+          mainLiftWeights={mainLiftWeights}
+          onWeightsUpdate={onMainLiftWeightsUpdate}
+        />
       )}
 
+      {/* Day Tab Bar */}
+      <DayTabBar
+        activeDay={activeDay}
+        validatedDays={validatedDays}
+        onDayChange={setActiveDay}
+      />
+
+      {/* Day Review Panel */}
+      <DayReviewPanel
+        dayData={currentDayData}
+        onT1Update={handleT1Update}
+        onT2Update={handleT2Update}
+        onT3Remove={handleT3Remove}
+        unit={unit}
+      />
+
       {/* Validation Message */}
-      {hasExercises && !allRolesAssigned && (
+      {!allDaysValidated && (
         <div className="text-sm text-amber-600">
-          All exercises must have a role assigned before continuing.
+          All days must have T1 and T2 exercises assigned before continuing.
         </div>
       )}
 
@@ -365,7 +240,7 @@ export function ImportReviewStep({
         </button>
         <button
           type="button"
-          onClick={handleContinue}
+          onClick={onNext}
           disabled={!canContinue}
           className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium
                      hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed

@@ -14,6 +14,7 @@ interface NextWorkoutProps {
   exercises: Record<string, ExerciseConfig>
   progression: Record<string, ProgressionState>
   weightUnit: WeightUnit
+  t3Schedule: Record<GZCLPDay, string[]>
 }
 
 interface WorkoutExerciseRowProps {
@@ -53,9 +54,9 @@ function WorkoutExerciseRow({ exercise, progression, weightUnit, day }: WorkoutE
   )
 }
 
-export function NextWorkout({ day, exercises, progression, weightUnit }: NextWorkoutProps) {
+export function NextWorkout({ day, exercises, progression, weightUnit, t3Schedule }: NextWorkoutProps) {
   // Get exercises for this day using role-based grouping
-  const dayExercises = getExercisesForDay(exercises, day)
+  const dayExercises = getExercisesForDay(exercises, day, t3Schedule)
 
   return (
     <div data-testid="next-workout" className="rounded-lg border bg-white p-4 shadow-sm">

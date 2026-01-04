@@ -45,6 +45,7 @@ export interface UseProgramResult {
   setHevyRoutineIds: (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => void
   setRoutineIds: (assignment: RoutineAssignment) => void
   setCurrentDay: (day: GZCLPDay) => void
+  setT3Schedule: (schedule: Record<GZCLPDay, string[]>) => void
 
   // Sync
   setLastSync: (timestamp: string) => void
@@ -322,6 +323,19 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
+   * Set the T3 schedule mapping days to exercise IDs.
+   */
+  const setT3Schedule = useCallback(
+    (schedule: Record<GZCLPDay, string[]>) => {
+      setRawState((prev) => ({
+        ...prev,
+        t3Schedule: schedule,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
    * Set the last sync timestamp.
    */
   const setLastSync = useCallback(
@@ -367,6 +381,7 @@ export function useProgram(): UseProgramResult {
     setHevyRoutineIds,
     setRoutineIds,
     setCurrentDay,
+    setT3Schedule,
     setLastSync,
     resetState,
     importState,

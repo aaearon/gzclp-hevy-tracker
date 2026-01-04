@@ -35,7 +35,7 @@ export interface SetupWizardProps {
 
 const initialAssignments: CreatePathAssignments = {
   mainLifts: { squat: null, bench: null, ohp: null, deadlift: null },
-  t3Exercises: [],
+  t3Exercises: { A1: [], B1: [], A2: [], B2: [] },  // Phase 9: per-day T3s
 }
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
@@ -99,9 +99,23 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setCurrentStep('import-review')
   }, [routineImport, hevy.routines])
 
-  const handleImportReviewUpdate = useCallback(
-    (index: number, updates: Partial<ImportedExercise>) => {
-      routineImport.updateExercise(index, updates)
+  const handleDayExerciseUpdate = useCallback(
+    (day: GZCLPDay, position: 'T1' | 'T2', updates: Partial<ImportedExercise>) => {
+      routineImport.updateDayExercise(day, position, updates)
+    },
+    [routineImport]
+  )
+
+  const handleDayT3Remove = useCallback(
+    (day: GZCLPDay, index: number) => {
+      routineImport.removeDayT3(day, index)
+    },
+    [routineImport]
+  )
+
+  const handleMainLiftWeightsUpdate = useCallback(
+    (role: MainLiftRole, updates: { t1Weight: number; t2Weight: number }) => {
+      routineImport.updateMainLiftWeights(role, updates)
     },
     [routineImport]
   )
@@ -120,27 +134,23 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   }, [])
 
   const handleNextWorkoutComplete = useCallback(() => {
-    // DEBUG: Log all values at the start
-    console.log('[DEBUG] handleNextWorkoutComplete called')
-    console.log('[DEBUG] routineSourceMode:', routineSourceMode)
-    console.log('[DEBUG] importResult:', routineImport.importResult)
-    console.log('[DEBUG] importResult?.exercises:', routineImport.importResult?.exercises)
-
     if (routineSourceMode === 'import' && routineImport.importResult) {
-      // Import path: save imported exercises with roles
-      const { exercises: importedExercises } = routineImport.importResult
-      console.log('[DEBUG] Processing', importedExercises.length, 'exercises')
+      const { exercises: importedExercises, byDay } = routineImport.importResult
+      const { mainLiftWeights } = routineImport
 
-      let savedCount = 0
+      // BUG FIX (Phase 8): Create weight lookup from mainLiftWeights
+      // This contains user-verified T1 weights from MainLiftVerification component
+      const mainLiftWeightMap = new Map(
+        mainLiftWeights.map((w) => [w.role, { weight: w.t1.weight, stage: w.t1.stage }])
+      )
+
+      // Track saved exercise IDs for t3Schedule
+      const savedExerciseIds = new Map<string, string>() // templateId -> exerciseId
+
       for (const imported of importedExercises) {
-        console.log('[DEBUG] Exercise:', imported.name, 'role:', imported.role)
         if (!imported.role) {
-          console.log('[DEBUG] Skipping exercise without role:', imported.name)
           continue // Skip exercises without roles
         }
-
-        const confirmedWeight = imported.userWeight ?? imported.detectedWeight
-        const confirmedStage = imported.userStage ?? imported.detectedStage
 
         // Add exercise to program with role
         const exerciseId = program.addExercise({
@@ -148,27 +158,48 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           name: imported.name,
           role: imported.role,
         })
-        savedCount++
-        console.log('[DEBUG] Saved exercise:', imported.name, 'with id:', exerciseId)
+
+        // Track the saved exercise ID
+        savedExerciseIds.set(imported.templateId, exerciseId)
 
         // Set initial weight and stage only for main lifts
         const isMainLift = ['squat', 'bench', 'ohp', 'deadlift'].includes(imported.role)
         if (isMainLift) {
+          // BUG FIX: Use verified weight from mainLiftWeights, not detectedWeight
+          const verified = mainLiftWeightMap.get(imported.role as MainLiftRole)
+          const confirmedWeight = verified?.weight ?? imported.userWeight ?? imported.detectedWeight
+          const confirmedStage = verified?.stage ?? imported.userStage ?? imported.detectedStage
           program.setInitialWeight(exerciseId, confirmedWeight, confirmedStage)
         }
       }
-      console.log('[DEBUG] Total exercises saved:', savedCount)
+
+      // BUG FIX (Phase 8): Build and save t3Schedule from byDay structure
+      const t3Schedule: Record<GZCLPDay, string[]> = {
+        A1: [],
+        B1: [],
+        A2: [],
+        B2: [],
+      }
+
+      for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
+        const dayData = byDay[day]
+        if (dayData?.t3s) {
+          t3Schedule[day] = dayData.t3s
+            .filter((t3) => t3.templateId && savedExerciseIds.has(t3.templateId))
+            .map((t3) => savedExerciseIds.get(t3.templateId)!)
+        }
+      }
+
+      program.setT3Schedule(t3Schedule)
 
       // Save routine IDs to program
       program.setRoutineIds(routineImport.assignment)
-    } else {
-      console.log('[DEBUG] Condition failed - routineSourceMode:', routineSourceMode, 'importResult exists:', !!routineImport.importResult)
     }
 
     // Set current day and complete
     program.setCurrentDay(selectedDay)
     setCurrentStep('complete')
-  }, [routineSourceMode, routineImport.importResult, routineImport.assignment, selectedDay, program])
+  }, [routineSourceMode, routineImport.importResult, routineImport.mainLiftWeights, routineImport.assignment, selectedDay, program])
 
   const handleNextWorkoutBack = useCallback(() => {
     // Go back to import-review if import path, or weights if create path
@@ -182,24 +213,34 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     }))
   }, [])
 
-  const handleT3Add = useCallback((templateId: string) => {
+  // Phase 9: Day-aware T3 callbacks
+  const handleT3Add = useCallback((day: GZCLPDay, templateId: string) => {
     setAssignments((prev) => ({
       ...prev,
-      t3Exercises: [...prev.t3Exercises, templateId],
+      t3Exercises: {
+        ...prev.t3Exercises,
+        [day]: [...prev.t3Exercises[day], templateId],
+      },
     }))
   }, [])
 
-  const handleT3Remove = useCallback((index: number) => {
+  const handleT3Remove = useCallback((day: GZCLPDay, index: number) => {
     setAssignments((prev) => ({
       ...prev,
-      t3Exercises: prev.t3Exercises.filter((_, i) => i !== index),
+      t3Exercises: {
+        ...prev.t3Exercises,
+        [day]: prev.t3Exercises[day].filter((_, i) => i !== index),
+      },
     }))
   }, [])
 
-  const handleT3Update = useCallback((index: number, templateId: string | null) => {
+  const handleT3Update = useCallback((day: GZCLPDay, index: number, templateId: string | null) => {
     setAssignments((prev) => ({
       ...prev,
-      t3Exercises: prev.t3Exercises.map((t, i) => (i === index ? (templateId ?? '') : t)),
+      t3Exercises: {
+        ...prev.t3Exercises,
+        [day]: prev.t3Exercises[day].map((t, i) => (i === index ? (templateId ?? '') : t)),
+      },
     }))
   }, [])
 
@@ -246,31 +287,58 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       program.setInitialWeight(exerciseId, weight)
     }
 
-    // Save T3s with role='t3' and their weights
-    for (let i = 0; i < assignments.t3Exercises.length; i++) {
-      const templateId = assignments.t3Exercises[i]
-      if (!templateId) continue
-
-      const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
-      if (!exercise) continue
-
-      const exerciseId = program.addExercise({
-        hevyTemplateId: templateId,
-        name: exercise.title,
-        role: 't3',
-      })
-
-      const weight = weights[`t3_${i}`] ?? 0
-      program.setInitialWeight(exerciseId, weight)
+    // Phase 9: Save T3s with deduplication and build t3Schedule
+    const savedT3Ids = new Map<string, string>() // templateId -> exerciseId
+    const t3Schedule: Record<GZCLPDay, string[]> = {
+      A1: [],
+      B1: [],
+      A2: [],
+      B2: [],
     }
+
+    for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
+      for (let i = 0; i < assignments.t3Exercises[day].length; i++) {
+        const templateId = assignments.t3Exercises[day][i]
+        if (!templateId) continue
+
+        // Deduplicate: same T3 on multiple days uses same exerciseId
+        let exerciseId = savedT3Ids.get(templateId)
+        if (!exerciseId) {
+          const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
+          if (!exercise) continue
+
+          exerciseId = program.addExercise({
+            hevyTemplateId: templateId,
+            name: exercise.title,
+            role: 't3',
+          })
+          savedT3Ids.set(templateId, exerciseId)
+
+          // Set weight for this T3 (only once per unique T3)
+          const weight = weights[`t3_${templateId}`] ?? 0
+          program.setInitialWeight(exerciseId, weight)
+        }
+
+        t3Schedule[day].push(exerciseId)
+      }
+    }
+
+    // Save t3Schedule to program
+    program.setT3Schedule(t3Schedule)
 
     // Go to next-workout step
     setCurrentStep('next-workout')
   }, [assignments, weights, hevy.exerciseTemplates, program])
 
-  // Count assigned exercises (main lifts + T3s)
+  // Count assigned exercises (main lifts + T3s across all days)
   const assignedMainLifts = MAIN_LIFT_ROLES.filter((role) => assignments.mainLifts[role] !== null).length
-  const assignedT3s = assignments.t3Exercises.filter((id) => id !== '').length
+  // Phase 9: Count unique T3s across all days (deduplicated)
+  const allT3TemplateIds = new Set(
+    (['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]).flatMap((day) =>
+      assignments.t3Exercises[day].filter((id) => id !== '')
+    )
+  )
+  const assignedT3s = allT3TemplateIds.size
   const assignedCount = assignedMainLifts + assignedT3s
 
   const handleBack = useCallback(() => {
@@ -378,10 +446,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           {currentStep === 'import-review' && routineImport.importResult && (
             <ImportReviewStep
               importResult={routineImport.importResult}
-              onExerciseUpdate={handleImportReviewUpdate}
+              onDayExerciseUpdate={handleDayExerciseUpdate}
+              onDayT3Remove={handleDayT3Remove}
               onNext={handleImportReviewNext}
               onBack={handleImportReviewBack}
               apiKey={program.state.apiKey}
+              mainLiftWeights={routineImport.mainLiftWeights}
+              onMainLiftWeightsUpdate={handleMainLiftWeightsUpdate}
             />
           )}
 
@@ -402,6 +473,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               onT3Add={handleT3Add}
               onT3Remove={handleT3Remove}
               onT3Update={handleT3Update}
+              selectedDay={selectedDay}
+              onDayChange={handleDaySelect}
               isLoading={hevy.isLoadingTemplates}
             />
           )}

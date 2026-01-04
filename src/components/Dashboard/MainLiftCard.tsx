@@ -1,0 +1,149 @@
+/**
+ * MainLiftCard Component
+ *
+ * Displays a main lift (squat, bench, ohp, deadlift) with separate T1 and T2 rows.
+ * Each row shows current weight, stage indicator, and rep scheme.
+ *
+ * [T035] Create MainLiftCard component showing T1 and T2 rows
+ * [T037] Add stage indicator and rep scheme display to each tier row
+ * [T038] Highlight current day's focus lifts
+ */
+
+import type { GZCLPDay, MainLiftRole, ProgressionState, Stage, WeightUnit } from '@/types/state'
+import { getRepScheme, ROLE_DISPLAY, STAGE_DISPLAY } from '@/lib/constants'
+import { formatWeight } from '@/utils/formatting'
+import { getTierForDay, getProgressionKey } from '@/lib/role-utils'
+
+export interface MainLiftCardProps {
+  role: MainLiftRole
+  progression: Record<string, ProgressionState>
+  weightUnit: WeightUnit
+  currentDay: GZCLPDay
+}
+
+const stageColors: Record<Stage, string> = {
+  0: 'bg-green-100 text-green-800',
+  1: 'bg-yellow-100 text-yellow-800',
+  2: 'bg-red-100 text-red-800',
+}
+
+const tierRowStyles = {
+  T1: {
+    bg: 'bg-red-50',
+    border: 'border-l-red-500',
+    badge: 'bg-red-100 text-red-800 border-red-200',
+  },
+  T2: {
+    bg: 'bg-blue-50',
+    border: 'border-l-blue-500',
+    badge: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+}
+
+interface TierRowProps {
+  tier: 'T1' | 'T2'
+  progression: ProgressionState | undefined
+  weightUnit: WeightUnit
+  isActiveToday: boolean
+}
+
+function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps) {
+  const styles = tierRowStyles[tier]
+
+  if (!progression) {
+    return (
+      <div className={`rounded-md border-l-4 ${styles.border} ${styles.bg} p-3 opacity-50`}>
+        <div className="flex items-center justify-between">
+          <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
+            {tier}
+          </span>
+          <span className="text-sm text-gray-500">Not configured</span>
+        </div>
+      </div>
+    )
+  }
+
+  const scheme = getRepScheme(tier, progression.stage)
+  const stageLabel = STAGE_DISPLAY[progression.stage]
+
+  return (
+    <div
+      data-testid={`tier-row-${tier.toLowerCase()}`}
+      className={`
+        rounded-md border-l-4 p-3 transition-all
+        ${styles.border} ${styles.bg}
+        ${isActiveToday ? 'ring-2 ring-amber-400 ring-offset-1' : ''}
+      `}
+    >
+      <div className="flex items-center justify-between gap-2">
+        {/* Tier badge */}
+        <div className="flex items-center gap-2">
+          <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
+            {tier}
+          </span>
+          {isActiveToday && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              Today
+            </span>
+          )}
+        </div>
+
+        {/* Stage indicator */}
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${stageColors[progression.stage]}`}>
+          {stageLabel}
+        </span>
+      </div>
+
+      <div className="mt-2 flex items-baseline justify-between">
+        {/* Weight */}
+        <span className="text-xl font-bold text-gray-900">
+          {formatWeight(progression.currentWeight, weightUnit)}
+        </span>
+
+        {/* Rep scheme */}
+        <span className="font-mono text-sm text-gray-600">{scheme.display}</span>
+      </div>
+    </div>
+  )
+}
+
+export function MainLiftCard({ role, progression, weightUnit, currentDay }: MainLiftCardProps) {
+  const displayName = ROLE_DISPLAY[role].label
+
+  // Get progression states for T1 and T2
+  const t1Key = getProgressionKey('', role, 'T1')
+  const t2Key = getProgressionKey('', role, 'T2')
+  const t1Progression = progression[t1Key]
+  const t2Progression = progression[t2Key]
+
+  // Check if this role is T1 or T2 today
+  const tierToday = getTierForDay(role, currentDay)
+  const isT1Today = tierToday === 'T1'
+  const isT2Today = tierToday === 'T2'
+
+  return (
+    <div
+      data-testid={`main-lift-card-${role}`}
+      className="rounded-lg border bg-white p-4 shadow-sm"
+    >
+      {/* Header with lift name */}
+      <h3 className="mb-3 text-lg font-semibold text-gray-900">{displayName}</h3>
+
+      {/* T1 and T2 rows */}
+      <div className="space-y-2">
+        <TierRow
+          tier="T1"
+          progression={t1Progression}
+          weightUnit={weightUnit}
+          isActiveToday={isT1Today}
+        />
+        <TierRow
+          tier="T2"
+          progression={t2Progression}
+          weightUnit={weightUnit}
+          isActiveToday={isT2Today}
+        />
+      </div>
+    </div>
+  )
+}

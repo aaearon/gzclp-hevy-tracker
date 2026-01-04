@@ -9,14 +9,29 @@ import type { PendingChange, ProgressionState } from '@/types/state'
 /**
  * Apply a single pending change to the progression state.
  * Returns a new progression state with the change applied.
+ *
+ * Uses progressionKey (role-tier for main lifts, exerciseId for T3) to correctly
+ * update only the specific tier's progression state. This ensures T1 Squat and
+ * T2 Squat have independent progression states.
+ *
+ * @param progression - Current progression state record
+ * @param change - The pending change to apply
+ * @returns New progression state with the change applied
+ *
+ * @example
+ * // Apply a T1 Squat change - only "squat-T1" key is updated
+ * const updated = applyPendingChange(progression, t1SquatChange)
+ * // "squat-T2" remains unchanged
  */
 export function applyPendingChange(
   progression: Record<string, ProgressionState>,
   change: PendingChange
 ): Record<string, ProgressionState> {
-  const exerciseProgression = progression[change.exerciseId]
+  // Use progressionKey for tier-specific updates (T041, T042)
+  const key = change.progressionKey
+  const exerciseProgression = progression[key]
 
-  // If exercise not found, return original progression
+  // If progression entry not found, return original state
   if (!exerciseProgression) {
     return progression
   }
@@ -36,7 +51,7 @@ export function applyPendingChange(
 
   return {
     ...progression,
-    [change.exerciseId]: updatedProgression,
+    [key]: updatedProgression,
   }
 }
 

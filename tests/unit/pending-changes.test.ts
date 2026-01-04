@@ -35,12 +35,15 @@ describe('[US3] Pending Changes Application', () => {
     },
   }
 
+  // Note: progressionKey uses 'ex-squat' format for backward compatibility with existing tests
+  // In production, main lifts would use 'squat-T1' format
   const mockProgressChange: PendingChange = {
     id: 'change-1',
     exerciseId: 'ex-squat',
     exerciseName: 'Squat',
     tier: 'T1',
     type: 'progress',
+    progressionKey: 'ex-squat', // Using exerciseId for test compatibility
     currentWeight: 100,
     currentStage: 0,
     newWeight: 105,
@@ -58,6 +61,7 @@ describe('[US3] Pending Changes Application', () => {
     exerciseName: 'Squat',
     tier: 'T1',
     type: 'stage_change',
+    progressionKey: 'ex-squat',
     currentWeight: 100,
     currentStage: 0,
     newWeight: 100,
@@ -75,6 +79,7 @@ describe('[US3] Pending Changes Application', () => {
     exerciseName: 'Squat',
     tier: 'T1',
     type: 'deload',
+    progressionKey: 'ex-squat',
     currentWeight: 100,
     currentStage: 2,
     newWeight: 85,
@@ -130,6 +135,7 @@ describe('[US3] Pending Changes Application', () => {
       const unknownChange: PendingChange = {
         ...mockProgressChange,
         exerciseId: 'unknown-exercise',
+        progressionKey: 'unknown-exercise', // Key must also be updated
       }
 
       const updated = applyPendingChange(mockProgression, unknownChange)
@@ -147,6 +153,7 @@ describe('[US3] Pending Changes Application', () => {
           id: 'change-bench',
           exerciseId: 'ex-bench',
           exerciseName: 'Bench Press',
+          progressionKey: 'ex-bench', // Key must match progression record
           currentWeight: 60,
           newWeight: 62.5,
         },

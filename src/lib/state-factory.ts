@@ -5,7 +5,7 @@
  */
 
 import type { GZCLPState, ProgramConfig, UserSettings } from '@/types/state'
-import { CURRENT_STATE_VERSION, DEFAULT_REST_TIMERS, WEIGHT_INCREMENTS } from './constants'
+import { CURRENT_STATE_VERSION, DEFAULT_REST_TIMERS, WEIGHT_INCREMENTS, INITIAL_T3_SCHEDULE } from './constants'
 
 /**
  * Create default user settings with the specified unit.
@@ -52,6 +52,7 @@ export function createInitialState(unit: 'kg' | 'lbs' = 'kg'): GZCLPState {
     exercises: {},
     progression: {},
     pendingChanges: [],
+    t3Schedule: INITIAL_T3_SCHEDULE,
 
     settings: createDefaultSettings(unit),
     lastSync: null,

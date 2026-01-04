@@ -139,6 +139,12 @@ const createMockState = (): GZCLPState => ({
     restTimers: { t1: 180, t2: 120, t3: 60 },
   },
   lastSync: null,
+  t3Schedule: {
+    A1: ['curls', 'rows'],
+    B1: ['curls', 'rows'],
+    A2: ['curls', 'rows'],
+    B2: ['curls', 'rows'],
+  },
 })
 
 describe('Dashboard Role-Based Grouping', () => {
@@ -241,6 +247,81 @@ describe('Dashboard Role-Based Grouping', () => {
 
       const nextWorkout = screen.getByTestId('next-workout')
       expect(nextWorkout).toHaveTextContent('Deadlift')
+    })
+  })
+
+  describe('per-day T3 schedule', () => {
+    it('should show only A1 T3s when on day A1', () => {
+      const state = createMockState()
+      // Different T3s per day
+      state.t3Schedule = {
+        A1: ['curls'],
+        B1: ['rows'],
+        A2: ['curls', 'rows'],
+        B2: [],
+      }
+      state.program.currentDay = 'A1'
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+
+      render(<Dashboard />)
+
+      const t3Section = screen.getByTestId('tier-section-t3')
+      expect(t3Section).toHaveTextContent('Bicep Curls')
+      expect(t3Section).not.toHaveTextContent('Cable Rows')
+    })
+
+    it('should show only B1 T3s when on day B1', () => {
+      const state = createMockState()
+      state.t3Schedule = {
+        A1: ['curls'],
+        B1: ['rows'],
+        A2: ['curls', 'rows'],
+        B2: [],
+      }
+      state.program.currentDay = 'B1'
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+
+      render(<Dashboard />)
+
+      const t3Section = screen.getByTestId('tier-section-t3')
+      expect(t3Section).toHaveTextContent('Cable Rows')
+      expect(t3Section).not.toHaveTextContent('Bicep Curls')
+    })
+
+    it('should show no T3s when day has empty schedule', () => {
+      const state = createMockState()
+      state.t3Schedule = {
+        A1: ['curls'],
+        B1: ['rows'],
+        A2: ['curls', 'rows'],
+        B2: [],
+      }
+      state.program.currentDay = 'B2'
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+
+      render(<Dashboard />)
+
+      // T3 section should not exist when there are no T3s scheduled
+      const t3Section = screen.queryByTestId('tier-section-t3')
+      expect(t3Section).not.toBeInTheDocument()
+    })
+
+    it('should show combined T3s in NextWorkout for day with multiple', () => {
+      const state = createMockState()
+      state.t3Schedule = {
+        A1: ['curls'],
+        B1: ['rows'],
+        A2: ['curls', 'rows'],
+        B2: [],
+      }
+      state.program.currentDay = 'A2'
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+
+      render(<Dashboard />)
+
+      const nextWorkout = screen.getByTestId('next-workout')
+      expect(nextWorkout).toHaveTextContent('Bicep Curls')
+      expect(nextWorkout).toHaveTextContent('Cable Rows')
     })
   })
 })

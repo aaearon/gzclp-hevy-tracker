@@ -1,0 +1,15 @@
+{
+  "status": "complete",
+  "step_number": 1,
+  "total_steps": 1,
+  "metadata": {
+    "files_analyzed": [
+      "src/lib/routine-importer.ts",
+      "src/lib/constants.ts",
+      "src/types/state.ts"
+    ],
+    "review_outcome": "Approved with modifications"
+  },
+  "plan_summary": "## Architectural Opinion\n\n1. **Constants:** `src/lib/constants.ts` is the appropriate location. It maintains consistency with other static definitions like `EXERCISE_ROLES`.\n\n2. **Matching Strategy:** Use **Regex with word boundaries** (e.g., `new RegExp(\"\\b(${pattern})\\b\", 'i')`). This is safer than substrings to prevent false positives while handling variations like \"warm up\" vs \"warm-up\".\n\n3. **Edge Cases:** \"Warm-up Squat\" should be classified as a **Warmup**. This ensures the main heavy sets (T1) are correctly identified as the *subsequent* exercise. The system relies on the user having separate entries for warmup vs. work sets, which is standard behavior.\n\n4. **Storage:** **Do not discard.** Update `DayImportData` in `src/types/state.ts` to include a `warmups: ImportedExercise[]` field. This allows the UI to display detected warmups and provides a recovery path if detection yields a false positive.\n\n## Implementation Plan\n1. **Modify Types:** Update `DayImportData` to include `warmups` array.\n2. **Add Constants:** Define `WARMUP_PATTERNS` in `constants.ts`.\n3. **Update Logic:** In `routine-importer.ts`, implement `isWarmupExercise` and refactor `extractDayExercises` to partition the exercise list into `[...warmups]` and `[...mainExercises]` *before* assigning T1/T2 roles based on index.",
+  "files_required_to_continue": []
+}
