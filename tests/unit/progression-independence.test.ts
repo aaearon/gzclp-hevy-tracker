@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import { analyzeWorkout } from '@/lib/workout-analysis'
 import { createPendingChangesFromAnalysis } from '@/lib/progression'
-import type { Workout, WorkoutSet } from '@/types/hevy'
+import type { Workout } from '@/types/hevy'
 import type { ExerciseConfig, ProgressionState } from '@/types/state'
 
 describe('[US1] T1/T2 Progression Independence', () => {

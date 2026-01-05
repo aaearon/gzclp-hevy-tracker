@@ -49,7 +49,7 @@ export function SlotAssignmentStep({
   }
 
   // Get T3s for the currently selected day
-  const dayT3s = assignments.t3Exercises[selectedDay] || []
+  const dayT3s = assignments.t3Exercises[selectedDay]
 
   const handleAddT3 = () => {
     // Add empty T3 slot for the current day
@@ -111,13 +111,13 @@ export function SlotAssignmentStep({
 
         <div className="space-y-4">
           {dayT3s.map((templateId, index) => (
-            <div key={`${selectedDay}-${index}`} className="flex items-start gap-2">
+            <div key={`${selectedDay}-${String(index)}`} className="flex items-start gap-2">
               <div className="flex-1">
-                <label htmlFor={`t3-${selectedDay}-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor={`t3-${selectedDay}-${String(index)}`} className="block text-sm font-medium text-gray-700 mb-1">
                   T3 Exercise {index + 1}
                 </label>
                 <ExerciseSelector
-                  id={`t3-${selectedDay}-${index}`}
+                  id={`t3-${selectedDay}-${String(index)}`}
                   exercises={exercises}
                   value={templateId || null}
                   onChange={(newTemplateId) => { onT3Update(selectedDay, index, newTemplateId) }}
@@ -128,7 +128,7 @@ export function SlotAssignmentStep({
                 onClick={() => { onT3Remove(selectedDay, index) }}
                 className="mt-6 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md
                            min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label={`Remove T3 exercise ${index + 1}`}
+                aria-label={`Remove T3 exercise ${String(index + 1)}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path

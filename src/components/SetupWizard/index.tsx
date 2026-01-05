@@ -5,8 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { ApiKeyStep } from './ApiKeyStep'
-import { RoutineSourceStep } from './RoutineSourceStep'
+import { WelcomeStep } from './WelcomeStep'
 import { RoutineAssignmentStep } from './RoutineAssignmentStep'
 import { ImportReviewStep } from './ImportReviewStep'
 import { NextWorkoutStep } from './NextWorkoutStep'
@@ -16,12 +15,12 @@ import { SetupComplete } from './SetupComplete'
 import { useHevyApi } from '@/hooks/useHevyApi'
 import { useProgram } from '@/hooks/useProgram'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
-import { MAIN_LIFT_ROLES, type MainLiftRole } from '@/types/state'
+import { MAIN_LIFT_ROLES, type MainLiftRole, type Tier } from '@/types/state'
 import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
+import { getProgressionKey } from '@/lib/role-utils'
 
 type SetupStep =
-  | 'api-key'
-  | 'routine-source'
+  | 'welcome'
   | 'routine-assign'
   | 'import-review'
   | 'next-workout'
@@ -39,7 +38,7 @@ const initialAssignments: CreatePathAssignments = {
 }
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
-  const [currentStep, setCurrentStep] = useState<SetupStep>('api-key')
+  const [currentStep, setCurrentStep] = useState<SetupStep>('welcome')
   const [routineSourceMode, setRoutineSourceMode] = useState<RoutineSourceMode | null>(null)
   const [assignments, setAssignments] = useState<CreatePathAssignments>(initialAssignments)
   const [weights, setWeights] = useState<Record<string, number>>({})
@@ -50,9 +49,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const program = useProgram()
   const routineImport = useRoutineImport(hevy.routines)
 
-  // Load routines when entering routine-source step
+  // Load routines immediately after API connection (for WelcomeStep path selection)
   useEffect(() => {
-    if (currentStep === 'routine-source' && hevy.isConnected && hevy.routines.length === 0 && !hevy.isLoadingRoutines) {
+    if (currentStep === 'welcome' && hevy.isConnected && hevy.routines.length === 0 && !hevy.isLoadingRoutines) {
       void hevy.loadRoutines()
     }
   }, [currentStep, hevy.isConnected, hevy.routines.length, hevy.isLoadingRoutines, hevy.loadRoutines])
@@ -64,27 +63,34 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   }, [currentStep, hevy.isConnected, hevy.exerciseTemplates.length, hevy.loadExerciseTemplates])
 
-  const handleApiConnect = useCallback(
+  // API key validation for WelcomeStep (does not navigate away)
+  const handleValidateApiKey = useCallback(
     async (apiKey: string): Promise<boolean> => {
       const success = await hevy.connect(apiKey)
       if (success) {
         program.setApiKey(apiKey)
-        setCurrentStep('routine-source')
       }
       return success
     },
     [hevy, program]
   )
 
-  const handleRoutineSourceSelect = useCallback((mode: RoutineSourceMode) => {
-    setRoutineSourceMode(mode)
-    if (mode === 'create') {
+  // Combined handler for WelcomeStep completion
+  const handleWelcomeComplete = useCallback((data: {
+    apiKey: string
+    path: RoutineSourceMode
+    unit: WeightUnit
+  }) => {
+    setRoutineSourceMode(data.path)
+    program.setWeightUnit(data.unit)
+    setUnit(data.unit)
+    if (data.path === 'create') {
       setCurrentStep('exercises')
     } else {
       // Import path - go to routine assignment
       setCurrentStep('routine-assign')
     }
-  }, [])
+  }, [program])
 
   const handleRoutineAssign = useCallback(
     (day: GZCLPDay, routineId: string | null) => {
@@ -135,45 +141,91 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const handleNextWorkoutComplete = useCallback(() => {
     if (routineSourceMode === 'import' && routineImport.importResult) {
-      const { exercises: importedExercises, byDay } = routineImport.importResult
-      const { mainLiftWeights } = routineImport
-
-      // BUG FIX (Phase 8): Create weight lookup from mainLiftWeights
-      // This contains user-verified T1 weights from MainLiftVerification component
-      const mainLiftWeightMap = new Map(
-        mainLiftWeights.map((w) => [w.role, { weight: w.t1.weight, stage: w.t1.stage }])
-      )
+      const { byDay } = routineImport.importResult
 
       // Track saved exercise IDs for t3Schedule
       const savedExerciseIds = new Map<string, string>() // templateId -> exerciseId
+      // Track which main lift progression keys have been set (to avoid duplicates)
+      const processedProgressionKeys = new Set<string>()
 
-      for (const imported of importedExercises) {
-        if (!imported.role) {
-          continue // Skip exercises without roles
+      // Process all days and exercises
+      for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
+        const dayData = byDay[day]
+
+        // Process T1 exercise (if exists and has main lift role)
+        if (dayData.t1?.role && MAIN_LIFT_ROLES.includes(dayData.t1.role as MainLiftRole)) {
+          const imported = dayData.t1
+          const role = imported.role as MainLiftRole
+
+          // Add exercise if not already added
+          let exerciseId = savedExerciseIds.get(imported.templateId)
+          if (!exerciseId) {
+            exerciseId = program.addExercise({
+              hevyTemplateId: imported.templateId,
+              name: imported.name,
+              role: imported.role,
+            })
+            savedExerciseIds.set(imported.templateId, exerciseId)
+          }
+
+          // Set T1 progression using role-tier key (Bug Fix Phase 7)
+          const t1Key = getProgressionKey(exerciseId, role, 'T1')
+          if (!processedProgressionKeys.has(t1Key)) {
+            const weight = imported.userWeight ?? imported.detectedWeight
+            const stage = imported.userStage ?? imported.detectedStage
+            program.setProgressionByKey(t1Key, exerciseId, weight, stage)
+            processedProgressionKeys.add(t1Key)
+          }
         }
 
-        // Add exercise to program with role
-        const exerciseId = program.addExercise({
-          hevyTemplateId: imported.templateId,
-          name: imported.name,
-          role: imported.role,
-        })
+        // Process T2 exercise (if exists and has main lift role)
+        if (dayData.t2?.role && MAIN_LIFT_ROLES.includes(dayData.t2.role as MainLiftRole)) {
+          const imported = dayData.t2
+          const role = imported.role as MainLiftRole
 
-        // Track the saved exercise ID
-        savedExerciseIds.set(imported.templateId, exerciseId)
+          // Add exercise if not already added
+          let exerciseId = savedExerciseIds.get(imported.templateId)
+          if (!exerciseId) {
+            exerciseId = program.addExercise({
+              hevyTemplateId: imported.templateId,
+              name: imported.name,
+              role: imported.role,
+            })
+            savedExerciseIds.set(imported.templateId, exerciseId)
+          }
 
-        // Set initial weight and stage only for main lifts
-        const isMainLift = ['squat', 'bench', 'ohp', 'deadlift'].includes(imported.role)
-        if (isMainLift) {
-          // BUG FIX: Use verified weight from mainLiftWeights, not detectedWeight
-          const verified = mainLiftWeightMap.get(imported.role as MainLiftRole)
-          const confirmedWeight = verified?.weight ?? imported.userWeight ?? imported.detectedWeight
-          const confirmedStage = verified?.stage ?? imported.userStage ?? imported.detectedStage
-          program.setInitialWeight(exerciseId, confirmedWeight, confirmedStage)
+          // Set T2 progression using role-tier key (Bug Fix Phase 7)
+          const t2Key = getProgressionKey(exerciseId, role, 'T2')
+          if (!processedProgressionKeys.has(t2Key)) {
+            const weight = imported.userWeight ?? imported.detectedWeight
+            const stage = imported.userStage ?? imported.detectedStage
+            program.setProgressionByKey(t2Key, exerciseId, weight, stage)
+            processedProgressionKeys.add(t2Key)
+          }
+        }
+
+        // Process T3 exercises (still use exerciseId as key)
+        for (const t3 of dayData.t3s) {
+          if (!t3.templateId) continue
+
+          // Add exercise if not already added
+          let exerciseId = savedExerciseIds.get(t3.templateId)
+          if (!exerciseId) {
+            exerciseId = program.addExercise({
+              hevyTemplateId: t3.templateId,
+              name: t3.name,
+              role: t3.role ?? 't3',
+            })
+            savedExerciseIds.set(t3.templateId, exerciseId)
+
+            // Set T3 progression by exerciseId (unchanged behavior)
+            const weight = t3.userWeight ?? t3.detectedWeight
+            program.setInitialWeight(exerciseId, weight)
+          }
         }
       }
 
-      // BUG FIX (Phase 8): Build and save t3Schedule from byDay structure
+      // Build and save t3Schedule from byDay structure
       const t3Schedule: Record<GZCLPDay, string[]> = {
         A1: [],
         B1: [],
@@ -183,11 +235,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
       for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
         const dayData = byDay[day]
-        if (dayData?.t3s) {
-          t3Schedule[day] = dayData.t3s
-            .filter((t3) => t3.templateId && savedExerciseIds.has(t3.templateId))
-            .map((t3) => savedExerciseIds.get(t3.templateId)!)
-        }
+        t3Schedule[day] = dayData.t3s
+          .filter((t3) => t3.templateId && savedExerciseIds.has(t3.templateId))
+          .map((t3) => savedExerciseIds.get(t3.templateId) ?? '')
+          .filter((id) => id !== '')
       }
 
       program.setT3Schedule(t3Schedule)
@@ -199,7 +250,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     // Set current day and complete
     program.setCurrentDay(selectedDay)
     setCurrentStep('complete')
-  }, [routineSourceMode, routineImport.importResult, routineImport.mainLiftWeights, routineImport.assignment, selectedDay, program])
+  }, [routineSourceMode, routineImport, selectedDay, program])
 
   const handleNextWorkoutBack = useCallback(() => {
     // Go back to import-review if import path, or weights if create path
@@ -297,8 +348,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     }
 
     for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
-      for (let i = 0; i < assignments.t3Exercises[day].length; i++) {
-        const templateId = assignments.t3Exercises[day][i]
+      for (const templateId of assignments.t3Exercises[day]) {
         if (!templateId) continue
 
         // Deduplicate: same T3 on multiple days uses same exerciseId
@@ -343,11 +393,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const handleBack = useCallback(() => {
     switch (currentStep) {
-      case 'routine-source':
-        setCurrentStep('api-key')
-        break
       case 'routine-assign':
-        setCurrentStep('routine-source')
+        setCurrentStep('welcome')
         break
       case 'import-review':
         setCurrentStep('routine-assign')
@@ -357,8 +404,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         setCurrentStep(routineSourceMode === 'import' ? 'import-review' : 'weights')
         break
       case 'exercises':
-        // Go back to routine-source if we came from create, or routine-assign if import
-        setCurrentStep(routineSourceMode === 'import' ? 'routine-assign' : 'routine-source')
+        setCurrentStep('welcome')
         break
       case 'weights':
         setCurrentStep('exercises')
@@ -373,12 +419,12 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       <div className="max-w-2xl mx-auto">
         {/* Progress indicator - dynamic based on path */}
         {(() => {
-          // Create path shows: Connect → Source → Exercises → Weights → Next → Done
-          // Import path shows: Connect → Source → Assign → Review → Next → Done
-          const createSteps: SetupStep[] = ['api-key', 'routine-source', 'exercises', 'weights', 'next-workout', 'complete']
-          const importSteps: SetupStep[] = ['api-key', 'routine-source', 'routine-assign', 'import-review', 'next-workout', 'complete']
-          const createLabels = ['Connect', 'Source', 'Exercises', 'Weights', 'Next', 'Done']
-          const importLabels = ['Connect', 'Source', 'Assign', 'Review', 'Next', 'Done']
+          // Create path shows: Welcome → Exercises → Weights → Next → Done
+          // Import path shows: Welcome → Assign → Review → Next → Done
+          const createSteps: SetupStep[] = ['welcome', 'exercises', 'weights', 'next-workout', 'complete']
+          const importSteps: SetupStep[] = ['welcome', 'routine-assign', 'import-review', 'next-workout', 'complete']
+          const createLabels = ['Welcome', 'Exercises', 'Weights', 'Next', 'Done']
+          const importLabels = ['Welcome', 'Assign', 'Review', 'Next', 'Done']
 
           const steps = routineSourceMode === 'import' ? importSteps : createSteps
           const labels = routineSourceMode === 'import' ? importLabels : createLabels
@@ -417,19 +463,14 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
         {/* Step content */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          {currentStep === 'api-key' && (
-            <ApiKeyStep
-              onConnect={handleApiConnect}
-              isConnecting={hevy.isConnecting}
-              connectionError={hevy.connectionError}
-            />
-          )}
-
-          {currentStep === 'routine-source' && (
-            <RoutineSourceStep
+          {currentStep === 'welcome' && (
+            <WelcomeStep
+              onComplete={handleWelcomeComplete}
+              onValidateKey={handleValidateApiKey}
+              isValidating={hevy.isConnecting}
+              validationError={hevy.connectionError}
               hasRoutines={hevy.routines.length > 0}
-              isLoading={hevy.isLoadingRoutines}
-              onSelect={handleRoutineSourceSelect}
+              isLoadingRoutines={hevy.isLoadingRoutines}
             />
           )}
 
@@ -496,8 +537,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </div>
 
         {/* Navigation buttons */}
-        {currentStep !== 'api-key' &&
-          currentStep !== 'routine-source' &&
+        {currentStep !== 'welcome' &&
           currentStep !== 'routine-assign' &&
           currentStep !== 'import-review' &&
           currentStep !== 'next-workout' &&

@@ -10,15 +10,13 @@ import type { ExerciseRole, GZCLPDay, Stage, Tier, WeightUnit } from '@/types/st
 // Exercise Role System (NEW)
 // =============================================================================
 
-/** All 7 roles in display order */
+/** All 5 roles in display order (warmup/cooldown removed - Task 2.1b) */
 export const EXERCISE_ROLES: readonly ExerciseRole[] = [
   'squat',
   'bench',
   'ohp',
   'deadlift',
   't3',
-  'warmup',
-  'cooldown',
 ] as const
 
 /** Metadata for each role for display purposes */
@@ -50,16 +48,6 @@ export const ROLE_DISPLAY: Record<
     label: 'T3 Accessory',
     description: 'Accessory work (3x15+)',
     color: 'green',
-  },
-  warmup: {
-    label: 'Warmup',
-    description: 'Pre-workout exercises',
-    color: 'gray',
-  },
-  cooldown: {
-    label: 'Cooldown',
-    description: 'Post-workout exercises',
-    color: 'gray',
   },
 }
 
@@ -124,6 +112,16 @@ export function getRepScheme(tier: Tier, stage: Stage): RepScheme {
 }
 
 // =============================================================================
+// Warmup Configuration
+// =============================================================================
+
+export const WARMUP_CONFIG = {
+  percentages: [0, 0.5, 0.7, 0.85], // 0 = bar only
+  reps: [10, 5, 3, 2],
+  minWeight: 20, // kg - bar weight
+} as const
+
+// =============================================================================
 // Weight Increments
 // =============================================================================
 
@@ -145,9 +143,9 @@ export const WEIGHT_ROUNDING: Record<WeightUnit, number> = {
 // =============================================================================
 
 export const DEFAULT_REST_TIMERS: Record<Tier, number> = {
-  T1: 180, // 3 minutes
-  T2: 120, // 2 minutes
-  T3: 60, // 1 minute
+  T1: 240, // 4 minutes (spec: 3-5 min midpoint)
+  T2: 150, // 2.5 minutes (spec: 2-3 min midpoint)
+  T3: 75, // 1.25 minutes (spec: 60-90s midpoint)
 }
 
 // =============================================================================

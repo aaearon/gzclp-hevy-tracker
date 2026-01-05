@@ -7,7 +7,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RoleDropdown } from '@/components/common/RoleDropdown'
-import type { ExerciseRole } from '@/types/state'
 
 describe('RoleDropdown', () => {
   describe('rendering', () => {
@@ -18,15 +17,16 @@ describe('RoleDropdown', () => {
       expect(screen.getByText('Select role')).toBeInTheDocument()
     })
 
-    it('should render all 7 roles', () => {
+    it('should render all 5 roles (warmup/cooldown removed)', () => {
       render(<RoleDropdown value={undefined} onChange={() => {}} />)
       expect(screen.getByText('Squat')).toBeInTheDocument()
       expect(screen.getByText('Bench Press')).toBeInTheDocument()
       expect(screen.getByText('Overhead Press')).toBeInTheDocument()
       expect(screen.getByText('Deadlift')).toBeInTheDocument()
       expect(screen.getByText('T3 Accessory')).toBeInTheDocument()
-      expect(screen.getByText('Warmup')).toBeInTheDocument()
-      expect(screen.getByText('Cooldown')).toBeInTheDocument()
+      // Warmup and Cooldown roles removed in Task 2.1b
+      expect(screen.queryByText('Warmup')).not.toBeInTheDocument()
+      expect(screen.queryByText('Cooldown')).not.toBeInTheDocument()
     })
 
     it('should show selected value', () => {

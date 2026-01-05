@@ -19,6 +19,8 @@ export interface DayReviewPanelProps {
   onT2Update: (updates: Partial<ImportedExercise>) => void
   /** Callback when a T3 exercise is removed */
   onT3Remove: (index: number) => void
+  /** Callback when T3 weight is updated */
+  onT3WeightUpdate?: (templateId: string, weight: number) => void
   /** Weight unit for display */
   unit: WeightUnit
 }
@@ -86,24 +88,58 @@ function TierCard({ tier, exercise, onWeightChange, unit }: TierCardProps) {
 interface T3ListItemProps {
   exercise: ImportedExercise
   onRemove: () => void
+  onWeightChange?: (weight: number) => void
+  unit: WeightUnit
 }
 
-function T3ListItem({ exercise, onRemove }: T3ListItemProps) {
+function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProps) {
+  const currentWeight = exercise.userWeight ?? exercise.detectedWeight
+  const inputId = `t3-weight-${exercise.templateId}`
+
+  const handleWeightChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value)
+      if (!isNaN(value) && onWeightChange) {
+        onWeightChange(value)
+      }
+    },
+    [onWeightChange]
+  )
+
   return (
     <li className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
       <div className="flex items-center gap-3">
         <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">T3</span>
         <span className="text-gray-900">{exercise.name}</span>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Remove ${exercise.name}`}
-        className="rounded-md px-3 py-1 text-sm text-red-600 hover:bg-red-50
-                   min-h-[44px] min-w-[44px] flex items-center justify-center"
-      >
-        Remove
-      </button>
+      <div className="flex items-center gap-2">
+        {/* T3 weight input */}
+        <label htmlFor={inputId} className="sr-only">
+          {exercise.name} weight
+        </label>
+        <input
+          id={inputId}
+          type="number"
+          value={currentWeight}
+          onChange={handleWeightChange}
+          step="0.5"
+          min="0"
+          aria-label={`${exercise.name} weight`}
+          className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm
+                     focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
+                     min-h-[36px]"
+        />
+        <span className="text-sm text-gray-600">{unit}</span>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${exercise.name}`}
+          className="rounded-md px-3 py-1 text-sm text-red-600 hover:bg-red-50
+                     min-h-[44px] min-w-[44px] flex items-center justify-center"
+        >
+          Remove
+        </button>
+      </div>
     </li>
   )
 }
@@ -121,6 +157,7 @@ export function DayReviewPanel({
   onT1Update,
   onT2Update,
   onT3Remove,
+  onT3WeightUpdate,
   unit,
 }: DayReviewPanelProps) {
   const handleT1WeightChange = useCallback(
@@ -176,9 +213,15 @@ export function DayReviewPanel({
           <ul className="space-y-2">
             {dayData.t3s.map((t3, index) => (
               <T3ListItem
-                key={`${t3.templateId}-${index}`}
+                key={`${t3.templateId}-${String(index)}`}
                 exercise={t3}
-                onRemove={() => onT3Remove(index)}
+                onRemove={() => { onT3Remove(index) }}
+                onWeightChange={
+                  onT3WeightUpdate
+                    ? (weight: number) => { onT3WeightUpdate(t3.templateId, weight) }
+                    : undefined
+                }
+                unit={unit}
               />
             ))}
           </ul>

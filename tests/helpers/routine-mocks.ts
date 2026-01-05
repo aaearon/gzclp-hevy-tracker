@@ -161,7 +161,7 @@ export function createGZCLPA1Routine(
   stages: { t1: 0 | 1 | 2; t2: 0 | 1 | 2 } = { t1: 0, t2: 0 },
   weights: { t1: number; t2: number; t3: number } = { t1: 60, t2: 40, t3: 20 }
 ): Routine {
-  return createMockRoutine('GZCLP A1', [
+  return createMockRoutine('GZCLP Day A1', [
     createT1Exercise('Squat', stages.t1, weights.t1),
     createT2Exercise('Bench Press', stages.t2, weights.t2),
     createT3Exercise('Lat Pulldown', weights.t3),
@@ -177,7 +177,7 @@ export function createGZCLPB1Routine(
   stages: { t1: 0 | 1 | 2; t2: 0 | 1 | 2 } = { t1: 0, t2: 0 },
   weights: { t1: number; t2: number; t3: number } = { t1: 40, t2: 80, t3: 20 }
 ): Routine {
-  return createMockRoutine('GZCLP B1', [
+  return createMockRoutine('GZCLP Day B1', [
     createT1Exercise('Overhead Press', stages.t1, weights.t1),
     createT2Exercise('Deadlift', stages.t2, weights.t2),
     createT3Exercise('Lat Pulldown', weights.t3),
@@ -193,7 +193,7 @@ export function createGZCLPA2Routine(
   stages: { t1: 0 | 1 | 2; t2: 0 | 1 | 2 } = { t1: 0, t2: 0 },
   weights: { t1: number; t2: number; t3: number } = { t1: 50, t2: 50, t3: 20 }
 ): Routine {
-  return createMockRoutine('GZCLP A2', [
+  return createMockRoutine('GZCLP Day A2', [
     createT1Exercise('Bench Press', stages.t1, weights.t1),
     createT2Exercise('Squat', stages.t2, weights.t2),
     createT3Exercise('Lat Pulldown', weights.t3),
@@ -209,7 +209,7 @@ export function createGZCLPB2Routine(
   stages: { t1: 0 | 1 | 2; t2: 0 | 1 | 2 } = { t1: 0, t2: 0 },
   weights: { t1: number; t2: number; t3: number } = { t1: 100, t2: 35, t3: 20 }
 ): Routine {
-  return createMockRoutine('GZCLP B2', [
+  return createMockRoutine('GZCLP Day B2', [
     createT1Exercise('Deadlift', stages.t1, weights.t1),
     createT2Exercise('Overhead Press', stages.t2, weights.t2),
     createT3Exercise('Lat Pulldown', weights.t3),
@@ -311,7 +311,7 @@ export function createRoutineWithUniqueT3s(
  * Create a routine with many T3s (5+) to test unlimited extraction.
  */
 export function createRoutineWithManyT3s(numT3s: number): Routine {
-  const t3Names = Array.from({ length: numT3s }, (_, i) => `T3 Exercise ${i + 1}`)
+  const t3Names = Array.from({ length: numT3s }, (_, i) => `T3 Exercise ${String(i + 1)}`)
   const exercises = [
     createT1Exercise('Squat', 0),
     createT2Exercise('Bench Press', 0),

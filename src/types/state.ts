@@ -16,24 +16,18 @@ export type Tier = 'T1' | 'T2' | 'T3'
 // =============================================================================
 
 /**
- * 7 roles replacing 11 slots + 6 categories.
- * Main lifts are exclusive (one exercise each), others allow multiple.
+ * 5 roles replacing 11 slots + 6 categories.
+ * Main lifts are exclusive (one exercise each), T3 allows multiple.
+ * Note: warmup/cooldown roles removed - T1 warmups are now inline sets (Task 2.1).
  */
-export type ExerciseRole =
-  | 'squat'
-  | 'bench'
-  | 'ohp'
-  | 'deadlift'
-  | 't3'
-  | 'warmup'
-  | 'cooldown'
+export type ExerciseRole = 'squat' | 'bench' | 'ohp' | 'deadlift' | 't3'
 
 /** Main lift roles - exclusive, one exercise each */
 export const MAIN_LIFT_ROLES = ['squat', 'bench', 'ohp', 'deadlift'] as const
 export type MainLiftRole = (typeof MAIN_LIFT_ROLES)[number]
 
 /** Multi-assign roles - unlimited exercises allowed */
-export const MULTI_ASSIGN_ROLES = ['t3', 'warmup', 'cooldown'] as const
+export const MULTI_ASSIGN_ROLES = ['t3'] as const
 
 export type GZCLPDay = 'A1' | 'B1' | 'A2' | 'B2'
 
@@ -150,6 +144,18 @@ export interface PendingChange {
   workoutId: string
   workoutDate: string
   createdAt: string
+
+  // Summary fields (for Post-Workout Summary panel)
+  /** Number of sets completed in workout */
+  setsCompleted?: number
+  /** Target number of sets for the scheme */
+  setsTarget?: number
+  /** AMRAP set rep count (for T1/T3) */
+  amrapReps?: number
+  /** Whether this workout was successful (hit targets) */
+  success?: boolean
+  /** Whether AMRAP beat previous record */
+  newPR?: boolean
 }
 
 // =============================================================================
@@ -167,6 +173,52 @@ export interface UserSettings {
     t2: number // seconds
     t3: number // seconds
   }
+}
+
+// =============================================================================
+// Workout Summary (Post-Workout Panel)
+// =============================================================================
+
+/**
+ * Data structure for the Post-Workout Summary panel.
+ * Built from PendingChange[] after workout analysis.
+ */
+export interface WorkoutSummaryData {
+  dayName: string           // e.g., "Day A1"
+  completedAt: string       // ISO date string
+
+  exercises: {
+    name: string
+    tier: Tier
+    weight: number          // kg
+    setsCompleted: number
+    setsTarget: number
+    success: boolean
+    amrapReps?: number      // Only for T1/T3
+  }[]
+
+  newPRs: {
+    exercise: string
+    reps: number
+    weight: number          // kg
+  }[]
+
+  progressions: {
+    exercise: string
+    oldWeight: number
+    newWeight: number
+  }[]
+
+  stageChanges: {
+    exercise: string
+    oldStage: Stage
+    newStage: Stage
+  }[]
+
+  deloads: {
+    exercise: string
+    newWeight: number
+  }[]
 }
 
 // =============================================================================

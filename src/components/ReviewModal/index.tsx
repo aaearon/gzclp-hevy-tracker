@@ -14,6 +14,7 @@ interface ReviewModalProps {
   pendingChanges: PendingChange[]
   unit: WeightUnit
   onApply: (change: PendingChange) => void
+  onApplyAll: () => void
   onReject: (changeId: string) => void
   onModify: (changeId: string, newWeight: number) => void
   onClose: () => void
@@ -123,6 +124,7 @@ export function ReviewModal({
   pendingChanges,
   unit,
   onApply,
+  onApplyAll,
   onReject,
   onModify,
   onClose,
@@ -172,12 +174,6 @@ export function ReviewModal({
 
   if (!isOpen) {
     return null
-  }
-
-  const handleApplyAll = () => {
-    for (const change of pendingChanges) {
-      onApply(change)
-    }
   }
 
   // Handle backdrop click to close
@@ -238,7 +234,7 @@ export function ReviewModal({
               <div className="border-t pt-4">
                 <button
                   type="button"
-                  onClick={handleApplyAll}
+                  onClick={onApplyAll}
                   className="w-full rounded bg-green-600 py-3 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 min-h-[44px]"
                 >
                   Apply All

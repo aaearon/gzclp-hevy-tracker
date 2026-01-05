@@ -9,8 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useProgression } from '@/hooks/useProgression'
 import type { Workout, WorkoutExercise, WorkoutSet } from '@/types/hevy'
-import type { ExerciseConfig, ProgressionState, GZCLPState, WeightUnit } from '@/types/state'
-import { createInitialState } from '@/lib/state-factory'
+import type { ExerciseConfig, ProgressionState, WeightUnit } from '@/types/state'
 
 // Mock the Hevy client
 const mockGetWorkouts = vi.fn()
@@ -66,7 +65,7 @@ function createWorkout(
 ): Workout {
   return {
     id,
-    title: 'GZCLP A1',
+    title: 'GZCLP Day A1',
     description: null,
     start_time: date,
     end_time: date,
@@ -308,7 +307,7 @@ describe('[US2] Sync Flow Integration', () => {
 
   describe('Sync State', () => {
     it('should update isSyncing state during sync', async () => {
-      const workout = createWorkout('workout-1', '2024-01-15T10:00:00Z', [])
+      const _workout = createWorkout('workout-1', '2024-01-15T10:00:00Z', [])
 
       // Make the promise controllable
       let resolvePromise: (value: unknown) => void

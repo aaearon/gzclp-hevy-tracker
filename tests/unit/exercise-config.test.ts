@@ -26,8 +26,8 @@ describe('[US1] GZCLP Structure', () => {
   })
 
   describe('Exercise Roles', () => {
-    it('should have 7 exercise roles', () => {
-      expect(EXERCISE_ROLES).toHaveLength(7)
+    it('should have 5 exercise roles (warmup/cooldown removed in Task 2.1b)', () => {
+      expect(EXERCISE_ROLES).toHaveLength(5)
     })
 
     it('should include all main lifts', () => {
@@ -41,21 +41,20 @@ describe('[US1] GZCLP Structure', () => {
       expect(EXERCISE_ROLES).toContain('t3')
     })
 
-    it('should include warmup and cooldown roles', () => {
-      expect(EXERCISE_ROLES).toContain('warmup')
-      expect(EXERCISE_ROLES).toContain('cooldown')
+    it('should NOT include warmup and cooldown roles (removed in Task 2.1b)', () => {
+      expect(EXERCISE_ROLES).not.toContain('warmup')
+      expect(EXERCISE_ROLES).not.toContain('cooldown')
     })
   })
 
   describe('Role Display Names', () => {
-    it('should have display info for all roles', () => {
+    it('should have display info for all 5 roles', () => {
       expect(ROLE_DISPLAY.squat).toBeDefined()
       expect(ROLE_DISPLAY.bench).toBeDefined()
       expect(ROLE_DISPLAY.deadlift).toBeDefined()
       expect(ROLE_DISPLAY.ohp).toBeDefined()
       expect(ROLE_DISPLAY.t3).toBeDefined()
-      expect(ROLE_DISPLAY.warmup).toBeDefined()
-      expect(ROLE_DISPLAY.cooldown).toBeDefined()
+      // warmup and cooldown removed in Task 2.1b
     })
 
     it('should have label and description for each role', () => {

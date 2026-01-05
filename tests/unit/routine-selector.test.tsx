@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RoutineSelector } from '@/components/common/RoutineSelector'
 import type { AvailableRoutine } from '@/types/state'
@@ -15,14 +15,14 @@ describe('RoutineSelector', () => {
   const mockRoutines: AvailableRoutine[] = [
     {
       id: 'routine-1',
-      title: 'GZCLP A1',
+      title: 'GZCLP Day A1',
       exerciseCount: 5,
       exercisePreview: ['Squat', 'Bench Press', 'Lat Pulldown'],
       updatedAt: '2026-01-03T10:00:00Z',
     },
     {
       id: 'routine-2',
-      title: 'GZCLP B1',
+      title: 'GZCLP Day B1',
       exerciseCount: 5,
       exercisePreview: ['OHP', 'Deadlift', 'Cable Row'],
       updatedAt: '2026-01-02T10:00:00Z',
@@ -52,15 +52,15 @@ describe('RoutineSelector', () => {
     it('renders routine list when open', () => {
       render(<RoutineSelector {...defaultProps} />)
 
-      expect(screen.getByText('GZCLP A1')).toBeInTheDocument()
-      expect(screen.getByText('GZCLP B1')).toBeInTheDocument()
+      expect(screen.getByText('GZCLP Day A1')).toBeInTheDocument()
+      expect(screen.getByText('GZCLP Day B1')).toBeInTheDocument()
       expect(screen.getByText('Upper Body')).toBeInTheDocument()
     })
 
     it('does not render when isOpen is false', () => {
       render(<RoutineSelector {...defaultProps} isOpen={false} />)
 
-      expect(screen.queryByText('GZCLP A1')).not.toBeInTheDocument()
+      expect(screen.queryByText('GZCLP Day A1')).not.toBeInTheDocument()
     })
 
     it('displays exercise preview for each routine', () => {
@@ -73,7 +73,7 @@ describe('RoutineSelector', () => {
     it('displays exercise count for each routine', () => {
       render(<RoutineSelector {...defaultProps} />)
 
-      const routine1 = screen.getByText('GZCLP A1').closest('button')
+      const routine1 = screen.getByText('GZCLP Day A1').closest('button')
       expect(routine1).toHaveTextContent('5 exercises')
     })
   })
@@ -86,10 +86,10 @@ describe('RoutineSelector', () => {
         (btn) => btn.textContent?.includes('exercises')
       )
 
-      // First routine should be the most recent (GZCLP A1)
-      expect(routineButtons[0]).toHaveTextContent('GZCLP A1')
-      // Second should be GZCLP B1
-      expect(routineButtons[1]).toHaveTextContent('GZCLP B1')
+      // First routine should be the most recent (GZCLP Day A1)
+      expect(routineButtons[0]).toHaveTextContent('GZCLP Day A1')
+      // Second should be GZCLP Day B1
+      expect(routineButtons[1]).toHaveTextContent('GZCLP Day B1')
       // Third should be Upper Body
       expect(routineButtons[2]).toHaveTextContent('Upper Body')
     })
@@ -145,7 +145,7 @@ describe('RoutineSelector', () => {
       const onSelect = vi.fn()
       render(<RoutineSelector {...defaultProps} onSelect={onSelect} />)
 
-      const routine1Button = screen.getByText('GZCLP A1').closest('button')!
+      const routine1Button = screen.getByText('GZCLP Day A1').closest('button')!
       await userEvent.click(routine1Button)
 
       expect(onSelect).toHaveBeenCalledWith('routine-1')
@@ -154,7 +154,7 @@ describe('RoutineSelector', () => {
     it('highlights currently selected routine', () => {
       render(<RoutineSelector {...defaultProps} selectedId="routine-2" />)
 
-      const routine2Button = screen.getByText('GZCLP B1').closest('button')
+      const routine2Button = screen.getByText('GZCLP Day B1').closest('button')
       expect(routine2Button).toHaveClass('border-blue-500')
     })
   })

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RoutineAssignmentStep } from '@/components/SetupWizard/RoutineAssignmentStep'
 import type { AvailableRoutine, RoutineAssignment } from '@/types/state'
@@ -15,28 +15,28 @@ describe('RoutineAssignmentStep', () => {
   const mockRoutines: AvailableRoutine[] = [
     {
       id: 'routine-1',
-      title: 'GZCLP A1',
+      title: 'GZCLP Day A1',
       exerciseCount: 5,
       exercisePreview: ['Squat', 'Bench Press', 'Lat Pulldown'],
       updatedAt: '2026-01-03T10:00:00Z',
     },
     {
       id: 'routine-2',
-      title: 'GZCLP B1',
+      title: 'GZCLP Day B1',
       exerciseCount: 5,
       exercisePreview: ['OHP', 'Deadlift', 'Cable Row'],
       updatedAt: '2026-01-02T10:00:00Z',
     },
     {
       id: 'routine-3',
-      title: 'GZCLP A2',
+      title: 'GZCLP Day A2',
       exerciseCount: 5,
       exercisePreview: ['Bench', 'Squat', 'Curls'],
       updatedAt: '2026-01-01T10:00:00Z',
     },
     {
       id: 'routine-4',
-      title: 'GZCLP B2',
+      title: 'GZCLP Day B2',
       exerciseCount: 5,
       exercisePreview: ['Deadlift', 'OHP', 'Rows'],
       updatedAt: '2025-12-31T10:00:00Z',
@@ -96,7 +96,7 @@ describe('RoutineAssignmentStep', () => {
 
       render(<RoutineAssignmentStep {...defaultProps} assignment={assignment} />)
 
-      expect(screen.getByText('GZCLP A1')).toBeInTheDocument()
+      expect(screen.getByText('GZCLP Day A1')).toBeInTheDocument()
     })
   })
 
@@ -125,7 +125,7 @@ describe('RoutineAssignmentStep', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
 
-      const routineOption = screen.getByText('GZCLP A1').closest('button')!
+      const routineOption = screen.getByText('GZCLP Day A1').closest('button')!
       await userEvent.click(routineOption)
 
       expect(onAssign).toHaveBeenCalledWith('A1', 'routine-1')

@@ -9,20 +9,21 @@
  * [T077] Hevy update functionality
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useProgram } from '@/hooks/useProgram'
 import { useProgression } from '@/hooks/useProgression'
 import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
 import { ensureGZCLPRoutines } from '@/lib/routine-manager'
-import type { ExerciseConfig, Tier, ProgressionState } from '@/types/state'
+import type { ExerciseConfig, GZCLPDay, Tier, ProgressionState, WorkoutSummaryData } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import { TIERS } from '@/lib/constants'
 import { getExercisesForDay } from '@/lib/role-utils'
+import { buildSummaryFromChanges, getMostRecentWorkoutDate } from '@/utils/summary'
 import { TierSection } from './TierSection'
 import { MainLiftCard } from './MainLiftCard'
-import { CollapsibleSection } from '@/components/common/CollapsibleSection'
+import { QuickStats } from './QuickStats'
 import { NextWorkout } from './NextWorkout'
 import { PendingBadge } from './PendingBadge'
 import { SyncButton } from './SyncButton'
@@ -31,6 +32,7 @@ import { DiscrepancyAlert } from './DiscrepancyAlert'
 import { UpdateHevyButton } from './UpdateHevyButton'
 import { UpdateStatus } from './UpdateStatus'
 import { ReviewModal } from '@/components/ReviewModal'
+import { PostWorkoutSummary } from '@/components/PostWorkoutSummary'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 
 interface DashboardProps {
@@ -43,6 +45,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     updateProgressionBatch,
     setLastSync,
     setHevyRoutineIds,
+    setCurrentDay,
   } = useProgram()
   const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
 
@@ -53,6 +56,11 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   const [updateSuccess, setUpdateSuccess] = useState(false)
   const [resolvedDiscrepancies, setResolvedDiscrepancies] = useState<Set<string>>(new Set())
 
+  // Post-workout summary panel state [GAP-02]
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryData, setSummaryData] = useState<WorkoutSummaryData | null>(null)
+  const previousChangeIds = useRef<Set<string>>(new Set())
+
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
 
@@ -62,6 +70,10 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
       void checkHevyConnection()
     }
   }, [isOnline, checkHevyConnection])
+
+  // Auto-sync on mount [GAP-18]
+  // Using a ref to track if initial sync has been attempted
+  const hasAutoSynced = useRef(false)
 
   // Use progression hook for sync functionality
   const {
@@ -79,12 +91,30 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     lastSync,
   })
 
+  // Auto-sync on mount [GAP-18]
+  useEffect(() => {
+    if (!hasAutoSynced.current && isOnline && !isSyncing && apiKey) {
+      hasAutoSynced.current = true
+      void syncWorkouts()
+    }
+    // Only run once on mount, intentionally not including dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Handle progression updates from pending changes
   const handleProgressionUpdate = useCallback(
     (newProgression: Record<string, ProgressionState>) => {
       updateProgressionBatch(newProgression)
     },
     [updateProgressionBatch]
+  )
+
+  // Handle day advancement after applying all changes
+  const handleDayAdvance = useCallback(
+    (nextDay: GZCLPDay) => {
+      setCurrentDay(nextDay)
+    },
+    [setCurrentDay]
   )
 
   // Merge stored pending changes with sync-generated ones
@@ -94,16 +124,44 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     return [...storedPendingChanges, ...newFromSync]
   }, [storedPendingChanges, syncPendingChanges])
 
+  // Show post-workout summary when new changes are detected [GAP-02]
+  useEffect(() => {
+    if (syncPendingChanges.length === 0) return
+
+    // Check if there are any new changes (not previously seen)
+    const newChanges = syncPendingChanges.filter(
+      (c) => !previousChangeIds.current.has(c.id)
+    )
+
+    if (newChanges.length > 0) {
+      // Build and show the summary
+      const workoutDate = getMostRecentWorkoutDate(newChanges)
+      const summary = buildSummaryFromChanges(
+        newChanges,
+        `Day ${program.currentDay}`,
+        workoutDate
+      )
+      setSummaryData(summary)
+      setShowSummary(true)
+
+      // Track these change IDs as seen
+      newChanges.forEach((c) => previousChangeIds.current.add(c.id))
+    }
+  }, [syncPendingChanges, program.currentDay])
+
   // Use pending changes hook
   const {
     pendingChanges,
     applyChange,
     rejectChange,
     modifyChange,
+    applyAllChanges,
   } = usePendingChanges({
     initialChanges: mergedPendingChanges,
     progression,
     onProgressionUpdate: handleProgressionUpdate,
+    currentDay: program.currentDay,
+    onDayAdvance: handleDayAdvance,
   })
 
   // Create Hevy client
@@ -309,6 +367,9 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Quick Stats [REQ-DASH-003] */}
+        <QuickStats state={state} />
+
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Next Workout - Sidebar on larger screens */}
           <div className="lg:order-2 lg:col-span-1">
@@ -323,22 +384,6 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 
           {/* Exercise Sections - Main content */}
           <div className="space-y-8 lg:order-1 lg:col-span-2">
-            {/* Warmup Section (Collapsible, collapsed by default) */}
-            {dayExercises.warmup.length > 0 && (
-              <CollapsibleSection title="Warmup" defaultOpen={false} className="bg-white rounded-lg shadow p-4">
-                <div className="space-y-2">
-                  {dayExercises.warmup.map((exercise) => (
-                    <div
-                      key={exercise.id}
-                      className="flex items-center justify-between py-2 px-3 bg-green-50 rounded"
-                    >
-                      <span className="text-sm font-medium text-gray-900">{exercise.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
-
             {/* Main Lifts Overview - T1/T2 Status [T036] */}
             <section className="space-y-4">
               <div>
@@ -375,22 +420,6 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
                 />
               ))}
             </section>
-
-            {/* Cooldown Section (Collapsible, collapsed by default) */}
-            {dayExercises.cooldown.length > 0 && (
-              <CollapsibleSection title="Cooldown" defaultOpen={false} className="bg-white rounded-lg shadow p-4">
-                <div className="space-y-2">
-                  {dayExercises.cooldown.map((exercise) => (
-                    <div
-                      key={exercise.id}
-                      className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded"
-                    >
-                      <span className="text-sm font-medium text-gray-900">{exercise.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
           </div>
         </div>
       </main>
@@ -401,9 +430,22 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         pendingChanges={pendingChanges}
         unit={settings.weightUnit}
         onApply={applyChange}
+        onApplyAll={applyAllChanges}
         onReject={rejectChange}
         onModify={modifyChange}
         onClose={() => { setIsReviewModalOpen(false) }}
+      />
+
+      {/* Post-Workout Summary Panel [GAP-02] */}
+      <PostWorkoutSummary
+        isOpen={showSummary}
+        onClose={() => { setShowSummary(false) }}
+        onReviewChanges={() => {
+          setShowSummary(false)
+          setIsReviewModalOpen(true)
+        }}
+        summary={summaryData}
+        unit={settings.weightUnit}
       />
     </div>
   )
@@ -412,6 +454,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 // Re-export sub-components for direct imports if needed
 export { ExerciseCard } from './ExerciseCard'
 export { MainLiftCard } from './MainLiftCard'
+export { QuickStats } from './QuickStats'
 export { TierSection } from './TierSection'
 export { NextWorkout } from './NextWorkout'
 export { PendingBadge } from './PendingBadge'

@@ -8,7 +8,6 @@
 import { useState, useCallback } from 'react'
 import { WeightInput } from './WeightInput'
 import { ValidatingWeightInput } from '@/components/common/WeightInput'
-import { UnitSelector } from './UnitSelector'
 import { ROLE_DISPLAY, T1_SCHEMES, T2_SCHEMES } from '@/lib/constants'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import { roundWeight } from '@/utils/formatting'
@@ -29,7 +28,8 @@ export interface WeightSetupStepProps {
   weights: Record<string, number>
   onWeightChange: (key: string, weight: number) => void
   unit: WeightUnit
-  onUnitChange: (unit: WeightUnit) => void
+  /** @deprecated Unit is now set in WelcomeStep only */
+  onUnitChange?: (unit: WeightUnit) => void
 }
 
 export function WeightSetupStep({
@@ -38,14 +38,13 @@ export function WeightSetupStep({
   weights,
   onWeightChange,
   unit,
-  onUnitChange,
 }: WeightSetupStepProps) {
   // Get assigned main lifts with exercise info
   const assignedMainLifts = MAIN_LIFT_ROLES
     .filter((role) => assignments.mainLifts[role] !== null)
     .map((role) => {
-      const templateId = assignments.mainLifts[role]!
-      const exercise = exercises.find((ex) => ex.id === templateId)
+      const templateId = assignments.mainLifts[role]
+      const exercise = templateId ? exercises.find((ex) => ex.id === templateId) : undefined
       return {
         key: role,
         label: ROLE_DISPLAY[role].label,
@@ -62,7 +61,7 @@ export function WeightSetupStep({
     for (const templateId of assignments.t3Exercises[day]) {
       if (!templateId) continue
       uniqueT3TemplateIds.add(templateId)
-      const days = t3DayMap.get(templateId) || []
+      const days = t3DayMap.get(templateId) ?? []
       if (!days.includes(day)) {
         days.push(day)
         t3DayMap.set(templateId, days)
@@ -72,8 +71,8 @@ export function WeightSetupStep({
 
   const assignedT3s = Array.from(uniqueT3TemplateIds).map((templateId) => {
     const exercise = exercises.find((ex) => ex.id === templateId)
-    const days = t3DayMap.get(templateId) || []
-    const dayLabel = days.length > 1 ? `(${days.join(', ')})` : `(${days[0]})`
+    const days = t3DayMap.get(templateId) ?? []
+    const dayLabel = days.length > 1 ? `(${days.join(', ')})` : `(${days[0] ?? ''})`
     return {
       key: `t3_${templateId}`,  // Use templateId as key for deduplication
       label: `T3: ${exercise?.title ?? 'Unknown Exercise'} ${dayLabel}`,
@@ -97,11 +96,6 @@ export function WeightSetupStep({
       <p className="text-gray-600 mb-6">
         Enter your current working weight for each exercise. These should be weights you can complete with good form for the prescribed rep scheme.
       </p>
-
-      {/* Unit selector */}
-      <div className="mb-8">
-        <UnitSelector value={unit} onChange={onUnitChange} />
-      </div>
 
       {/* Main Lifts Weight Inputs */}
       {assignedMainLifts.length > 0 && (
@@ -266,11 +260,7 @@ export function MainLiftWeightSetup({
                   onChange={(value) => { handleT2Change(role, value) }}
                   unit={unit}
                   t1Weight={t1Weight}
-                  hint={
-                    suggestedT2 && t2Weight === 0
-                      ? `Suggested: ${String(suggestedT2)} ${unit}`
-                      : undefined
-                  }
+                  {...(suggestedT2 && t2Weight === 0 ? { hint: `Suggested: ${String(suggestedT2)} ${unit}` } : {})}
                 />
               </div>
             </div>

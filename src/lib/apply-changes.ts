@@ -80,6 +80,6 @@ export function modifyPendingChangeWeight(
   return {
     ...change,
     newWeight,
-    reason: `Modified by user: ${change.currentWeight} -> ${newWeight} (original suggestion: ${change.newWeight})`,
+    reason: `Modified by user: ${String(change.currentWeight)} -> ${String(newWeight)} (original suggestion: ${String(change.newWeight)})`,
   }
 }

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { SetupWizard } from '@/components/SetupWizard'
 import * as useHevyApiModule from '@/hooks/useHevyApi'
 import * as useProgramModule from '@/hooks/useProgram'
@@ -70,25 +70,26 @@ describe('E2E: Full Import Flow', () => {
   })
 
   it('T044: wizard supports import path with correct step sequence', async () => {
-    // Verify that the wizard exists and can start with api-key step
+    // Verify that the wizard exists and can start with welcome step
     mockHevy.connect.mockResolvedValue(true)
 
     const { rerender } = render(<SetupWizard onComplete={mockOnComplete} />)
 
-    // Step 1: Verify API key step
+    // Step 1: Verify welcome step with API key input
     expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+    expect(screen.getByText('GZCLP Hevy Tracker')).toBeInTheDocument()
 
-    // Enter valid API key and connect
+    // Enter valid API key and validate
     const validApiKey = '12345678-1234-1234-1234-123456789012'
     const apiKeyInput = screen.getByLabelText(/api key/i)
     fireEvent.change(apiKeyInput, { target: { value: validApiKey } })
-    fireEvent.click(screen.getByRole('button', { name: /connect/i }))
+    fireEvent.click(screen.getByRole('button', { name: /validate/i }))
 
     await waitFor(() => {
       expect(mockHevy.connect).toHaveBeenCalledWith(validApiKey)
     })
 
-    // Step 2: Simulate moving to routine-source step
+    // Step 2: After validation, path options appear on same step
     mockHevy.isConnected = true
     mockHevy.routines = [a1Routine, b1Routine]
     vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue({
@@ -99,11 +100,11 @@ describe('E2E: Full Import Flow', () => {
 
     rerender(<SetupWizard onComplete={mockOnComplete} />)
 
-    // Verify "Use Existing" option is available when routines exist
+    // Verify "Import Existing Program" option is available when routines exist
     await waitFor(() => {
-      const useExistingBtn = screen.getByRole('button', { name: /use existing/i })
-      expect(useExistingBtn).toBeInTheDocument()
-      expect(useExistingBtn).not.toBeDisabled()
+      const importBtn = screen.getByRole('button', { name: /import existing program/i })
+      expect(importBtn).toBeInTheDocument()
+      expect(importBtn).not.toBeDisabled()
     })
 
     // Verify the wizard structure supports import flow

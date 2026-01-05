@@ -19,7 +19,6 @@ import type {
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { DayTabBar } from './DayTabBar'
 import { DayReviewPanel } from './DayReviewPanel'
-import { MainLiftVerification } from './MainLiftVerification'
 
 const GZCLP_DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
@@ -33,9 +32,9 @@ export interface ImportReviewStepProps {
   apiKey?: string
   /** Weight unit for display */
   unit?: WeightUnit
-  /** Detected main lift weights for T1/T2 verification */
+  /** @deprecated MainLiftWeights now obtained from byDay structure */
   mainLiftWeights?: MainLiftWeights[]
-  /** Callback to update main lift weights */
+  /** @deprecated Not used - weights edited in DayReviewPanel */
   onMainLiftWeightsUpdate?: (role: MainLiftRole, updates: { t1Weight: number; t2Weight: number }) => void
 }
 
@@ -46,8 +45,6 @@ export function ImportReviewStep({
   onNext,
   onBack,
   unit = 'kg',
-  mainLiftWeights = [],
-  onMainLiftWeightsUpdate,
 }: ImportReviewStepProps) {
   const { warnings, byDay } = importResult
 
@@ -196,14 +193,6 @@ export function ImportReviewStep({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Main Lift Weight Verification Section */}
-      {mainLiftWeights.length > 0 && onMainLiftWeightsUpdate && (
-        <MainLiftVerification
-          mainLiftWeights={mainLiftWeights}
-          onWeightsUpdate={onMainLiftWeightsUpdate}
-        />
       )}
 
       {/* Day Tab Bar */}

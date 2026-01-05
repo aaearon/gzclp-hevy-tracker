@@ -70,37 +70,39 @@ describe('E2E: Full Create Flow', () => {
     vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue(mockHevy)
   })
 
-  it('T045: completes full create flow from API key to setup complete', async () => {
-    // Step 1: Start at API key
+  it('T045: completes full create flow from welcome step to setup complete', async () => {
+    // Step 1: Start at welcome step
     mockHevy.connect.mockResolvedValue(true)
 
     const { rerender } = render(<SetupWizard onComplete={mockOnComplete} />)
 
-    // Verify API key step is shown
+    // Verify welcome step is shown with app branding
     expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+    expect(screen.getByText('GZCLP Hevy Tracker')).toBeInTheDocument()
 
-    // Enter API key (must be valid UUID format) and connect
+    // Enter API key (must be valid UUID format) and validate
     const validApiKey = '12345678-1234-1234-1234-123456789012'
     const apiKeyInput = screen.getByLabelText(/api key/i)
     fireEvent.change(apiKeyInput, { target: { value: validApiKey } })
-    fireEvent.click(screen.getByRole('button', { name: /connect/i }))
+    fireEvent.click(screen.getByRole('button', { name: /validate/i }))
 
     await waitFor(() => {
       expect(mockHevy.connect).toHaveBeenCalledWith(validApiKey)
     })
 
-    // Step 2: Move to routine-source step (no routines available)
+    // Step 2: After validation, path options appear on same step (no routines available)
     mockHevy.isConnected = true
     mockHevy.routines = [] // No routines for create path
     vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue({ ...mockHevy, isConnected: true })
 
     rerender(<SetupWizard onComplete={mockOnComplete} />)
 
-    // Select "Create New" option
+    // Select "Start New Program" option and click Continue
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /create new/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /start new program/i })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /create new/i }))
+    fireEvent.click(screen.getByRole('button', { name: /start new program/i }))
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
 
     // Step 3: Exercises step
     mockHevy.exerciseTemplates = mockExerciseTemplates
@@ -124,8 +126,8 @@ describe('E2E: Full Create Flow', () => {
 
     render(<SetupWizard onComplete={mockOnComplete} />)
 
-    // Progress indicator should be visible (there may be multiple elements with "Connect")
-    const progressIndicators = screen.getAllByText(/connect/i)
+    // Progress indicator should be visible (there may be multiple elements with "Welcome")
+    const progressIndicators = screen.getAllByText(/welcome/i)
     expect(progressIndicators.length).toBeGreaterThan(0)
   })
 

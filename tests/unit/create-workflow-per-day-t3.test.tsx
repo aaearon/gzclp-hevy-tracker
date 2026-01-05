@@ -9,8 +9,8 @@
  * - handleWeightsNext builds t3Schedule correctly
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { SlotAssignmentStep, type CreatePathAssignments } from '@/components/SetupWizard/SlotAssignment'
 import { WeightSetupStep } from '@/components/SetupWizard/WeightSetupStep'
 import type { ExerciseTemplate } from '@/types/hevy'

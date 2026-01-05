@@ -13,6 +13,7 @@ import {
   buildRoutineSet,
   buildRoutinePayload,
   buildDayRoutine,
+  buildWarmupSets,
 } from '@/lib/routine-builder'
 import type { ExerciseConfig, ProgressionState, UserSettings, GZCLPDay } from '@/types/state'
 
@@ -160,8 +161,60 @@ describe('[US4] Routine Builder', () => {
     })
   })
 
+  describe('buildWarmupSets', () => {
+    it('should build warmup sets with correct percentages for 100kg', () => {
+      const warmups = buildWarmupSets(100)
+
+      // Bar only, 50%, 70%, 85%
+      expect(warmups).toHaveLength(4)
+      expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 20, reps: 10 }) // Bar
+      expect(warmups[1]).toEqual({ type: 'warmup', weight_kg: 50, reps: 5 }) // 50%
+      expect(warmups[2]).toEqual({ type: 'warmup', weight_kg: 70, reps: 3 }) // 70%
+      expect(warmups[3]).toEqual({ type: 'warmup', weight_kg: 85, reps: 2 }) // 85%
+    })
+
+    it('should round warmup weights to nearest 2.5kg', () => {
+      const warmups = buildWarmupSets(73) // Awkward number
+
+      // 50% = 36.5 -> 37.5, 70% = 51.1 -> 50, 85% = 62.05 -> 62.5
+      expect(warmups[1]?.weight_kg).toBe(37.5) // 50% rounded
+      expect(warmups[2]?.weight_kg).toBe(50) // 70% rounded
+      expect(warmups[3]?.weight_kg).toBe(62.5) // 85% rounded
+    })
+
+    it('should skip duplicate warmup weights at low working weight', () => {
+      const warmups = buildWarmupSets(30) // Low weight
+
+      // 50% = 15 -> capped at 20 (same as bar), should be skipped
+      // 70% = 21 -> rounds to 20 (same as bar), should be skipped
+      // 85% = 25.5 -> rounds to 25
+      expect(warmups.some((w) => w.weight_kg === 20)).toBe(true) // Bar only once
+      expect(warmups.filter((w) => w.weight_kg === 20)).toHaveLength(1) // No duplicates
+    })
+
+    it('should always start with bar weight (20kg)', () => {
+      const warmups = buildWarmupSets(200)
+
+      expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 20, reps: 10 })
+    })
+
+    it('should cap warmup weights at minimum bar weight', () => {
+      const warmups = buildWarmupSets(20) // Bar weight only
+
+      // All percentages would be below bar, should have at most 2 distinct sets
+      // Bar (20) x10, and potentially 85% (17) capped to 20 which would be skipped
+      expect(warmups.every((w) => w.weight_kg >= 20)).toBe(true)
+    })
+
+    it('should use warmup type for all sets', () => {
+      const warmups = buildWarmupSets(100)
+
+      expect(warmups.every((w) => w.type === 'warmup')).toBe(true)
+    })
+  })
+
   describe('buildRoutineExercise', () => {
-    it('should build T1 stage 0 exercise (5x3) on A1 day', () => {
+    it('should build T1 stage 0 exercise (5x3) on A1 day with warmup sets', () => {
       // Squat is T1 on A1
       const exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
@@ -172,12 +225,17 @@ describe('[US4] Routine Builder', () => {
 
       expect(exercise.exercise_template_id).toBe('hevy-squat')
       expect(exercise.rest_seconds).toBe(180) // T1 rest
-      expect(exercise.sets).toHaveLength(5) // 5x3
-      expect(exercise.sets[0]?.weight_kg).toBe(100)
-      expect(exercise.sets[0]?.reps).toBe(3)
+      // 4 warmup sets + 5 working sets = 9 total
+      expect(exercise.sets).toHaveLength(9)
+      // First 4 should be warmup sets
+      expect(exercise.sets.slice(0, 4).every((s) => s.type === 'warmup')).toBe(true)
+      // Last 5 should be working sets at 100kg
+      const workingSets = exercise.sets.slice(4)
+      expect(workingSets).toHaveLength(5)
+      expect(workingSets.every((s) => s.weight_kg === 100 && s.reps === 3)).toBe(true)
     })
 
-    it('should build T1 stage 1 exercise (6x2) on B1 day', () => {
+    it('should build T1 stage 1 exercise (6x2) on B1 day with warmup sets', () => {
       // OHP is T1 on B1, and it's at stage 1
       const exercise = buildRoutineExercise(
         mockExercises['ex-ohp']!,
@@ -186,11 +244,16 @@ describe('[US4] Routine Builder', () => {
         'B1'
       )
 
-      expect(exercise.sets).toHaveLength(6) // 6x2
-      expect(exercise.sets[0]?.reps).toBe(2)
+      // OHP at 50kg: warmups at 20, 25, 35, 42.5 = 4 warmups + 6 working = 10 total
+      // (50% of 50 = 25, 70% = 35, 85% = 42.5)
+      const warmupSets = exercise.sets.filter((s) => s.type === 'warmup')
+      const workingSets = exercise.sets.filter((s) => s.type === 'normal')
+      expect(warmupSets.length).toBeGreaterThan(0) // Has warmups
+      expect(workingSets).toHaveLength(6) // 6x2
+      expect(workingSets[0]?.reps).toBe(2)
     })
 
-    it('should build T1 stage 2 exercise (10x1) on B2 day', () => {
+    it('should build T1 stage 2 exercise (10x1) on B2 day with warmup sets', () => {
       // Deadlift is T1 on B2, and it's at stage 2
       const exercise = buildRoutineExercise(
         mockExercises['ex-deadlift']!,
@@ -199,8 +262,12 @@ describe('[US4] Routine Builder', () => {
         'B2'
       )
 
-      expect(exercise.sets).toHaveLength(10) // 10x1
-      expect(exercise.sets[0]?.reps).toBe(1)
+      // Deadlift at 120kg: 4 warmups + 10 working = 14 total
+      const warmupSets = exercise.sets.filter((s) => s.type === 'warmup')
+      const workingSets = exercise.sets.filter((s) => s.type === 'normal')
+      expect(warmupSets.length).toBeGreaterThan(0) // Has warmups
+      expect(workingSets).toHaveLength(10) // 10x1
+      expect(workingSets[0]?.reps).toBe(1)
     })
 
     it('should build T2 stage 0 exercise (3x10) on A1 day', () => {
@@ -256,6 +323,33 @@ describe('[US4] Routine Builder', () => {
       expect(exercise.sets[0]?.reps).toBe(15)
     })
 
+    it('should NOT add warmup sets to T2 exercises', () => {
+      // Bench is T2 on A1
+      const exercise = buildRoutineExercise(
+        mockExercises['ex-bench']!,
+        mockProgression['ex-bench']!,
+        defaultSettings,
+        'A1'
+      )
+
+      // Should only have 3 working sets, no warmups
+      expect(exercise.sets).toHaveLength(3)
+      expect(exercise.sets.every((s) => s.type === 'normal')).toBe(true)
+    })
+
+    it('should NOT add warmup sets to T3 exercises', () => {
+      const exercise = buildRoutineExercise(
+        mockExercises['ex-curl-t3']!,
+        mockProgression['ex-curl-t3']!,
+        defaultSettings,
+        'A1'
+      )
+
+      // Should only have 3 working sets, no warmups
+      expect(exercise.sets).toHaveLength(3)
+      expect(exercise.sets.every((s) => s.type === 'normal')).toBe(true)
+    })
+
     it('should use custom rest timers from settings', () => {
       const customSettings: UserSettings = {
         ...defaultSettings,
@@ -296,7 +390,7 @@ describe('[US4] Routine Builder', () => {
         defaultSettings
       )
 
-      expect(routine.title).toBe('GZCLP A1')
+      expect(routine.title).toBe('GZCLP Day A1')
       expect(routine.exercises).toHaveLength(5) // T1 + T2 + 3 T3s
 
       // First exercise should be T1 Squat
@@ -313,7 +407,7 @@ describe('[US4] Routine Builder', () => {
         defaultSettings
       )
 
-      expect(routine.title).toBe('GZCLP B1')
+      expect(routine.title).toBe('GZCLP Day B1')
       // First exercise should be T1 OHP
       expect(routine.exercises[0]?.exercise_template_id).toBe('hevy-ohp')
       // Second should be T2 Deadlift
@@ -328,7 +422,7 @@ describe('[US4] Routine Builder', () => {
         defaultSettings
       )
 
-      expect(routine.title).toBe('GZCLP A2')
+      expect(routine.title).toBe('GZCLP Day A2')
       // First exercise should be T1 Bench
       expect(routine.exercises[0]?.exercise_template_id).toBe('hevy-bench')
       // Second should be T2 Squat
@@ -343,7 +437,7 @@ describe('[US4] Routine Builder', () => {
         defaultSettings
       )
 
-      expect(routine.title).toBe('GZCLP B2')
+      expect(routine.title).toBe('GZCLP Day B2')
       // First exercise should be T1 Deadlift
       expect(routine.exercises[0]?.exercise_template_id).toBe('hevy-deadlift')
       // Second should be T2 OHP
@@ -392,7 +486,7 @@ describe('[US4] Routine Builder', () => {
         defaultSettings
       )
 
-      expect(payload.routine.title).toBe('GZCLP A1')
+      expect(payload.routine.title).toBe('GZCLP Day A1')
       expect(payload.routine.exercises).toBeDefined()
       expect(Array.isArray(payload.routine.exercises)).toBe(true)
     })
@@ -446,7 +540,9 @@ describe('[US4] Routine Builder', () => {
       // Should convert to kg (225 lbs = ~102 kg)
       // The exact conversion: 225 / 2.20462 = ~102.06
       // Rounded to nearest 2.5 = 102.5
-      expect(exercise.sets[0]?.weight_kg).toBeCloseTo(102, 0)
+      // Working sets come after warmup sets (T1 has warmups prepended)
+      const workingSets = exercise.sets.filter((s) => s.type === 'normal')
+      expect(workingSets[0]?.weight_kg).toBeCloseTo(102, 0)
     })
 
     it('should pass through kg weights unchanged', () => {
@@ -457,7 +553,9 @@ describe('[US4] Routine Builder', () => {
         'A1'
       )
 
-      expect(exercise.sets[0]?.weight_kg).toBe(100) // Unchanged
+      // Working sets come after warmup sets (T1 has warmups prepended)
+      const workingSets = exercise.sets.filter((s) => s.type === 'normal')
+      expect(workingSets[0]?.weight_kg).toBe(100) // Unchanged
     })
   })
 })

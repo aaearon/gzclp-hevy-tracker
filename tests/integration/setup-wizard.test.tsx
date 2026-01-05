@@ -82,12 +82,14 @@ describe('[US1] Setup Wizard Flow', () => {
     localStorage.clear()
   })
 
-  describe('API Key Step', () => {
+  describe('Welcome Step (Combined API Key + Path Selection)', () => {
     it('should render the API key input field', () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
       expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /connect/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /validate/i })).toBeInTheDocument()
+      // App branding should be visible
+      expect(screen.getByText('GZCLP Hevy Tracker')).toBeInTheDocument()
     })
 
     it('should show validation error for invalid API key format', async () => {
@@ -96,8 +98,8 @@ describe('[US1] Setup Wizard Flow', () => {
       const input = screen.getByLabelText(/api key/i)
       await user.type(input, 'invalid-key')
 
-      const connectButton = screen.getByRole('button', { name: /connect/i })
-      await user.click(connectButton)
+      const validateButton = screen.getByRole('button', { name: /validate/i })
+      await user.click(validateButton)
 
       await waitFor(() => {
         expect(screen.getByText(/invalid api key format/i)).toBeInTheDocument()
@@ -113,26 +115,30 @@ describe('[US1] Setup Wizard Flow', () => {
       const input = screen.getByLabelText(/api key/i)
       await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
 
-      const connectButton = screen.getByRole('button', { name: /connect/i })
-      await user.click(connectButton)
+      const validateButton = screen.getByRole('button', { name: /validate/i })
+      await user.click(validateButton)
 
       await waitFor(() => {
         expect(screen.getByText(/invalid api key/i)).toBeInTheDocument()
       })
     })
 
-    it('should proceed to routine source step on successful connection', async () => {
+    it('should show path options and unit selector after successful API key validation', async () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
       const input = screen.getByLabelText(/api key/i)
       await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
 
-      const connectButton = screen.getByRole('button', { name: /connect/i })
-      await user.click(connectButton)
+      const validateButton = screen.getByRole('button', { name: /validate/i })
+      await user.click(validateButton)
 
       await waitFor(() => {
-        // Should show routine source selection after successful connection
-        expect(screen.getByText(/how would you like to set up/i)).toBeInTheDocument()
+        // Path options should appear on same step after validation
+        expect(screen.getByText(/how would you like to start/i)).toBeInTheDocument()
+        expect(screen.getByText('Start New Program')).toBeInTheDocument()
+        expect(screen.getByText('Import Existing Program')).toBeInTheDocument()
+        // Unit selector should also be visible
+        expect(screen.getByText('Weight Unit')).toBeInTheDocument()
       })
     })
   })

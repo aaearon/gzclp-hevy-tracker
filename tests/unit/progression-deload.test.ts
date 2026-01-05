@@ -37,9 +37,10 @@ describe('[US2] Deload Calculation', () => {
       expect(calculateDeload(100, 'kg')).toBe(85)
     })
 
-    it('should handle small weights', () => {
-      // 85% of 20 = 17, rounds to 17.5
-      expect(calculateDeload(20, 'kg')).toBe(17.5)
+    it('should enforce minimum bar weight for small weights', () => {
+      // 85% of 20 = 17, but minimum is bar weight (20kg)
+      // [GAP-10] Bar weight minimum enforcement
+      expect(calculateDeload(20, 'kg')).toBe(20)
     })
   })
 
@@ -60,19 +61,27 @@ describe('[US2] Deload Calculation', () => {
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle very small weights', () => {
-      // 85% of 5kg = 4.25, rounds to 5 (minimum practical)
-      expect(calculateDeload(5, 'kg')).toBe(5)
+  describe('Edge Cases - Bar Weight Minimum [GAP-10]', () => {
+    it('should enforce bar weight minimum for very small weights', () => {
+      // 85% of 5kg = 4.25, but minimum is bar weight (20kg)
+      expect(calculateDeload(5, 'kg')).toBe(20)
     })
 
-    it('should handle zero weight', () => {
-      expect(calculateDeload(0, 'kg')).toBe(0)
+    it('should enforce bar weight minimum for zero weight', () => {
+      // Minimum is always bar weight (20kg)
+      expect(calculateDeload(0, 'kg')).toBe(20)
     })
 
-    it('should ensure minimum practical weight', () => {
-      // Deload should never go below minimum plate weight
-      expect(calculateDeload(2.5, 'kg')).toBeGreaterThanOrEqual(0)
+    it('should enforce bar weight minimum in lbs', () => {
+      // Minimum is bar weight (44lbs)
+      expect(calculateDeload(10, 'lbs')).toBe(44)
+    })
+
+    it('should not affect weights above bar weight', () => {
+      // 85% of 25kg = 21.25, rounds to 22.5 (above bar weight)
+      expect(calculateDeload(25, 'kg')).toBe(22.5)
+      // 85% of 55lbs = 46.75, rounds to 45 (above bar weight)
+      expect(calculateDeload(55, 'lbs')).toBe(45)
     })
   })
 })

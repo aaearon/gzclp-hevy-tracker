@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { analyzeWorkout } from '@/lib/workout-analysis'
-import { createPendingChangesFromAnalysis, calculateProgression } from '@/lib/progression'
+import { createPendingChangesFromAnalysis } from '@/lib/progression'
 import { getProgressionKey } from '@/lib/role-utils'
 import type { Workout } from '@/types/hevy'
 import type { ExerciseConfig, ProgressionState, GZCLPDay } from '@/types/state'
@@ -251,7 +251,7 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
 
   describe('getProgressionKey integration', () => {
     it('generates correct keys for all main lifts and tiers', () => {
-      const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
+      const _days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
       // Expected key patterns
       const expectedKeys = {

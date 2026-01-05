@@ -148,7 +148,7 @@ export class HevyClient {
     }
 
     throw new HevyApiClientError(
-      errorBody?.error ?? `HTTP ${response.status}`,
+      errorBody?.error ?? `HTTP ${String(response.status)}`,
       response.status,
       errorBody
     )

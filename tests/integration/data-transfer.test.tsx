@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION, STORAGE_KEY } from '@/lib/constants'
@@ -135,7 +135,7 @@ describe('[US6] Export Button Component', () => {
     render(<ExportButton state={mockState} />)
 
     const button = screen.getByRole('button', { name: /export/i })
-    const styles = window.getComputedStyle(button)
+    const _styles = window.getComputedStyle(button)
 
     // Button should have minimum tap target size via classes or inline styles
     // The actual measurement happens at runtime, so we check for appropriate classes

@@ -25,27 +25,12 @@ describe('isMainLiftRole', () => {
 
   it('should return false for non-main lift roles', () => {
     expect(isMainLiftRole('t3')).toBe(false)
-    expect(isMainLiftRole('warmup')).toBe(false)
-    expect(isMainLiftRole('cooldown')).toBe(false)
+    // warmup and cooldown roles removed in Task 2.1b
   })
 })
 
 describe('getTierForDay', () => {
-  describe('warmup and cooldown', () => {
-    it('should return null for warmup on any day', () => {
-      const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
-      for (const day of days) {
-        expect(getTierForDay('warmup', day)).toBeNull()
-      }
-    })
-
-    it('should return null for cooldown on any day', () => {
-      const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
-      for (const day of days) {
-        expect(getTierForDay('cooldown', day)).toBeNull()
-      }
-    })
-  })
+  // warmup and cooldown tests removed - roles removed in Task 2.1b
 
   describe('t3 accessory', () => {
     it('should always return T3', () => {
@@ -124,8 +109,7 @@ describe('getExercisesForDay', () => {
     deadlift: createExercise('deadlift', 'Deadlift', 'deadlift'),
     curls: createExercise('curls', 'Bicep Curls', 't3'),
     rows: createExercise('rows', 'Cable Rows', 't3'),
-    stretch: createExercise('stretch', 'Dynamic Stretching', 'warmup'),
-    foam: createExercise('foam', 'Foam Rolling', 'cooldown'),
+    // warmup and cooldown removed in Task 2.1b
   }
 
   // Helper: Schedule all T3s on all days (for existing tests)
@@ -156,11 +140,7 @@ describe('getExercisesForDay', () => {
       expect(result.t3.map(e => e.id)).toEqual(['curls', 'rows'])
     })
 
-    it('should return warmup and cooldown exercises', () => {
-      const result = getExercisesForDay(testExercises, 'A1', allT3Schedule)
-      expect(result.warmup.map(e => e.id)).toEqual(['stretch'])
-      expect(result.cooldown.map(e => e.id)).toEqual(['foam'])
-    })
+    // warmup and cooldown test removed - roles removed in Task 2.1b
   })
 
   describe('day B1', () => {
@@ -197,13 +177,11 @@ describe('getExercisesForDay', () => {
       expect(result.t2).toBeNull()
     })
 
-    it('should return empty arrays for missing warmup/cooldown/t3', () => {
+    it('should return empty array for missing t3', () => {
       const mainOnly: Record<string, ExerciseConfig> = {
         squat: createExercise('squat', 'Back Squat', 'squat'),
       }
       const result = getExercisesForDay(mainOnly, 'A1', emptyT3Schedule)
-      expect(result.warmup).toEqual([])
-      expect(result.cooldown).toEqual([])
       expect(result.t3).toEqual([])
     })
   })
@@ -255,8 +233,8 @@ describe('role constants', () => {
     expect(MAIN_LIFT_ROLES).toEqual(['squat', 'bench', 'ohp', 'deadlift'])
   })
 
-  it('should have 3 multi-assign roles', () => {
-    expect(MULTI_ASSIGN_ROLES).toHaveLength(3)
-    expect(MULTI_ASSIGN_ROLES).toEqual(['t3', 'warmup', 'cooldown'])
+  it('should have 1 multi-assign role (t3 only, warmup/cooldown removed)', () => {
+    expect(MULTI_ASSIGN_ROLES).toHaveLength(1)
+    expect(MULTI_ASSIGN_ROLES).toEqual(['t3'])
   })
 })

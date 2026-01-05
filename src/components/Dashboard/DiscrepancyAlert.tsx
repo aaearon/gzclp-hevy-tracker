@@ -4,11 +4,13 @@
  * Displays weight discrepancy alerts with resolution options.
  */
 
-import type { WeightUnit } from '@/types/state'
+import type { WeightUnit, Tier } from '@/types/state'
 
 export interface DiscrepancyInfo {
   exerciseId: string
   exerciseName: string
+  /** Tier of the exercise (T1, T2, T3) for display clarity */
+  tier: Tier
   storedWeight: number
   actualWeight: number
   workoutId: string
@@ -72,7 +74,7 @@ export function DiscrepancyAlert({
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <span className="font-medium text-gray-900">
-                      {discrepancy.exerciseName}
+                      {discrepancy.exerciseName} ({discrepancy.tier})
                     </span>
                     <div className="text-sm text-gray-600 mt-1">
                       <span className="text-red-600">

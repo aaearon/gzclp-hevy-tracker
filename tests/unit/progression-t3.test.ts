@@ -13,7 +13,6 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateT3Progression,
   isT3Success,
-  T3_SUCCESS_THRESHOLD,
 } from '@/lib/progression'
 import type { ProgressionState } from '@/types/state'
 

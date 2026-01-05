@@ -44,7 +44,7 @@ describe('[US2] Workout Analysis', () => {
     sets: { reps: number | null; weight: number | null; type?: string }[]
   }[]): Workout => ({
     id: 'workout-001',
-    title: 'GZCLP A1',
+    title: 'GZCLP Day A1',
     routine_id: 'routine-001',
     description: '',
     start_time: '2026-01-02T10:00:00Z',

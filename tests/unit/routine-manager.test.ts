@@ -75,18 +75,18 @@ describe('[US4] Routine Manager', () => {
 
   describe('GZCLP_ROUTINE_NAMES', () => {
     it('should have correct routine name mappings', () => {
-      expect(GZCLP_ROUTINE_NAMES.A1).toBe('GZCLP A1')
-      expect(GZCLP_ROUTINE_NAMES.B1).toBe('GZCLP B1')
-      expect(GZCLP_ROUTINE_NAMES.A2).toBe('GZCLP A2')
-      expect(GZCLP_ROUTINE_NAMES.B2).toBe('GZCLP B2')
+      expect(GZCLP_ROUTINE_NAMES.A1).toBe('GZCLP Day A1')
+      expect(GZCLP_ROUTINE_NAMES.B1).toBe('GZCLP Day B1')
+      expect(GZCLP_ROUTINE_NAMES.A2).toBe('GZCLP Day A2')
+      expect(GZCLP_ROUTINE_NAMES.B2).toBe('GZCLP Day B2')
     })
   })
 
   describe('findGZCLPRoutines', () => {
     it('should find existing GZCLP routines by name', () => {
       const routines: Routine[] = [
-        createMockRoutine('GZCLP A1', 'routine-a1'),
-        createMockRoutine('GZCLP B1', 'routine-b1'),
+        createMockRoutine('GZCLP Day A1', 'routine-a1'),
+        createMockRoutine('GZCLP Day B1', 'routine-b1'),
         createMockRoutine('Other Workout', 'routine-other'),
       ]
 
@@ -114,10 +114,10 @@ describe('[US4] Routine Manager', () => {
 
     it('should find all GZCLP routines when they exist', () => {
       const routines: Routine[] = [
-        createMockRoutine('GZCLP A1', 'routine-a1'),
-        createMockRoutine('GZCLP B1', 'routine-b1'),
-        createMockRoutine('GZCLP A2', 'routine-a2'),
-        createMockRoutine('GZCLP B2', 'routine-b2'),
+        createMockRoutine('GZCLP Day A1', 'routine-a1'),
+        createMockRoutine('GZCLP Day B1', 'routine-b1'),
+        createMockRoutine('GZCLP Day A2', 'routine-a2'),
+        createMockRoutine('GZCLP Day B2', 'routine-b2'),
       ]
 
       const found = findGZCLPRoutines(routines)
@@ -131,7 +131,7 @@ describe('[US4] Routine Manager', () => {
     it('should handle case-sensitive matching', () => {
       const routines: Routine[] = [
         createMockRoutine('gzclp a1', 'routine-lower'), // Wrong case
-        createMockRoutine('GZCLP A1', 'routine-correct'),
+        createMockRoutine('GZCLP Day A1', 'routine-correct'),
       ]
 
       const found = findGZCLPRoutines(routines)
@@ -162,7 +162,7 @@ describe('[US4] Routine Manager', () => {
     })
 
     it('should create a routine with correct payload', async () => {
-      const createdRoutine = createMockRoutine('GZCLP A1', 'new-routine-id')
+      const createdRoutine = createMockRoutine('GZCLP Day A1', 'new-routine-id')
       mockClient.createRoutine.mockResolvedValue(createdRoutine)
 
       const result = await createGZCLPRoutine(
@@ -178,11 +178,11 @@ describe('[US4] Routine Manager', () => {
 
       // Verify the payload structure
       const payload = mockClient.createRoutine.mock.calls[0][0]
-      expect(payload.routine.title).toBe('GZCLP A1')
+      expect(payload.routine.title).toBe('GZCLP Day A1')
     })
 
     it('should pass folder_id when provided', async () => {
-      const createdRoutine = createMockRoutine('GZCLP A1', 'new-routine-id')
+      const createdRoutine = createMockRoutine('GZCLP Day A1', 'new-routine-id')
       mockClient.createRoutine.mockResolvedValue(createdRoutine)
 
       await createGZCLPRoutine(
@@ -202,7 +202,7 @@ describe('[US4] Routine Manager', () => {
       const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
       for (const day of days) {
-        const createdRoutine = createMockRoutine(`GZCLP ${day}`, `routine-${day}`)
+        const createdRoutine = createMockRoutine(`GZCLP Day ${day}`, `routine-${day}`)
         mockClient.createRoutine.mockResolvedValue(createdRoutine)
 
         const result = await createGZCLPRoutine(
@@ -214,8 +214,8 @@ describe('[US4] Routine Manager', () => {
         )
 
         const payload = mockClient.createRoutine.mock.calls[mockClient.createRoutine.mock.calls.length - 1][0]
-        expect(payload.routine.title).toBe(`GZCLP ${day}`)
-        expect(result.title).toBe(`GZCLP ${day}`)
+        expect(payload.routine.title).toBe(`GZCLP Day ${day}`)
+        expect(result.title).toBe(`GZCLP Day ${day}`)
       }
     })
   })
@@ -232,7 +232,7 @@ describe('[US4] Routine Manager', () => {
     })
 
     it('should update an existing routine', async () => {
-      const updatedRoutine = createMockRoutine('GZCLP A1', 'existing-routine-id')
+      const updatedRoutine = createMockRoutine('GZCLP Day A1', 'existing-routine-id')
       mockClient.updateRoutine.mockResolvedValue(updatedRoutine)
 
       const result = await updateGZCLPRoutine(
@@ -249,7 +249,7 @@ describe('[US4] Routine Manager', () => {
         'existing-routine-id',
         expect.objectContaining({
           routine: expect.objectContaining({
-            title: 'GZCLP A1',
+            title: 'GZCLP Day A1',
           }),
         })
       )
@@ -265,7 +265,7 @@ describe('[US4] Routine Manager', () => {
         },
       }
 
-      const updatedRoutine = createMockRoutine('GZCLP A1', 'existing-routine-id')
+      const updatedRoutine = createMockRoutine('GZCLP Day A1', 'existing-routine-id')
       mockClient.updateRoutine.mockResolvedValue(updatedRoutine)
 
       await updateGZCLPRoutine(
@@ -301,8 +301,8 @@ describe('[US4] Routine Manager', () => {
     it('should create missing routines and update existing ones', async () => {
       // Only A1 and B1 exist
       const existingRoutines: Routine[] = [
-        createMockRoutine('GZCLP A1', 'routine-a1'),
-        createMockRoutine('GZCLP B1', 'routine-b1'),
+        createMockRoutine('GZCLP Day A1', 'routine-a1'),
+        createMockRoutine('GZCLP Day B1', 'routine-b1'),
       ]
       mockClient.getAllRoutines.mockResolvedValue(existingRoutines)
 
@@ -364,10 +364,10 @@ describe('[US4] Routine Manager', () => {
 
     it('should only update when all routines exist', async () => {
       const existingRoutines: Routine[] = [
-        createMockRoutine('GZCLP A1', 'routine-a1'),
-        createMockRoutine('GZCLP B1', 'routine-b1'),
-        createMockRoutine('GZCLP A2', 'routine-a2'),
-        createMockRoutine('GZCLP B2', 'routine-b2'),
+        createMockRoutine('GZCLP Day A1', 'routine-a1'),
+        createMockRoutine('GZCLP Day B1', 'routine-b1'),
+        createMockRoutine('GZCLP Day A2', 'routine-a2'),
+        createMockRoutine('GZCLP Day B2', 'routine-b2'),
       ]
       mockClient.getAllRoutines.mockResolvedValue(existingRoutines)
       mockClient.updateRoutine.mockImplementation((id: string) =>

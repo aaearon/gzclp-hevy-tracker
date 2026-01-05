@@ -5,13 +5,18 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { PendingChange, ProgressionState } from '@/types/state'
+import type { GZCLPDay, PendingChange, ProgressionState } from '@/types/state'
 import { applyPendingChange, modifyPendingChangeWeight } from '@/lib/apply-changes'
+import { DAY_CYCLE } from '@/lib/constants'
 
 export interface UsePendingChangesProps {
   initialChanges: PendingChange[]
   progression: Record<string, ProgressionState>
   onProgressionUpdate: (progression: Record<string, ProgressionState>) => void
+  /** Current day in the GZCLP rotation */
+  currentDay: GZCLPDay
+  /** Callback to advance to the next day */
+  onDayAdvance: (nextDay: GZCLPDay) => void
 }
 
 export interface UsePendingChangesResult {
@@ -26,7 +31,7 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
 
   /**
@@ -61,16 +66,22 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
   }, [])
 
   /**
-   * Apply all pending changes at once.
+   * Apply all pending changes at once and advance to the next day.
    */
   const applyAllChanges = useCallback(() => {
+    if (pendingChanges.length === 0) return
+
     let currentProgression = progression
     for (const change of pendingChanges) {
       currentProgression = applyPendingChange(currentProgression, change)
     }
     onProgressionUpdate(currentProgression)
     setPendingChanges([])
-  }, [pendingChanges, progression, onProgressionUpdate])
+
+    // Advance to the next day in the GZCLP rotation
+    const nextDay = DAY_CYCLE[currentDay]
+    onDayAdvance(nextDay)
+  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance])
 
   /**
    * Clear all pending changes without applying.

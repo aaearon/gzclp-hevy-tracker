@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReviewModal } from '@/components/ReviewModal'
 import type { PendingChange } from '@/types/state'
@@ -50,6 +50,7 @@ describe('[US3] Review Modal Flow', () => {
   ]
 
   const mockOnApply = vi.fn()
+  const mockOnApplyAll = vi.fn()
   const mockOnReject = vi.fn()
   const mockOnModify = vi.fn()
   const mockOnClose = vi.fn()
@@ -70,6 +71,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -87,6 +89,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -105,6 +108,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -122,6 +126,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -138,6 +143,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={[]}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -156,6 +162,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -176,6 +183,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -196,6 +204,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -208,13 +217,14 @@ describe('[US3] Review Modal Flow', () => {
       expect(mockOnClose).toHaveBeenCalled()
     })
 
-    it('should call onApply for all changes when apply all is clicked', async () => {
+    it('should call onApplyAll when apply all is clicked', async () => {
       render(
         <ReviewModal
           isOpen={true}
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}
@@ -224,7 +234,7 @@ describe('[US3] Review Modal Flow', () => {
       const applyAllButton = screen.getByRole('button', { name: /apply all/i })
       await user.click(applyAllButton)
 
-      expect(mockOnApply).toHaveBeenCalledTimes(2)
+      expect(mockOnApplyAll).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -236,6 +246,7 @@ describe('[US3] Review Modal Flow', () => {
           pendingChanges={mockPendingChanges}
           unit="kg"
           onApply={mockOnApply}
+          onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
           onModify={mockOnModify}
           onClose={mockOnClose}

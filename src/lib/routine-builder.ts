@@ -18,7 +18,7 @@ import type {
   Tier,
   UserSettings,
 } from '@/types/state'
-import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME } from './constants'
+import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME, WARMUP_CONFIG } from './constants'
 import { getT1RoleForDay, getT2RoleForDay, getTierForDay } from './role-utils'
 
 // =============================================================================
@@ -40,6 +40,47 @@ function toKilograms(weight: number, unit: 'kg' | 'lbs'): number {
     return weight
   }
   return Math.round(weight * LBS_TO_KG * 10) / 10 // Round to 1 decimal
+}
+
+// =============================================================================
+// Warmup Set Builder
+// =============================================================================
+
+/**
+ * Round weight to nearest increment.
+ */
+function roundToNearest(weight: number, increment: number): number {
+  return Math.round(weight / increment) * increment
+}
+
+/**
+ * Build warmup sets for T1 exercises.
+ * Protocol: Bar only (20kg) x10, 50% x5, 70% x3, 85% x2
+ * Smart filtering: skip duplicate weights.
+ */
+export function buildWarmupSets(workingWeightKg: number): RoutineSetWrite[] {
+  const BAR_WEIGHT = WARMUP_CONFIG.minWeight
+  const sets: RoutineSetWrite[] = []
+
+  for (let i = 0; i < WARMUP_CONFIG.percentages.length; i++) {
+    const pct = WARMUP_CONFIG.percentages[i]
+    if (pct === undefined) continue
+    const weight =
+      pct === 0 ? BAR_WEIGHT : Math.max(BAR_WEIGHT, roundToNearest(workingWeightKg * pct, 2.5))
+
+    // Smart filtering: skip if weight equals previous set (avoid duplicates)
+    const lastSet = sets[sets.length - 1]
+    if (lastSet?.weight_kg === weight) {
+      continue
+    }
+
+    const reps = WARMUP_CONFIG.reps[i]
+    if (reps !== undefined) {
+      sets.push({ type: 'warmup', weight_kg: weight, reps })
+    }
+  }
+
+  return sets
 }
 
 // =============================================================================
@@ -107,14 +148,17 @@ export function buildRoutineExercise(
       reps = T3_SCHEME.reps
       break
     default:
-      throw new Error(`Unknown tier: ${tier}`)
+      throw new Error(`Unknown tier: ${String(tier as unknown)}`)
   }
 
-  // Build sets array
-  const sets: RoutineSetWrite[] = []
+  // Build working sets
+  const workingSets: RoutineSetWrite[] = []
   for (let i = 0; i < numSets; i++) {
-    sets.push(buildRoutineSet(weightKg, reps))
+    workingSets.push(buildRoutineSet(weightKg, reps))
   }
+
+  // Prepend warmup sets for T1 only
+  const sets = tier === 'T1' ? [...buildWarmupSets(weightKg), ...workingSets] : workingSets
 
   return {
     exercise_template_id: exercise.hevyTemplateId,
@@ -161,32 +205,35 @@ export function buildDayRoutine(
 
   // Add T1 exercise
   const t1Exercise = findExerciseByRole(t1Role, exercises)
-  if (t1Exercise && progression[t1Exercise.id]) {
+  const t1Progression = t1Exercise ? progression[t1Exercise.id] : undefined
+  if (t1Exercise && t1Progression) {
     routineExercises.push(
-      buildRoutineExercise(t1Exercise, progression[t1Exercise.id]!, settings, day)
+      buildRoutineExercise(t1Exercise, t1Progression, settings, day)
     )
   }
 
   // Add T2 exercise
   const t2Exercise = findExerciseByRole(t2Role, exercises)
-  if (t2Exercise && progression[t2Exercise.id]) {
+  const t2Progression = t2Exercise ? progression[t2Exercise.id] : undefined
+  if (t2Exercise && t2Progression) {
     routineExercises.push(
-      buildRoutineExercise(t2Exercise, progression[t2Exercise.id]!, settings, day)
+      buildRoutineExercise(t2Exercise, t2Progression, settings, day)
     )
   }
 
   // Add all T3 exercises
   const t3Exercises = getT3Exercises(exercises)
   for (const t3Exercise of t3Exercises) {
-    if (progression[t3Exercise.id]) {
+    const t3Progression = progression[t3Exercise.id]
+    if (t3Progression) {
       routineExercises.push(
-        buildRoutineExercise(t3Exercise, progression[t3Exercise.id]!, settings, day)
+        buildRoutineExercise(t3Exercise, t3Progression, settings, day)
       )
     }
   }
 
   return {
-    title: `GZCLP ${day}`,
+    title: `GZCLP Day ${day}`,
     exercises: routineExercises,
   }
 }

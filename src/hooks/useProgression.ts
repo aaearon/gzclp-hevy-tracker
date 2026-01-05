@@ -17,6 +17,7 @@ import type {
   ProgressionState,
   PendingChange,
   UserSettings,
+  Tier,
 } from '@/types/state'
 
 // =============================================================================
@@ -34,6 +35,8 @@ export interface UseProgressionProps {
 export interface DiscrepancyInfo {
   exerciseId: string
   exerciseName: string
+  /** Tier of the exercise (T1, T2, T3) for display clarity */
+  tier: Tier
   storedWeight: number
   actualWeight: number
   workoutId: string
@@ -114,6 +117,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
             allDiscrepancies.push({
               exerciseId: result.exerciseId,
               exerciseName: result.exerciseName,
+              tier: result.tier,
               storedWeight: result.discrepancy.storedWeight,
               actualWeight: result.discrepancy.actualWeight,
               workoutId: result.workoutId,

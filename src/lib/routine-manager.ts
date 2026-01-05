@@ -24,10 +24,10 @@ import { GZCLP_DAYS } from './constants'
  * Standard GZCLP routine names.
  */
 export const GZCLP_ROUTINE_NAMES: Record<GZCLPDay, string> = {
-  A1: 'GZCLP A1',
-  B1: 'GZCLP B1',
-  A2: 'GZCLP A2',
-  B2: 'GZCLP B2',
+  A1: 'GZCLP Day A1',
+  B1: 'GZCLP Day B1',
+  A2: 'GZCLP Day A2',
+  B2: 'GZCLP Day B2',
 }
 
 // =============================================================================

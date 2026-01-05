@@ -41,7 +41,7 @@ export function DayTabBar({
             type="button"
             aria-selected={isActive}
             aria-label={`Day ${day}`}
-            onClick={() => onDayChange(day)}
+            onClick={() => { onDayChange(day) }}
             className={`relative flex-1 px-4 py-2 rounded-lg font-medium
                        min-h-[44px] transition-colors
                        ${isActive

@@ -35,7 +35,8 @@ export const T2_MAPPING: Record<GZCLPDay, MainLiftRole> = {
 /**
  * Check if a role is a main lift role (exclusive, one exercise each).
  */
-export function isMainLiftRole(role: ExerciseRole): role is MainLiftRole {
+export function isMainLiftRole(role: ExerciseRole | undefined): role is MainLiftRole {
+  if (!role) return false
   return MAIN_LIFT_ROLES.includes(role as MainLiftRole)
 }
 
@@ -79,14 +80,9 @@ export function getProgressionKey(
  *
  * @param role - The exercise role
  * @param day - The GZCLP workout day
- * @returns The tier, or null if not scheduled (warmup/cooldown or main lift not on this day)
+ * @returns The tier, or null if main lift not scheduled for this day
  */
 export function getTierForDay(role: ExerciseRole, day: GZCLPDay): Tier | null {
-  // Warmup and cooldown have no tier
-  if (role === 'warmup' || role === 'cooldown') {
-    return null
-  }
-
   // T3 is always T3
   if (role === 't3') {
     return 'T3'
@@ -112,8 +108,6 @@ export interface DayExercises {
   t1: ExerciseConfig | null
   t2: ExerciseConfig | null
   t3: ExerciseConfig[]
-  warmup: ExerciseConfig[]
-  cooldown: ExerciseConfig[]
 }
 
 /**
@@ -133,21 +127,15 @@ export function getExercisesForDay(
     t1: null,
     t2: null,
     t3: [],
-    warmup: [],
-    cooldown: [],
   }
 
-  const dayT3Ids = t3Schedule[day] ?? []
+  const dayT3Ids = t3Schedule[day]
 
   for (const exercise of Object.values(exercises)) {
     const { role } = exercise
     if (!role) continue
 
-    if (role === 'warmup') {
-      result.warmup.push(exercise)
-    } else if (role === 'cooldown') {
-      result.cooldown.push(exercise)
-    } else if (role === 't3') {
+    if (role === 't3') {
       // Only include T3s scheduled for this specific day
       if (dayT3Ids.includes(exercise.id)) {
         result.t3.push(exercise)

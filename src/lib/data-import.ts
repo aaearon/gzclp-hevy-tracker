@@ -165,7 +165,7 @@ export async function validateImportFile(file: File): Promise<FileValidationResu
   if (file.size > MAX_FILE_SIZE) {
     return {
       isValid: false,
-      error: `File size exceeds maximum allowed (${MAX_FILE_SIZE / 1024 / 1024}MB).`,
+      error: `File size exceeds maximum allowed (${String(MAX_FILE_SIZE / 1024 / 1024)}MB).`,
     }
   }
 

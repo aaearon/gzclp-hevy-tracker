@@ -53,6 +53,45 @@ export function toAvailableRoutine(routine: Routine): AvailableRoutine {
 // =============================================================================
 
 /**
+ * Keywords that indicate an exercise is for warmup/mobility (not a main lift).
+ */
+const WARMUP_KEYWORDS = [
+  'warm up',
+  'warmup',
+  'warm-up',
+  'stretching',
+  'stretch',
+  'mobility',
+  'activation',
+]
+
+/**
+ * Check if an exercise should be treated as a warmup/mobility exercise.
+ * Warmup exercises should be skipped when determining T1/T2 positions.
+ *
+ * An exercise is considered a warmup if:
+ * 1. The exercise title/name contains warmup-related keywords (case-insensitive), OR
+ * 2. All sets are of type 'warmup' (no normal/working sets)
+ *
+ * @param exercise - The routine exercise to check
+ * @returns true if the exercise should be treated as warmup-only
+ */
+export function isWarmupOnlyExercise(exercise: RoutineExerciseRead): boolean {
+  // Check if name/title indicates warmup/mobility
+  const titleLower = exercise.title.toLowerCase()
+  if (WARMUP_KEYWORDS.some((keyword) => titleLower.includes(keyword))) {
+    return true
+  }
+
+  // Check if all sets are warmup type (only if has sets)
+  if (exercise.sets.length > 0) {
+    return exercise.sets.every((set) => set.type === 'warmup')
+  }
+
+  return false
+}
+
+/**
  * Extract a single exercise from a routine position.
  * The tier is derived from the position (T1, T2, or T3).
  * The role is optionally assigned based on day position.
@@ -94,7 +133,7 @@ function extractExercise(
     detectedStage: stageResult?.stage ?? 0,
     stageConfidence: stageResult?.confidence ?? 'manual',
     originalSetCount: setCount,
-    originalRepScheme: stageResult?.repScheme ?? `${setCount}x${modalReps}`,
+    originalRepScheme: stageResult?.repScheme ?? `${String(setCount)}x${String(modalReps)}`,
   }
 }
 
@@ -125,6 +164,9 @@ function getModalReps(sets: RoutineExerciseRead['sets']): number {
 /**
  * Extract T1, T2, and T3 exercises from a routine assigned to a specific day.
  * Returns a DayImportData structure with t1, t2, and t3s.
+ *
+ * Bug fix: Skips warmup-only exercises when determining T1/T2 positions.
+ * The first exercise with normal sets becomes T1.
  */
 function extractDayExercises(
   day: GZCLPDay,
@@ -135,30 +177,58 @@ function extractDayExercises(
   const t1Role = getT1RoleForDay(day)
   const t2Role = getT2RoleForDay(day)
 
-  // Position 0 (first exercise) → T1 with the day's T1 role
-  const t1Exercise = routine.exercises[0]
-  const t1: ImportedExercise | null = t1Exercise
-    ? extractExercise(t1Exercise, 'T1', warnings, t1Role)
-    : null
+  // Find first non-warmup-only exercise for T1
+  let t1Index = 0
+  while (
+    t1Index < routine.exercises.length &&
+    isWarmupOnlyExercise(routine.exercises[t1Index]!)
+  ) {
+    t1Index++
+  }
 
-  // Position 1 (second exercise) → T2 with the day's T2 role
-  const t2Exercise = routine.exercises[1]
-  let t2: ImportedExercise | null = null
-  if (t2Exercise) {
-    t2 = extractExercise(t2Exercise, 'T2', warnings, t2Role)
+  // Extract T1 (first exercise with normal sets)
+  const t1Exercise = routine.exercises[t1Index]
+  let t1: ImportedExercise | null = null
+
+  if (t1Exercise) {
+    t1 = extractExercise(t1Exercise, 'T1', warnings, t1Role)
   } else {
+    // All exercises are warmup-only
     warnings.push({
-      type: 'no_t2',
+      type: 'no_t2', // Reusing warning type - indicates missing main lift
       day,
-      message: `${day}: No T2 exercise found. Only ${routine.exercises.length} exercise(s) in routine.`,
+      message: `${day}: No T1 exercise found. All exercises appear to be warmup-only.`,
     })
   }
 
-  // Positions 2+ → T3s (no limit)
+  // Find T2 (next non-warmup-only exercise after T1)
+  let t2Index = t1Index + 1
+  while (
+    t2Index < routine.exercises.length &&
+    isWarmupOnlyExercise(routine.exercises[t2Index]!)
+  ) {
+    t2Index++
+  }
+
+  const t2Exercise = routine.exercises[t2Index]
+  let t2: ImportedExercise | null = null
+
+  if (t2Exercise) {
+    t2 = extractExercise(t2Exercise, 'T2', warnings, t2Role)
+  } else if (t1) {
+    // T1 found but no T2
+    warnings.push({
+      type: 'no_t2',
+      day,
+      message: `${day}: No T2 exercise found. Only ${String(routine.exercises.length - t1Index)} non-warmup exercise(s) in routine.`,
+    })
+  }
+
+  // T3s are all remaining exercises after T2 (skip warmup-only)
   const t3s: ImportedExercise[] = []
-  for (let i = 2; i < routine.exercises.length; i++) {
+  for (let i = t2Index + 1; i < routine.exercises.length; i++) {
     const exercise = routine.exercises[i]
-    if (exercise) {
+    if (exercise && !isWarmupOnlyExercise(exercise)) {
       t3s.push(extractExercise(exercise, 'T3', warnings, 't3'))
     }
   }
@@ -255,7 +325,7 @@ export function extractFromRoutines(
   }
 
   // Build the final byDay structure (already deduplicated in place)
-  const byDay = rawByDay as Record<GZCLPDay, DayImportData>
+  const byDay = rawByDay
 
   return {
     byDay,

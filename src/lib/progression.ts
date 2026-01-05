@@ -82,14 +82,22 @@ export function roundWeight(weight: number, unit: WeightUnit): number {
 }
 
 /**
+ * Minimum weight is the bar weight.
+ * REQ-PROG-009: Deload never goes below bar weight (20kg / 44lbs).
+ */
+const BAR_WEIGHT_KG = 20
+const BAR_WEIGHT_LBS = 44 // Approximate conversion of 20kg
+
+/**
  * Calculate deload weight (85% rounded to valid increment).
+ * [GAP-10] Minimum weight is bar weight (20kg / 44lbs), not just the rounding increment.
  */
 export function calculateDeload(weight: number, unit: WeightUnit): number {
   const deloadedWeight = weight * DELOAD_PERCENTAGE
   const rounded = roundWeight(deloadedWeight, unit)
-  // Ensure we don't go below the minimum increment
-  const minWeight = WEIGHT_ROUNDING[unit]
-  return Math.max(rounded, weight > 0 ? minWeight : 0)
+  // Ensure we don't go below bar weight [REQ-PROG-009]
+  const barWeight = unit === 'kg' ? BAR_WEIGHT_KG : BAR_WEIGHT_LBS
+  return Math.max(rounded, barWeight)
 }
 
 /**
@@ -111,6 +119,10 @@ export interface ProgressionResult {
   newBaseWeight?: number
   newAmrapRecord?: number
   reason: string
+  /** Whether the workout met success criteria */
+  success: boolean
+  /** AMRAP set rep count (for T1/T3) */
+  amrapReps?: number
 }
 
 // =============================================================================
@@ -165,7 +177,9 @@ export function calculateT1Progression(
       newStage: current.stage,
       newScheme: scheme.display,
       newAmrapRecord,
-      reason: `Completed ${scheme.display} at ${current.currentWeight}${unit}. Adding ${increment}${unit}.`,
+      reason: `Completed ${scheme.display} at ${String(current.currentWeight)}${unit}. Adding ${String(increment)}${unit}.`,
+      success: true,
+      amrapReps,
     }
   }
 
@@ -181,7 +195,9 @@ export function calculateT1Progression(
       newStage: nextStage,
       newScheme: nextScheme.display,
       newAmrapRecord,
-      reason: `Failed to complete ${scheme.display} at ${current.currentWeight}${unit}. Moving to ${nextScheme.display}.`,
+      reason: `Failed to complete ${scheme.display} at ${String(current.currentWeight)}${unit}. Moving to ${nextScheme.display}.`,
+      success: false,
+      amrapReps,
     }
   }
 
@@ -195,7 +211,9 @@ export function calculateT1Progression(
     newScheme: T1_SCHEMES[0].display,
     newBaseWeight: deloadWeight,
     newAmrapRecord,
-    reason: `Failed ${scheme.display} at ${current.currentWeight}${unit}. Deloading to ${deloadWeight}${unit} and restarting at ${T1_SCHEMES[0].display}.`,
+    reason: `Failed ${scheme.display} at ${String(current.currentWeight)}${unit}. Deloading to ${String(deloadWeight)}${unit} and restarting at ${T1_SCHEMES[0].display}.`,
+    success: false,
+    amrapReps,
   }
 }
 
@@ -244,7 +262,8 @@ export function calculateT2Progression(
       newWeight: current.currentWeight + increment,
       newStage: current.stage,
       newScheme: scheme.display,
-      reason: `Completed ${scheme.display} at ${current.currentWeight}${unit}. Adding ${increment}${unit}.`,
+      reason: `Completed ${scheme.display} at ${String(current.currentWeight)}${unit}. Adding ${String(increment)}${unit}.`,
+      success: true,
     }
   }
 
@@ -258,7 +277,8 @@ export function calculateT2Progression(
       newWeight: current.currentWeight,
       newStage: nextStage,
       newScheme: nextScheme.display,
-      reason: `Failed to complete ${scheme.display} at ${current.currentWeight}${unit}. Moving to ${nextScheme.display}.`,
+      reason: `Failed to complete ${scheme.display} at ${String(current.currentWeight)}${unit}. Moving to ${nextScheme.display}.`,
+      success: false,
     }
   }
 
@@ -271,7 +291,8 @@ export function calculateT2Progression(
     newStage: 0,
     newScheme: T2_SCHEMES[0].display,
     newBaseWeight: deloadWeight,
-    reason: `Failed ${scheme.display} at ${current.currentWeight}${unit}. Deloading to ${deloadWeight}${unit} and restarting at ${T2_SCHEMES[0].display}.`,
+    reason: `Failed ${scheme.display} at ${String(current.currentWeight)}${unit}. Deloading to ${String(deloadWeight)}${unit} and restarting at ${T2_SCHEMES[0].display}.`,
+    success: false,
   }
 }
 
@@ -299,6 +320,8 @@ export function calculateT3Progression(
   const totalReps = reps.reduce((sum, r) => sum + r, 0)
   const success = totalReps >= T3_SUCCESS_THRESHOLD
   const increment = getIncrement(muscleGroup, unit)
+  // T3 AMRAP is typically the last set (15+ target)
+  const amrapReps = reps[reps.length - 1] ?? 0
 
   if (success) {
     return {
@@ -306,7 +329,9 @@ export function calculateT3Progression(
       newWeight: current.currentWeight + increment,
       newStage: 0, // T3 only has stage 0
       newScheme: T3_SCHEME.display,
-      reason: `Hit ${totalReps} total reps (${T3_SUCCESS_THRESHOLD}+ required) at ${current.currentWeight}${unit}. Adding ${increment}${unit}.`,
+      reason: `Hit ${String(totalReps)} total reps (${String(T3_SUCCESS_THRESHOLD)}+ required) at ${String(current.currentWeight)}${unit}. Adding ${String(increment)}${unit}.`,
+      success: true,
+      amrapReps,
     }
   }
 
@@ -316,7 +341,9 @@ export function calculateT3Progression(
     newWeight: current.currentWeight,
     newStage: 0,
     newScheme: T3_SCHEME.display,
-    reason: `Hit ${totalReps} total reps (need ${T3_SUCCESS_THRESHOLD}+) at ${current.currentWeight}${unit}. Repeat same weight.`,
+    reason: `Hit ${String(totalReps)} total reps (need ${String(T3_SUCCESS_THRESHOLD)}+) at ${String(current.currentWeight)}${unit}. Repeat same weight.`,
+    success: false,
+    amrapReps,
   }
 }
 
@@ -349,6 +376,15 @@ export function calculateProgression(
 // =============================================================================
 
 /**
+ * Summary fields for PendingChange (optional parameters for createPendingChange).
+ */
+export interface PendingChangeSummaryFields {
+  setsCompleted: number
+  setsTarget: number
+  newPR: boolean
+}
+
+/**
  * Create a PendingChange object from a progression result.
  * For main lifts (T1/T2), includes tier prefix in exercise name (e.g., "T1 Squat").
  *
@@ -358,6 +394,7 @@ export function calculateProgression(
  * @param workoutId - ID of the workout that triggered this change
  * @param workoutDate - ISO date string of the workout
  * @param day - Optional GZCLP day for tier derivation (A1/B1/A2/B2)
+ * @param summaryFields - Optional summary fields for post-workout panel
  * @returns A PendingChange object with tier-specific progressionKey for main lifts
  */
 export function createPendingChange(
@@ -366,7 +403,8 @@ export function createPendingChange(
   result: ProgressionResult,
   workoutId: string,
   workoutDate: string,
-  day?: GZCLPDay
+  day?: GZCLPDay,
+  summaryFields?: PendingChangeSummaryFields
 ): PendingChange {
   // Derive tier from role + day
   const tier = deriveTierFromRole(exercise.role, day)
@@ -379,7 +417,7 @@ export function createPendingChange(
   // Get the progression key (role-tier for main lifts, exerciseId for T3)
   const progressionKey = getProgressionKey(exercise.id, exercise.role, tier)
 
-  return {
+  const change: PendingChange = {
     id: generateId(),
     exerciseId: exercise.id,
     exerciseName,
@@ -395,7 +433,20 @@ export function createPendingChange(
     workoutId,
     workoutDate,
     createdAt: new Date().toISOString(),
+    success: result.success,
   }
+
+  // Add optional summary fields only when defined
+  if (summaryFields !== undefined) {
+    change.setsCompleted = summaryFields.setsCompleted
+    change.setsTarget = summaryFields.setsTarget
+    change.newPR = summaryFields.newPR
+  }
+  if (result.amrapReps !== undefined) {
+    change.amrapReps = result.amrapReps
+  }
+
+  return change
 }
 
 /**
@@ -454,6 +505,16 @@ export function createPendingChangesFromAnalysis(
       unit
     )
 
+    // Calculate summary fields
+    const setsCompleted = result.reps.length
+    const setsTarget = tier === 'T1'
+      ? T1_REQUIRED_SETS[exerciseProgression.stage]
+      : tier === 'T2'
+        ? T2_REQUIRED_SETS
+        : 3 // T3 default
+    const newPR = progressionResult.amrapReps !== undefined &&
+      progressionResult.amrapReps > exerciseProgression.amrapRecord
+
     // Create pending change
     const pendingChange = createPendingChange(
       exercise,
@@ -461,7 +522,8 @@ export function createPendingChangesFromAnalysis(
       progressionResult,
       result.workoutId,
       result.workoutDate,
-      day
+      day,
+      { setsCompleted, setsTarget, newPR }
     )
 
     pendingChanges.push(pendingChange)

@@ -63,18 +63,7 @@ const createMockState = (): GZCLPState => ({
       name: 'Cable Rows',
       role: 't3',
     },
-    stretch: {
-      id: 'stretch',
-      hevyTemplateId: 'hevy-stretch',
-      name: 'Dynamic Stretching',
-      role: 'warmup',
-    },
-    foam: {
-      id: 'foam',
-      hevyTemplateId: 'hevy-foam',
-      name: 'Foam Rolling',
-      role: 'cooldown',
-    },
+    // warmup and cooldown roles removed in Task 2.1b
   },
   progression: {
     squat: {
@@ -159,11 +148,7 @@ describe('Dashboard Role-Based Grouping', () => {
   })
 
   describe('section rendering on day A1', () => {
-    it('should render Warmup section', () => {
-      render(<Dashboard />)
-      expect(screen.getByText('Warmup')).toBeInTheDocument()
-      expect(screen.getAllByText('Dynamic Stretching').length).toBeGreaterThan(0)
-    })
+    // Warmup section test removed - warmup/cooldown roles removed in Task 2.1b
 
     it('should render T1 section with squat (T1 on A1)', () => {
       render(<Dashboard />)
@@ -192,11 +177,7 @@ describe('Dashboard Role-Based Grouping', () => {
       expect(screen.getAllByText('Cable Rows').length).toBeGreaterThan(0)
     })
 
-    it('should render Cooldown section', () => {
-      render(<Dashboard />)
-      expect(screen.getByText('Cooldown')).toBeInTheDocument()
-      expect(screen.getAllByText('Foam Rolling').length).toBeGreaterThan(0)
-    })
+    // Cooldown section test removed - warmup/cooldown roles removed in Task 2.1b
 
     it('should NOT render Supplemental section (concept removed)', () => {
       render(<Dashboard />)

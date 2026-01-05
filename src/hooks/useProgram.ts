@@ -37,6 +37,13 @@ export interface UseProgramResult {
 
   // Progression
   setInitialWeight: (exerciseId: string, weight: number, stage?: Stage) => void
+  /** Set progression by an arbitrary key (for role-tier keys like "squat-T1") */
+  setProgressionByKey: (
+    key: string,
+    exerciseId: string,
+    weight: number,
+    stage?: Stage
+  ) => void
   updateProgression: (exerciseId: string, updates: Partial<ProgressionState>) => void
   updateProgressionBatch: (progressionUpdates: Record<string, ProgressionState>) => void
 
@@ -203,6 +210,31 @@ export function useProgram(): UseProgramResult {
           },
         }
       })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set progression by an arbitrary key (for role-tier keys like "squat-T1").
+   * Creates a new progression entry if it doesn't exist.
+   */
+  const setProgressionByKey = useCallback(
+    (key: string, exerciseId: string, weight: number, stage: Stage = 0) => {
+      setRawState((prev) => ({
+        ...prev,
+        progression: {
+          ...prev.progression,
+          [key]: {
+            exerciseId,
+            currentWeight: weight,
+            baseWeight: weight,
+            stage,
+            lastWorkoutId: null,
+            lastWorkoutDate: null,
+            amrapRecord: 0,
+          },
+        },
+      }))
     },
     [setRawState]
   )
@@ -375,6 +407,7 @@ export function useProgram(): UseProgramResult {
     updateExercise,
     removeExercise,
     setInitialWeight,
+    setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
     setHevyRoutineId,

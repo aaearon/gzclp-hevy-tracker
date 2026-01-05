@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { detectMainLiftWeights } from '@/lib/routine-importer'
 import type { Routine, RoutineExerciseRead } from '@/types/hevy'
-import type { RoutineAssignment, MainLiftWeights } from '@/types/state'
+import type { RoutineAssignment } from '@/types/state'
 
 describe('detectMainLiftWeights', () => {
   // Helper to create a routine exercise

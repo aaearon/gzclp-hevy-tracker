@@ -13,9 +13,8 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateT1Progression,
   isT1Success,
-  T1_SUCCESS_REPS,
 } from '@/lib/progression'
-import type { ProgressionState, WeightUnit } from '@/types/state'
+import type { ProgressionState } from '@/types/state'
 
 describe('[US2] T1 Progression Logic', () => {
   const baseProgression: ProgressionState = {

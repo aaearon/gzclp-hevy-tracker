@@ -47,7 +47,7 @@ export function generateExportFilename(): string {
   const date = now.toISOString().split('T')[0] // YYYY-MM-DD
   const time = now.toISOString().split('T')[1]?.split('.')[0]?.replace(/:/g, '') // HHmmss
 
-  return `gzclp-backup-${date}_${time}.json`
+  return `gzclp-backup-${date ?? ''}_${time ?? ''}.json`
 }
 
 /**
