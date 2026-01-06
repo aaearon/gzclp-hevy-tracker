@@ -20,6 +20,8 @@ import { STORAGE_KEY } from '@/lib/constants'
 import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
 import { getProgressionKey } from '@/lib/role-utils'
 import { calculateCreatedAtFromWorkouts } from '@/lib/weeks-calculator'
+import { importProgressionHistory } from '@/lib/history-importer'
+import { createHevyClient } from '@/lib/hevy-client'
 
 type SetupStep =
   | 'welcome'
@@ -259,17 +261,32 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           { workoutsPerWeek: program.state.program.workoutsPerWeek }
         )
 
+        // Import progression history for charts
+        let progressionHistory = {}
+        try {
+          const client = createHevyClient(program.state.apiKey)
+          const historyResult = await importProgressionHistory(
+            client,
+            program.state.exercises,
+            routineImport.assignment
+          )
+          progressionHistory = historyResult.history
+        } catch {
+          // Continue without history - charts will be empty initially
+        }
+
         // Write directly to localStorage to avoid race condition with component unmount
         // The React state setters don't complete before navigation happens
         // IMPORTANT: We must include currentDay here too, because any React state
         // update after this will overwrite our localStorage changes
-        const currentState = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+        const currentState = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>
         const updatedState = {
           ...currentState,
           totalWorkouts: weeksResult.matchingWorkoutCount,
           mostRecentWorkoutDate: weeksResult.mostRecentWorkoutDate,
+          progressionHistory,
           program: {
-            ...currentState.program,
+            ...(currentState.program as Record<string, unknown>),
             createdAt: weeksResult.calculatedCreatedAt,
             currentDay: selectedDay,
           },
