@@ -17,6 +17,8 @@ export interface UsePendingChangesProps {
   currentDay: GZCLPDay
   /** Callback to advance to the next day */
   onDayAdvance: (nextDay: GZCLPDay) => void
+  /** Callback to record a change in progression history (for charts) */
+  onRecordHistory?: (change: PendingChange) => void
 }
 
 export interface UsePendingChangesResult {
@@ -31,7 +33,7 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
 
   /**
@@ -43,10 +45,13 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
       const updatedProgression = applyPendingChange(progression, change)
       onProgressionUpdate(updatedProgression)
 
+      // Record to history for charts
+      onRecordHistory?.(change)
+
       // Remove the applied change from pending
       setPendingChanges((prev) => prev.filter((c) => c.id !== change.id))
     },
-    [progression, onProgressionUpdate]
+    [progression, onProgressionUpdate, onRecordHistory]
   )
 
   /**
@@ -74,6 +79,8 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     let currentProgression = progression
     for (const change of pendingChanges) {
       currentProgression = applyPendingChange(currentProgression, change)
+      // Record each change to history for charts
+      onRecordHistory?.(change)
     }
     onProgressionUpdate(currentProgression)
     setPendingChanges([])
@@ -81,7 +88,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     // Advance to the next day in the GZCLP rotation
     const nextDay = DAY_CYCLE[currentDay]
     onDayAdvance(nextDay)
-  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance])
+  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory])
 
   /**
    * Clear all pending changes without applying.

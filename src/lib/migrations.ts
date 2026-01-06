@@ -35,6 +35,16 @@ const MIGRATIONS: Record<string, MigrationFn> = {
     // Return fresh initial state - user must re-setup
     return createInitialState()
   },
+
+  // v2.1.0: Add progressionHistory for charts
+  // Non-breaking: adds empty progressionHistory object
+  '2.1.0': (state) => {
+    const typedState = state as Record<string, unknown>
+    return {
+      ...typedState,
+      progressionHistory: typedState.progressionHistory ?? {},
+    }
+  },
 }
 
 /**

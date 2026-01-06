@@ -16,15 +16,13 @@ import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
 import { ensureGZCLPRoutines } from '@/lib/routine-manager'
-import type { ExerciseConfig, GZCLPDay, Tier, ProgressionState, WorkoutSummaryData } from '@/types/state'
+import type { GZCLPDay, ProgressionState, WorkoutSummaryData } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
-import { TIERS } from '@/lib/constants'
-import { getExercisesForDay } from '@/lib/role-utils'
 import { buildSummaryFromChanges, getMostRecentWorkoutDate } from '@/utils/summary'
-import { TierSection } from './TierSection'
 import { MainLiftCard } from './MainLiftCard'
 import { QuickStats } from './QuickStats'
-import { NextWorkout } from './NextWorkout'
+import { CurrentWorkout } from './CurrentWorkout'
+import { T3Overview } from './T3Overview'
 import { PendingBadge } from './PendingBadge'
 import { SyncButton } from './SyncButton'
 import { SyncStatus } from './SyncStatus'
@@ -35,6 +33,8 @@ import { ReviewModal } from '@/components/ReviewModal'
 import { PostWorkoutSummary } from '@/components/PostWorkoutSummary'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 import { TodaysWorkoutModal } from './TodaysWorkoutModal'
+import { ProgressionChartContainer } from '@/components/ProgressionChart'
+import { CollapsibleSection } from '@/components/common/CollapsibleSection'
 
 interface DashboardProps {
   onNavigateToSettings?: () => void
@@ -47,6 +47,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     setLastSync,
     setHevyRoutineIds,
     setCurrentDay,
+    recordHistoryEntry,
   } = useProgram()
   const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
 
@@ -167,6 +168,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     onProgressionUpdate: handleProgressionUpdate,
     currentDay: program.currentDay,
     onDayAdvance: handleDayAdvance,
+    onRecordHistory: recordHistoryEntry,
   })
 
   // Create Hevy client
@@ -256,16 +258,6 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     }
   }, [hevyClient, exercises, progression, settings, setHevyRoutineIds])
 
-  // Get exercises for current day using role-based grouping
-  const dayExercises = getExercisesForDay(exercises, program.currentDay, t3Schedule)
-
-  // Create exercisesByTier for TierSection compatibility
-  const exercisesByTier: Record<Tier, ExerciseConfig[]> = {
-    T1: dayExercises.t1 ? [dayExercises.t1] : [],
-    T2: dayExercises.t2 ? [dayExercises.t2] : [],
-    T3: dayExercises.t3,
-  }
-
   // Disable sync/update when offline
   const isOffline = !isOnline || !isHevyReachable
 
@@ -287,20 +279,6 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Start Workout button [GAP-15] */}
-            <button
-              type="button"
-              onClick={() => { setShowTodaysWorkout(true) }}
-              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-h-[44px]"
-              data-testid="start-workout-button"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Start Workout
-            </button>
-
             {/* Pending changes indicator */}
             {pendingChanges.length > 0 && (
               <button
@@ -389,57 +367,54 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         {/* Quick Stats [REQ-DASH-003] */}
         <QuickStats state={state} />
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Next Workout - Sidebar on larger screens */}
-          <div className="lg:order-2 lg:col-span-1">
-            <NextWorkout
-              day={program.currentDay}
-              exercises={exercises}
-              progression={progression}
-              weightUnit={settings.weightUnit}
-              t3Schedule={t3Schedule}
-            />
-          </div>
+        <div className="space-y-8">
+          {/* Current Workout - Prominent display at top */}
+          <CurrentWorkout
+            day={program.currentDay}
+            exercises={exercises}
+            progression={progression}
+            weightUnit={settings.weightUnit}
+            t3Schedule={t3Schedule}
+            onStartWorkout={() => { setShowTodaysWorkout(true) }}
+          />
 
-          {/* Exercise Sections - Main content */}
-          <div className="space-y-8 lg:order-1 lg:col-span-2">
-            {/* Main Lifts Overview - T1/T2 Status [T036] */}
-            <section className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Main Lifts</h2>
-                <p className="text-sm text-gray-500">T1 and T2 progression status for all main lifts</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {MAIN_LIFT_ROLES.map((role) => (
-                  <MainLiftCard
-                    key={role}
-                    role={role}
-                    progression={progression}
-                    weightUnit={settings.weightUnit}
-                    currentDay={program.currentDay}
-                  />
-                ))}
-              </div>
-            </section>
-
-            {/* Today's Workout - Current Day Exercises (T1, T2, T3) */}
-            <section className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Today&apos;s Workout ({program.currentDay})</h2>
-                <p className="text-sm text-gray-500">Exercises for the current day</p>
-              </div>
-              {TIERS.map((tier) => (
-                <TierSection
-                  key={tier}
-                  tier={tier}
-                  exercises={exercisesByTier[tier]}
+          {/* Main Lifts Overview - T1/T2 Status [T036] */}
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Main Lifts</h2>
+              <p className="text-sm text-gray-500">T1 and T2 progression status for all main lifts</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {MAIN_LIFT_ROLES.map((role) => (
+                <MainLiftCard
+                  key={role}
+                  role={role}
                   progression={progression}
                   weightUnit={settings.weightUnit}
-                  pendingChanges={pendingChanges.filter((c) => c.tier === tier)}
+                  currentDay={program.currentDay}
                 />
               ))}
-            </section>
-          </div>
+            </div>
+          </section>
+
+          {/* T3 Overview - All accessories with schedule */}
+          <T3Overview
+            exercises={exercises}
+            progression={progression}
+            weightUnit={settings.weightUnit}
+            t3Schedule={t3Schedule}
+          />
+
+          {/* Progression Charts [Feature 007] */}
+          <CollapsibleSection title="Progression Charts" defaultOpen={false}>
+            <ProgressionChartContainer
+              exercises={exercises}
+              progression={progression}
+              progressionHistory={state.progressionHistory}
+              unit={settings.weightUnit}
+              workoutsPerWeek={program.workoutsPerWeek}
+            />
+          </CollapsibleSection>
         </div>
       </main>
 
@@ -485,8 +460,9 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 export { ExerciseCard } from './ExerciseCard'
 export { MainLiftCard } from './MainLiftCard'
 export { QuickStats } from './QuickStats'
+export { CurrentWorkout } from './CurrentWorkout'
+export { T3Overview } from './T3Overview'
 export { TierSection } from './TierSection'
-export { NextWorkout } from './NextWorkout'
 export { PendingBadge } from './PendingBadge'
 export { UpdateHevyButton } from './UpdateHevyButton'
 export { UpdateStatus } from './UpdateStatus'

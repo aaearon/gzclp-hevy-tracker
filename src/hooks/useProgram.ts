@@ -14,11 +14,14 @@ import type {
   GZCLPState,
   GZCLPDay,
   ExerciseConfig,
+  ExerciseHistory,
+  PendingChange,
   ProgressionState,
   WeightUnit,
   RoutineAssignment,
   Stage,
 } from '@/types/state'
+import { recordProgressionHistory } from '@/lib/history-recorder'
 
 export interface UseProgramResult {
   state: GZCLPState
@@ -62,6 +65,10 @@ export interface UseProgramResult {
 
   // Sync
   setLastSync: (timestamp: string) => void
+
+  // Progression History (for charts)
+  setProgressionHistory: (history: Record<string, ExerciseHistory>) => void
+  recordHistoryEntry: (change: PendingChange) => void
 
   // Full state management
   resetState: () => void
@@ -445,6 +452,37 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
+   * Set the entire progression history (for bulk updates).
+   */
+  const setProgressionHistory = useCallback(
+    (history: Record<string, ExerciseHistory>) => {
+      setRawState((prev) => ({
+        ...prev,
+        progressionHistory: history,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Record a single pending change to progression history.
+   * Used when applying changes to track history for charts.
+   */
+  const recordHistoryEntry = useCallback(
+    (change: PendingChange) => {
+      setRawState((prev) => ({
+        ...prev,
+        progressionHistory: recordProgressionHistory(
+          prev.progressionHistory,
+          change,
+          prev.exercises
+        ),
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
    * Reset state to initial values.
    */
   const resetState = useCallback(() => {
@@ -484,6 +522,8 @@ export function useProgram(): UseProgramResult {
     setTotalWorkouts,
     setMostRecentWorkoutDate,
     setLastSync,
+    setProgressionHistory,
+    recordHistoryEntry,
     resetState,
     importState,
   }

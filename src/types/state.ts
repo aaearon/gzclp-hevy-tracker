@@ -122,6 +122,88 @@ export interface ProgressionState {
 }
 
 // =============================================================================
+// Progression History (for Charts)
+// =============================================================================
+
+/**
+ * Single data point in progression history.
+ * Stored per exercise, records weight and outcome after each workout.
+ */
+export interface ProgressionHistoryEntry {
+  /** ISO date string of the workout */
+  date: string
+  /** Workout ID from Hevy */
+  workoutId: string
+  /** Weight used in kg */
+  weight: number
+  /** Stage at time of workout (0, 1, 2) */
+  stage: Stage
+  /** Tier at time of workout */
+  tier: Tier
+  /** Whether workout met success criteria */
+  success: boolean
+  /** AMRAP reps (for T1/T3) */
+  amrapReps?: number
+  /** Change type that resulted from this workout */
+  changeType: ChangeType
+}
+
+/**
+ * Complete history for a single exercise progression.
+ * Keyed by progressionKey (e.g., "squat-T1", "bench-T2", or exerciseId for T3).
+ */
+export interface ExerciseHistory {
+  progressionKey: string
+  exerciseName: string
+  tier: Tier
+  role?: ExerciseRole
+  entries: ProgressionHistoryEntry[]
+}
+
+/**
+ * Predicted future data point for progression visualization.
+ */
+export interface PredictionDataPoint {
+  /** Estimated date (ISO string) */
+  date: string
+  /** Predicted workout number (from current) */
+  workoutNumber: number
+  /** Predicted weight in kg */
+  weight: number
+  /** Predicted stage */
+  stage: Stage
+  /** Confidence level (0-1) */
+  confidence: number
+  /** Whether this predicts a deload */
+  isDeload: boolean
+  /** Whether this predicts a stage change */
+  isStageChange: boolean
+}
+
+/**
+ * Chart data point for visualization (unified format for actual + predicted).
+ */
+export interface ChartDataPoint {
+  /** X-axis value: workout index or week number */
+  x: number
+  /** Y-axis value: weight in kg */
+  y: number
+  /** Original date for tooltip */
+  date: string
+  /** Whether this is historical (actual) or predicted */
+  isHistorical: boolean
+  /** Stage for coloring/annotation */
+  stage: Stage
+  /** Event markers */
+  event?: 'deload' | 'stage_change' | 'pr'
+}
+
+/**
+ * Time granularity options for chart display.
+ */
+export type ChartGranularity = 'workout' | 'week'
+
+// =============================================================================
 // Pending Changes
 // =============================================================================
 
@@ -245,6 +327,9 @@ export interface GZCLPState {
   totalWorkouts: number
   /** Most recent workout date matching GZCLP routines (ISO string) */
   mostRecentWorkoutDate: string | null
+
+  /** Progression history for charts (keyed by progressionKey) */
+  progressionHistory: Record<string, ExerciseHistory>
 }
 
 // =============================================================================

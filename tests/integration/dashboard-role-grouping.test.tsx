@@ -2,10 +2,10 @@
  * Integration Test: Dashboard Role-Based Grouping
  *
  * Verifies that the dashboard correctly groups exercises by role and derives tier from day.
- * Tests that Supplemental section does NOT exist (concept removed).
+ * Tests CurrentWorkout component displays correct exercises with proper weights.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { Dashboard } from '@/components/Dashboard'
@@ -13,12 +13,17 @@ import { ToastProvider } from '@/contexts/ToastContext'
 import type { GZCLPState } from '@/types/state'
 import { STORAGE_KEY, CURRENT_STATE_VERSION } from '@/lib/constants'
 
+// Mock Chart.js components (not supported in JSDOM)
+vi.mock('@/components/ProgressionChart', () => ({
+  ProgressionChartContainer: () => <div data-testid="progression-chart-mock">Chart Mock</div>,
+}))
+
 // Wrapper component for tests that require ToastProvider
 function TestWrapper({ children }: { children: ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>
 }
 
-// Mock state with role-based exercises
+// Mock state with role-based exercises and CORRECT progression keys
 const createMockState = (): GZCLPState => ({
   version: CURRENT_STATE_VERSION,
   apiKey: 'test-key',
@@ -32,6 +37,7 @@ const createMockState = (): GZCLPState => ({
       B2: null,
     },
     currentDay: 'A1',
+    workoutsPerWeek: 3,
   },
   exercises: {
     squat: {
@@ -70,10 +76,10 @@ const createMockState = (): GZCLPState => ({
       name: 'Cable Rows',
       role: 't3',
     },
-    // warmup and cooldown roles removed in Task 2.1b
   },
   progression: {
-    squat: {
+    // Main lifts use role-tier format: "squat-T1", "squat-T2", etc.
+    'squat-T1': {
       exerciseId: 'squat',
       currentWeight: 100,
       stage: 0,
@@ -82,7 +88,16 @@ const createMockState = (): GZCLPState => ({
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    bench: {
+    'squat-T2': {
+      exerciseId: 'squat',
+      currentWeight: 70,
+      stage: 0,
+      baseWeight: 70,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    'bench-T1': {
       exerciseId: 'bench',
       currentWeight: 80,
       stage: 0,
@@ -91,7 +106,16 @@ const createMockState = (): GZCLPState => ({
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    ohp: {
+    'bench-T2': {
+      exerciseId: 'bench',
+      currentWeight: 55,
+      stage: 0,
+      baseWeight: 55,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    'ohp-T1': {
       exerciseId: 'ohp',
       currentWeight: 50,
       stage: 0,
@@ -100,7 +124,16 @@ const createMockState = (): GZCLPState => ({
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    deadlift: {
+    'ohp-T2': {
+      exerciseId: 'ohp',
+      currentWeight: 35,
+      stage: 0,
+      baseWeight: 35,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    'deadlift-T1': {
       exerciseId: 'deadlift',
       currentWeight: 120,
       stage: 0,
@@ -109,6 +142,16 @@ const createMockState = (): GZCLPState => ({
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
+    'deadlift-T2': {
+      exerciseId: 'deadlift',
+      currentWeight: 85,
+      stage: 0,
+      baseWeight: 85,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    // T3s use exerciseId directly
     curls: {
       exerciseId: 'curls',
       currentWeight: 20,
@@ -141,6 +184,7 @@ const createMockState = (): GZCLPState => ({
     A2: ['curls', 'rows'],
     B2: ['curls', 'rows'],
   },
+  progressionHistory: {},
 })
 
 describe('Dashboard Role-Based Grouping', () => {
@@ -154,37 +198,41 @@ describe('Dashboard Role-Based Grouping', () => {
     localStorage.clear()
   })
 
-  describe('section rendering on day A1', () => {
-    // Warmup section test removed - warmup/cooldown roles removed in Task 2.1b
-
-    it('should render T1 section with squat (T1 on A1)', () => {
+  describe('CurrentWorkout component on day A1', () => {
+    it('should render CurrentWorkout with correct exercises', () => {
       render(<Dashboard />, { wrapper: TestWrapper })
-      // Find the T1 heading
-      expect(screen.getByText('Tier 1')).toBeInTheDocument()
 
-      // Verify Back Squat appears (will be in both TierSection and NextWorkout)
-      expect(screen.getAllByText('Back Squat').length).toBeGreaterThan(0)
+      const currentWorkout = screen.getByTestId('current-workout')
+      expect(currentWorkout).toBeInTheDocument()
+
+      // On A1: T1=Squat, T2=Bench
+      expect(currentWorkout).toHaveTextContent('Back Squat')
+      expect(currentWorkout).toHaveTextContent('Bench Press')
     })
 
-    it('should render T2 section with bench (T2 on A1)', () => {
+    it('should show correct T1 weight (100 kg for squat on A1)', () => {
       render(<Dashboard />, { wrapper: TestWrapper })
-      // Find the T2 heading
-      expect(screen.getByText('Tier 2')).toBeInTheDocument()
 
-      // Verify Bench Press appears
-      expect(screen.getAllByText('Bench Press').length).toBeGreaterThan(0)
+      const currentWorkout = screen.getByTestId('current-workout')
+      // Squat T1 weight is 100kg
+      expect(currentWorkout).toHaveTextContent('100')
     })
 
-    it('should render T3 section with accessories', () => {
+    it('should show correct T2 weight (55 kg for bench on A1)', () => {
       render(<Dashboard />, { wrapper: TestWrapper })
-      // Find the T3 heading
-      expect(screen.getByText('Tier 3')).toBeInTheDocument()
 
-      expect(screen.getAllByText('Bicep Curls').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Cable Rows').length).toBeGreaterThan(0)
+      const currentWorkout = screen.getByTestId('current-workout')
+      // Bench T2 weight is 55kg
+      expect(currentWorkout).toHaveTextContent('55')
     })
 
-    // Cooldown section test removed - warmup/cooldown roles removed in Task 2.1b
+    it('should show T3 accessories for the day', () => {
+      render(<Dashboard />, { wrapper: TestWrapper })
+
+      const currentWorkout = screen.getByTestId('current-workout')
+      expect(currentWorkout).toHaveTextContent('Bicep Curls')
+      expect(currentWorkout).toHaveTextContent('Cable Rows')
+    })
 
     it('should NOT render Supplemental section (concept removed)', () => {
       render(<Dashboard />, { wrapper: TestWrapper })
@@ -200,13 +248,10 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      // Find T1 section (data-testid)
-      const t1Section = screen.getByTestId('tier-section-t1')
-      expect(t1Section).toHaveTextContent('Bench Press')
-
-      // Also verify it appears in Next Workout
-      const nextWorkout = screen.getByTestId('next-workout')
-      expect(nextWorkout).toHaveTextContent('Bench Press')
+      const currentWorkout = screen.getByTestId('current-workout')
+      // On A2: T1=Bench (80kg), T2=Squat (70kg)
+      expect(currentWorkout).toHaveTextContent('Bench Press')
+      expect(currentWorkout).toHaveTextContent('80') // bench-T1 weight
     })
 
     it('should show ohp as T1 on day B1', () => {
@@ -216,11 +261,10 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      const t1Section = screen.getByTestId('tier-section-t1')
-      expect(t1Section).toHaveTextContent('Overhead Press')
-
-      const nextWorkout = screen.getByTestId('next-workout')
-      expect(nextWorkout).toHaveTextContent('Overhead Press')
+      const currentWorkout = screen.getByTestId('current-workout')
+      // On B1: T1=OHP (50kg), T2=Deadlift (85kg)
+      expect(currentWorkout).toHaveTextContent('Overhead Press')
+      expect(currentWorkout).toHaveTextContent('50') // ohp-T1 weight
     })
 
     it('should show deadlift as T1 on day B2', () => {
@@ -230,18 +274,16 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      const t1Section = screen.getByTestId('tier-section-t1')
-      expect(t1Section).toHaveTextContent('Deadlift')
-
-      const nextWorkout = screen.getByTestId('next-workout')
-      expect(nextWorkout).toHaveTextContent('Deadlift')
+      const currentWorkout = screen.getByTestId('current-workout')
+      // On B2: T1=Deadlift (120kg), T2=OHP (35kg)
+      expect(currentWorkout).toHaveTextContent('Deadlift')
+      expect(currentWorkout).toHaveTextContent('120') // deadlift-T1 weight
     })
   })
 
-  describe('per-day T3 schedule', () => {
+  describe('per-day T3 schedule in CurrentWorkout', () => {
     it('should show only A1 T3s when on day A1', () => {
       const state = createMockState()
-      // Different T3s per day
       state.t3Schedule = {
         A1: ['curls'],
         B1: ['rows'],
@@ -253,9 +295,9 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      const t3Section = screen.getByTestId('tier-section-t3')
-      expect(t3Section).toHaveTextContent('Bicep Curls')
-      expect(t3Section).not.toHaveTextContent('Cable Rows')
+      const currentWorkout = screen.getByTestId('current-workout')
+      expect(currentWorkout).toHaveTextContent('Bicep Curls')
+      expect(currentWorkout).not.toHaveTextContent('Cable Rows')
     })
 
     it('should show only B1 T3s when on day B1', () => {
@@ -271,30 +313,12 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      const t3Section = screen.getByTestId('tier-section-t3')
-      expect(t3Section).toHaveTextContent('Cable Rows')
-      expect(t3Section).not.toHaveTextContent('Bicep Curls')
+      const currentWorkout = screen.getByTestId('current-workout')
+      expect(currentWorkout).toHaveTextContent('Cable Rows')
+      expect(currentWorkout).not.toHaveTextContent('Bicep Curls')
     })
 
-    it('should show no T3s when day has empty schedule', () => {
-      const state = createMockState()
-      state.t3Schedule = {
-        A1: ['curls'],
-        B1: ['rows'],
-        A2: ['curls', 'rows'],
-        B2: [],
-      }
-      state.program.currentDay = 'B2'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-
-      render(<Dashboard />, { wrapper: TestWrapper })
-
-      // T3 section should not exist when there are no T3s scheduled
-      const t3Section = screen.queryByTestId('tier-section-t3')
-      expect(t3Section).not.toBeInTheDocument()
-    })
-
-    it('should show combined T3s in NextWorkout for day with multiple', () => {
+    it('should show combined T3s for day with multiple', () => {
       const state = createMockState()
       state.t3Schedule = {
         A1: ['curls'],
@@ -307,9 +331,28 @@ describe('Dashboard Role-Based Grouping', () => {
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
-      const nextWorkout = screen.getByTestId('next-workout')
-      expect(nextWorkout).toHaveTextContent('Bicep Curls')
-      expect(nextWorkout).toHaveTextContent('Cable Rows')
+      const currentWorkout = screen.getByTestId('current-workout')
+      expect(currentWorkout).toHaveTextContent('Bicep Curls')
+      expect(currentWorkout).toHaveTextContent('Cable Rows')
+    })
+  })
+
+  describe('T3Overview component', () => {
+    it('should render T3Overview with all T3 exercises', () => {
+      render(<Dashboard />, { wrapper: TestWrapper })
+
+      const t3Overview = screen.getByTestId('t3-overview')
+      expect(t3Overview).toBeInTheDocument()
+      expect(t3Overview).toHaveTextContent('Bicep Curls')
+      expect(t3Overview).toHaveTextContent('Cable Rows')
+    })
+
+    it('should show T3 weights', () => {
+      render(<Dashboard />, { wrapper: TestWrapper })
+
+      const t3Overview = screen.getByTestId('t3-overview')
+      expect(t3Overview).toHaveTextContent('20') // curls weight
+      expect(t3Overview).toHaveTextContent('40') // rows weight
     })
   })
 })

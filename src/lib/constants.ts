@@ -158,7 +158,7 @@ export const T3_SUCCESS_THRESHOLD = 25 // Total reps needed to progress
 // State Versioning
 // =============================================================================
 
-export const CURRENT_STATE_VERSION = '2.0.0'
+export const CURRENT_STATE_VERSION = '2.1.0'
 
 // =============================================================================
 // localStorage Key

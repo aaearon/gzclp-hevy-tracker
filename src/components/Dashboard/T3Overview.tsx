@@ -1,0 +1,129 @@
+/**
+ * T3Overview Component
+ *
+ * Summary display of all configured T3 accessories with:
+ * - Current weight for each T3
+ * - Which days each T3 is scheduled (e.g., "A1, B1" or "All days")
+ *
+ * Provides visibility into T3 progression similar to MainLiftCard for T1/T2.
+ */
+
+import { useMemo } from 'react'
+import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
+import { getRepScheme } from '@/lib/constants'
+import { formatWeight } from '@/utils/formatting'
+
+interface T3OverviewProps {
+  exercises: Record<string, ExerciseConfig>
+  progression: Record<string, ProgressionState>
+  weightUnit: WeightUnit
+  t3Schedule: Record<GZCLPDay, string[]>
+}
+
+const ALL_DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
+
+/**
+ * Get the days an exercise is scheduled for.
+ */
+function getScheduledDays(exerciseId: string, t3Schedule: Record<GZCLPDay, string[]>): GZCLPDay[] {
+  const days: GZCLPDay[] = []
+  for (const day of ALL_DAYS) {
+    if (t3Schedule[day].includes(exerciseId)) {
+      days.push(day)
+    }
+  }
+  return days
+}
+
+/**
+ * Format the schedule display string.
+ */
+function formatSchedule(days: GZCLPDay[]): string {
+  if (days.length === 4) return 'All days'
+  if (days.length === 0) return 'Not scheduled'
+  return days.join(', ')
+}
+
+export function T3Overview({
+  exercises,
+  progression,
+  weightUnit,
+  t3Schedule,
+}: T3OverviewProps) {
+  // Get all T3 exercises with their schedule info
+  const t3Exercises = useMemo(() => {
+    const t3s: Array<{
+      exercise: ExerciseConfig
+      prog: ProgressionState | undefined
+      scheduledDays: GZCLPDay[]
+    }> = []
+
+    for (const exercise of Object.values(exercises)) {
+      if (exercise.role === 't3') {
+        const prog = progression[exercise.id]
+        const scheduledDays = getScheduledDays(exercise.id, t3Schedule)
+        t3s.push({ exercise, prog, scheduledDays })
+      }
+    }
+
+    // Sort by name
+    return t3s.sort((a, b) => a.exercise.name.localeCompare(b.exercise.name))
+  }, [exercises, progression, t3Schedule])
+
+  if (t3Exercises.length === 0) {
+    return null
+  }
+
+  const scheme = getRepScheme('T3', 0)
+
+  return (
+    <section className="space-y-4" data-testid="t3-overview">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Accessories (T3)</h2>
+        <p className="text-sm text-gray-500">
+          {t3Exercises.length} exercise{t3Exercises.length !== 1 ? 's' : ''} configured - {scheme.display}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {t3Exercises.map(({ exercise, prog, scheduledDays }) => (
+          <div
+            key={exercise.id}
+            className="rounded-lg border border-green-200 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-900 truncate">{exercise.name}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {formatSchedule(scheduledDays)}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-lg font-bold text-green-700">
+                  {prog ? formatWeight(prog.currentWeight, weightUnit) : 'TBD'}
+                </span>
+                {prog && prog.amrapRecord > 0 && (
+                  <p className="text-xs text-gray-500">
+                    PR: {prog.amrapRecord} reps
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Schedule pills */}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {scheduledDays.map((day) => (
+                <span
+                  key={day}
+                  className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700"
+                >
+                  {day}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
