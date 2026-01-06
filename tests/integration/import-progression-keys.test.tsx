@@ -186,32 +186,4 @@ describe('Import Flow - Progression Key Storage Bug Fix', () => {
     })
   })
 
-  describe('handleNextWorkoutComplete creates correct keys', () => {
-    it.skip('import flow creates role-tier keys from byDay structure', () => {
-      // This test documents the expected behavior of handleNextWorkoutComplete
-      // After the fix:
-      // 1. For each day's T1 exercise with a main lift role:
-      //    - Create progression key as `${role}-T1` (e.g., "squat-T1")
-      // 2. For each day's T2 exercise with a main lift role:
-      //    - Create progression key as `${role}-T2` (e.g., "bench-T2")
-    })
-
-    it.skip('progression keys are created from user-verified weights in byDay', () => {
-      // The weight should come from byDay[day].t1.userWeight ?? byDay[day].t1.detectedWeight
-      // Not from the old mainLiftWeights prop
-    })
-  })
-})
-
-describe('getProgressionKey helper', () => {
-  // Document the expected helper function behavior
-
-  it.skip('returns role-tier format for main lift roles', () => {
-    // getProgressionKey('squat', 'T1') => 'squat-T1'
-    // getProgressionKey('bench', 'T2') => 'bench-T2'
-  })
-
-  it.skip('returns exerciseId for T3 role', () => {
-    // getProgressionKey('t3', 'T3', exerciseId) => exerciseId
-  })
 })

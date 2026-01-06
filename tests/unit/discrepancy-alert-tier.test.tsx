@@ -124,21 +124,6 @@ describe('DiscrepancyAlert - Tier Display Bug Fix', () => {
   })
 })
 
-describe('useProgression - DiscrepancyInfo with Tier', () => {
-  // These tests document the expected type changes
-
-  it.skip('DiscrepancyInfo type includes tier field', () => {
-    // After the fix, DiscrepancyInfo should include:
-    // tier: Tier
-    // This is a type-level test documented in the interface
-  })
-
-  it.skip('analyzeWorkout populates tier in discrepancy', () => {
-    // When generating discrepancies, the tier should be determined
-    // from the progression key (e.g., "squat-T1" -> tier: "T1")
-  })
-})
-
 describe('DiscrepancyAlert - Enhanced UI', () => {
   const createDiscrepancy = (
     name: string,

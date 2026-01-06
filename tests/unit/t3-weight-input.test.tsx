@@ -150,20 +150,3 @@ describe('DayReviewPanel - T3 Weight Input Bug Fix', () => {
   })
 })
 
-describe('ImportReviewStep - T3 Weight Deduplication', () => {
-  // These tests are for the ImportReviewStep which should show deduplicated T3 weights
-  // Same T3 across multiple days should only show one weight input
-
-  it.skip('shows deduplicated T3 weight section below day tabs', () => {
-    // This test will be implemented when we add the T3 weight section
-    // to ImportReviewStep
-  })
-
-  it.skip('shows days indicator for T3s appearing on multiple days', () => {
-    // Example: "Lat Pulldown (A1, B1)" if it appears on both days
-  })
-
-  it.skip('updating T3 weight applies to all days where that T3 appears', () => {
-    // Weight change should propagate to all occurrences
-  })
-})
