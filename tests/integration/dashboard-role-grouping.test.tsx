@@ -7,9 +7,16 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { Dashboard } from '@/components/Dashboard'
+import { ToastProvider } from '@/contexts/ToastContext'
 import type { GZCLPState } from '@/types/state'
 import { STORAGE_KEY, CURRENT_STATE_VERSION } from '@/lib/constants'
+
+// Wrapper component for tests that require ToastProvider
+function TestWrapper({ children }: { children: ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>
+}
 
 // Mock state with role-based exercises
 const createMockState = (): GZCLPState => ({
@@ -151,7 +158,7 @@ describe('Dashboard Role-Based Grouping', () => {
     // Warmup section test removed - warmup/cooldown roles removed in Task 2.1b
 
     it('should render T1 section with squat (T1 on A1)', () => {
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
       // Find the T1 heading
       expect(screen.getByText('Tier 1')).toBeInTheDocument()
 
@@ -160,7 +167,7 @@ describe('Dashboard Role-Based Grouping', () => {
     })
 
     it('should render T2 section with bench (T2 on A1)', () => {
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
       // Find the T2 heading
       expect(screen.getByText('Tier 2')).toBeInTheDocument()
 
@@ -169,7 +176,7 @@ describe('Dashboard Role-Based Grouping', () => {
     })
 
     it('should render T3 section with accessories', () => {
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
       // Find the T3 heading
       expect(screen.getByText('Tier 3')).toBeInTheDocument()
 
@@ -180,7 +187,7 @@ describe('Dashboard Role-Based Grouping', () => {
     // Cooldown section test removed - warmup/cooldown roles removed in Task 2.1b
 
     it('should NOT render Supplemental section (concept removed)', () => {
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
       expect(screen.queryByText('Supplemental')).not.toBeInTheDocument()
     })
   })
@@ -191,7 +198,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'A2'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       // Find T1 section (data-testid)
       const t1Section = screen.getByTestId('tier-section-t1')
@@ -207,7 +214,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'B1'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       const t1Section = screen.getByTestId('tier-section-t1')
       expect(t1Section).toHaveTextContent('Overhead Press')
@@ -221,7 +228,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'B2'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       const t1Section = screen.getByTestId('tier-section-t1')
       expect(t1Section).toHaveTextContent('Deadlift')
@@ -244,7 +251,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'A1'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       const t3Section = screen.getByTestId('tier-section-t3')
       expect(t3Section).toHaveTextContent('Bicep Curls')
@@ -262,7 +269,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'B1'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       const t3Section = screen.getByTestId('tier-section-t3')
       expect(t3Section).toHaveTextContent('Cable Rows')
@@ -280,7 +287,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'B2'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       // T3 section should not exist when there are no T3s scheduled
       const t3Section = screen.queryByTestId('tier-section-t3')
@@ -298,7 +305,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'A2'
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
-      render(<Dashboard />)
+      render(<Dashboard />, { wrapper: TestWrapper })
 
       const nextWorkout = screen.getByTestId('next-workout')
       expect(nextWorkout).toHaveTextContent('Bicep Curls')

@@ -1,7 +1,7 @@
 /**
- * E2E Integration Tests: Full Import Flow
+ * E2E Integration Tests: Setup Wizard Full Flows
  *
- * Tests the complete wizard flow from API key to dashboard for the import path.
+ * Tests the complete wizard flow from API key to dashboard for both import and create paths.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -25,7 +25,7 @@ describe('E2E: Full Import Flow', () => {
   const mockProgram = {
     state: {
       apiKey: '',
-      program: { currentDay: 'A1', hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null } },
+      program: { currentDay: 'A1', workoutsPerWeek: 3, hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null } },
       exercises: {},
       progression: {},
       pendingChanges: [],
@@ -34,16 +34,20 @@ describe('E2E: Full Import Flow', () => {
     isSetupRequired: true,
     setApiKey: vi.fn(),
     setWeightUnit: vi.fn(),
+    setWorkoutsPerWeek: vi.fn(),
     addExercise: vi.fn().mockReturnValue('ex-1'),
     updateExercise: vi.fn(),
     removeExercise: vi.fn(),
     setInitialWeight: vi.fn(),
+    setProgressionByKey: vi.fn(),
     updateProgression: vi.fn(),
     updateProgressionBatch: vi.fn(),
     setHevyRoutineId: vi.fn(),
     setHevyRoutineIds: vi.fn(),
     setRoutineIds: vi.fn(),
     setCurrentDay: vi.fn(),
+    setProgramCreatedAt: vi.fn(),
+    setT3Schedule: vi.fn(),
     setLastSync: vi.fn(),
     resetState: vi.fn(),
     importState: vi.fn(),
@@ -58,9 +62,10 @@ describe('E2E: Full Import Flow', () => {
     isLoadingRoutines: false,
     isLoadingTemplates: false,
     connect: vi.fn(),
+    disconnect: vi.fn(),
     loadRoutines: vi.fn(),
     loadExerciseTemplates: vi.fn(),
-    getAllRoutines: vi.fn(),
+    getAllWorkouts: vi.fn().mockResolvedValue([]),
   }
 
   beforeEach(() => {
@@ -131,5 +136,112 @@ describe('E2E: Full Import Flow', () => {
     // The full integration would need to navigate through all steps
     // For now, verify the useProgram hook has the setCurrentDay method
     expect(mockProgram.setCurrentDay).toBeDefined()
+  })
+})
+
+describe('E2E: Full Create Flow', () => {
+  const mockOnComplete = vi.fn()
+
+  const mockExerciseTemplates = [
+    { id: 'template-1', title: 'Squat', muscle_group: 'Quadriceps' },
+    { id: 'template-2', title: 'Bench Press', muscle_group: 'Chest' },
+    { id: 'template-3', title: 'Deadlift', muscle_group: 'Hamstrings' },
+  ]
+
+  const mockProgram = {
+    state: {
+      apiKey: '',
+      program: { currentDay: 'A1', workoutsPerWeek: 3, hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null } },
+      exercises: {},
+      progression: {},
+      pendingChanges: [],
+      settings: { weightUnit: 'kg', increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+    },
+    isSetupRequired: true,
+    setApiKey: vi.fn(),
+    setWeightUnit: vi.fn(),
+    setWorkoutsPerWeek: vi.fn(),
+    addExercise: vi.fn().mockReturnValue('ex-1'),
+    updateExercise: vi.fn(),
+    removeExercise: vi.fn(),
+    setInitialWeight: vi.fn(),
+    setProgressionByKey: vi.fn(),
+    updateProgression: vi.fn(),
+    updateProgressionBatch: vi.fn(),
+    setHevyRoutineId: vi.fn(),
+    setHevyRoutineIds: vi.fn(),
+    setRoutineIds: vi.fn(),
+    setCurrentDay: vi.fn(),
+    setProgramCreatedAt: vi.fn(),
+    setT3Schedule: vi.fn(),
+    setLastSync: vi.fn(),
+    resetState: vi.fn(),
+    importState: vi.fn(),
+  }
+
+  const mockHevy = {
+    isConnected: false,
+    isConnecting: false,
+    connectionError: null,
+    routines: [],
+    exerciseTemplates: [],
+    isLoadingRoutines: false,
+    isLoadingTemplates: false,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    loadRoutines: vi.fn(),
+    loadExerciseTemplates: vi.fn(),
+    getAllWorkouts: vi.fn().mockResolvedValue([]),
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useProgramModule.useProgram).mockReturnValue(mockProgram)
+    vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue(mockHevy)
+  })
+
+  it('T045: completes create flow from welcome to exercises step', async () => {
+    mockHevy.connect.mockResolvedValue(true)
+
+    const { rerender } = render(<SetupWizard onComplete={mockOnComplete} />)
+
+    // Verify welcome step
+    expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+
+    // Enter API key and validate
+    const validApiKey = '12345678-1234-1234-1234-123456789012'
+    fireEvent.change(screen.getByLabelText(/api key/i), { target: { value: validApiKey } })
+    fireEvent.click(screen.getByRole('button', { name: /validate/i }))
+
+    await waitFor(() => {
+      expect(mockHevy.connect).toHaveBeenCalledWith(validApiKey)
+    })
+
+    // After validation, show create path (no routines)
+    mockHevy.isConnected = true
+    vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue({ ...mockHevy, isConnected: true })
+
+    rerender(<SetupWizard onComplete={mockOnComplete} />)
+
+    // Select "Start New Program"
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /start new program/i })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /start new program/i }))
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+
+    // Verify transition to exercises step
+    mockHevy.exerciseTemplates = mockExerciseTemplates
+    vi.mocked(useHevyApiModule.useHevyApi).mockReturnValue({
+      ...mockHevy,
+      isConnected: true,
+      exerciseTemplates: mockExerciseTemplates,
+    })
+
+    rerender(<SetupWizard onComplete={mockOnComplete} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/select exercises/i)).toBeInTheDocument()
+    })
   })
 })

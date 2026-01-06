@@ -29,6 +29,7 @@ export function createDefaultProgram(): ProgramConfig {
   return {
     name: 'My GZCLP Program',
     createdAt: new Date().toISOString(),
+    workoutsPerWeek: 3,
     hevyRoutineIds: {
       A1: null,
       B1: null,
@@ -56,6 +57,9 @@ export function createInitialState(unit: 'kg' | 'lbs' = 'kg'): GZCLPState {
 
     settings: createDefaultSettings(unit),
     lastSync: null,
+
+    totalWorkouts: 0,
+    mostRecentWorkoutDate: null,
   }
 }
 

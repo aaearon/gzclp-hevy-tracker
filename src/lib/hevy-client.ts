@@ -240,6 +240,29 @@ export class HevyClient {
     return response.workout
   }
 
+  /**
+   * Get all workouts (handles pagination automatically).
+   * Used for calculating "weeks on program" from workout history.
+   */
+  async getAllWorkouts(): Promise<Workout[]> {
+    const allWorkouts: Workout[] = []
+    let page = 1
+    const pageSize = 10
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    while (true) {
+      const response = await this.getWorkouts({ page, pageSize })
+      allWorkouts.push(...response.workouts)
+
+      if (page >= response.page_count) {
+        break
+      }
+      page++
+    }
+
+    return allWorkouts
+  }
+
   // ===========================================================================
   // Routines
   // ===========================================================================

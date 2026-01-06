@@ -2,7 +2,7 @@
  * QuickStats Component
  *
  * Displays program statistics in a 3-column grid:
- * - Weeks on Program
+ * - Current Week
  * - Total Workouts
  * - Days Since Last Workout
  *
@@ -10,7 +10,7 @@
  */
 
 import {
-  calculateWeeksOnProgram,
+  calculateCurrentWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
 } from '@/utils/stats'
@@ -36,13 +36,13 @@ function StatCard({ label, value, warning }: StatCardProps) {
 }
 
 export function QuickStats({ state }: QuickStatsProps) {
-  const weeks = calculateWeeksOnProgram(state.program.createdAt)
-  const workouts = calculateTotalWorkouts(state.progression)
-  const daysSince = calculateDaysSinceLastWorkout(state.progression)
+  const workouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
+  const currentWeek = calculateCurrentWeek(workouts, state.program.workoutsPerWeek)
+  const daysSince = calculateDaysSinceLastWorkout(state.progression, state.mostRecentWorkoutDate)
 
   return (
     <div className="mb-6 grid grid-cols-3 gap-4">
-      <StatCard label="Weeks on Program" value={weeks} />
+      <StatCard label="Current Week" value={currentWeek} />
       <StatCard label="Total Workouts" value={workouts} />
       <StatCard
         label="Days Since Last"

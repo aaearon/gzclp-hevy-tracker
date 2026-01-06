@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   calculateWeeksOnProgram,
+  calculateCurrentWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
 } from '@/utils/stats'
@@ -15,7 +16,6 @@ import type { ProgressionState } from '@/types/state'
 
 describe('calculateWeeksOnProgram', () => {
   beforeEach(() => {
-    // Mock current date to 2024-03-15
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2024-03-15T12:00:00Z'))
   })
@@ -24,31 +24,30 @@ describe('calculateWeeksOnProgram', () => {
     vi.useRealTimers()
   })
 
-  it('should return 0 for program created today', () => {
-    const result = calculateWeeksOnProgram('2024-03-15T10:00:00Z')
-    expect(result).toBe(0)
+  it.each([
+    ['today', '2024-03-15T10:00:00Z', 0],
+    ['7 days ago', '2024-03-08T12:00:00Z', 1],
+    ['14 days ago', '2024-03-01T12:00:00Z', 2],
+    ['10 days ago (floors partial)', '2024-03-05T12:00:00Z', 1],
+    ['52 weeks ago', '2023-03-15T12:00:00Z', 52],
+  ])('calculates weeks for program created %s', (_, createdAt, expected) => {
+    expect(calculateWeeksOnProgram(createdAt)).toBe(expected)
   })
+})
 
-  it('should return 1 for program created exactly 7 days ago', () => {
-    const result = calculateWeeksOnProgram('2024-03-08T12:00:00Z')
-    expect(result).toBe(1)
-  })
-
-  it('should return 2 for program created 14 days ago', () => {
-    const result = calculateWeeksOnProgram('2024-03-01T12:00:00Z')
-    expect(result).toBe(2)
-  })
-
-  it('should floor partial weeks', () => {
-    // 10 days ago = 1 full week + 3 days
-    const result = calculateWeeksOnProgram('2024-03-05T12:00:00Z')
-    expect(result).toBe(1)
-  })
-
-  it('should handle program created in the past year', () => {
-    // About 52 weeks ago
-    const result = calculateWeeksOnProgram('2023-03-15T12:00:00Z')
-    expect(result).toBe(52)
+describe('calculateCurrentWeek', () => {
+  it.each([
+    [0, 3, 1],  // 0 workouts at 3/week = week 1
+    [1, 3, 1],  // 1 workout at 3/week = week 1
+    [2, 3, 1],  // 2 workouts at 3/week = week 1
+    [3, 3, 2],  // 3 workouts at 3/week = week 2
+    [5, 3, 2],  // 5 workouts at 3/week = week 2
+    [6, 3, 3],  // 6 workouts at 3/week = week 3
+    [0, 4, 1],  // 0 workouts at 4/week = week 1
+    [4, 4, 2],  // 4 workouts at 4/week = week 2
+    [8, 4, 3],  // 8 workouts at 4/week = week 3
+  ])('returns correct week for %d workouts at %d/week', (workouts, perWeek, expected) => {
+    expect(calculateCurrentWeek(workouts, perWeek)).toBe(expected)
   })
 })
 
@@ -131,6 +130,55 @@ describe('calculateTotalWorkouts', () => {
     }
     const result = calculateTotalWorkouts(progression)
     expect(result).toBe(2) // Only 2 unique workouts
+  })
+
+  describe('stored total value', () => {
+    it('should use stored total when provided and > 0', () => {
+      const progression: Record<string, ProgressionState> = {}
+      const result = calculateTotalWorkouts(progression, 15)
+      expect(result).toBe(15)
+    })
+
+    it('should fall back to progression when stored total is 0', () => {
+      const progression: Record<string, ProgressionState> = {
+        'ex1': {
+          exerciseId: 'ex1',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 60,
+          lastWorkoutId: 'workout-1',
+          lastWorkoutDate: '2024-03-15',
+          amrapRecord: 5,
+        },
+      }
+      const result = calculateTotalWorkouts(progression, 0)
+      expect(result).toBe(1) // Falls back to counting progression
+    })
+
+    it('should fall back to progression when stored total is undefined', () => {
+      const progression: Record<string, ProgressionState> = {
+        'ex1': {
+          exerciseId: 'ex1',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 60,
+          lastWorkoutId: 'workout-1',
+          lastWorkoutDate: '2024-03-15',
+          amrapRecord: 5,
+        },
+        'ex2': {
+          exerciseId: 'ex2',
+          currentWeight: 40,
+          stage: 0,
+          baseWeight: 40,
+          lastWorkoutId: 'workout-2',
+          lastWorkoutDate: '2024-03-14',
+          amrapRecord: 6,
+        },
+      }
+      const result = calculateTotalWorkouts(progression)
+      expect(result).toBe(2)
+    })
   })
 })
 
@@ -270,5 +318,50 @@ describe('calculateDaysSinceLastWorkout', () => {
     }
     const result = calculateDaysSinceLastWorkout(progression)
     expect(result).toBe(3)
+  })
+
+  describe('stored date value', () => {
+    it('should use stored date when provided', () => {
+      const progression: Record<string, ProgressionState> = {}
+      const result = calculateDaysSinceLastWorkout(progression, '2024-03-14T12:00:00Z')
+      expect(result).toBe(1) // 1 day before 2024-03-15
+    })
+
+    it('should fall back to progression when stored date is null', () => {
+      const progression: Record<string, ProgressionState> = {
+        'ex1': {
+          exerciseId: 'ex1',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 60,
+          lastWorkoutId: 'workout-1',
+          lastWorkoutDate: '2024-03-13T12:00:00Z', // 2 days ago
+          amrapRecord: 5,
+        },
+      }
+      const result = calculateDaysSinceLastWorkout(progression, null)
+      expect(result).toBe(2)
+    })
+
+    it('should fall back to progression when stored date is undefined', () => {
+      const progression: Record<string, ProgressionState> = {
+        'ex1': {
+          exerciseId: 'ex1',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 60,
+          lastWorkoutId: 'workout-1',
+          lastWorkoutDate: '2024-03-12T12:00:00Z', // 3 days ago
+          amrapRecord: 5,
+        },
+      }
+      const result = calculateDaysSinceLastWorkout(progression)
+      expect(result).toBe(3)
+    })
+
+    it('should return null when stored date is null and progression is empty', () => {
+      const result = calculateDaysSinceLastWorkout({}, null)
+      expect(result).toBeNull()
+    })
   })
 })

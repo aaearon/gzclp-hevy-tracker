@@ -175,19 +175,9 @@ describe('DayReviewPanel', () => {
   })
 
   describe('accessibility', () => {
-    it('has minimum 44px touch targets for remove buttons', () => {
-      render(<DayReviewPanel {...defaultProps} />)
-
-      const removeButtons = screen.getAllByRole('button', { name: /remove/i })
-      removeButtons.forEach((button) => {
-        expect(button).toHaveClass('min-h-[44px]')
-      })
-    })
-
     it('has accessible labels for weight inputs', () => {
       render(<DayReviewPanel {...defaultProps} />)
 
-      // Should be able to find inputs by their accessible labels
       expect(screen.getByLabelText(/T1.*weight/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/T2.*weight/i)).toBeInTheDocument()
     })

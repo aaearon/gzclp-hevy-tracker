@@ -143,24 +143,8 @@ describe('[US1] Setup Wizard Flow', () => {
     })
   })
 
-  // Note: Exercise Selection Step tests were removed in Feature 004
-  // The slot-based exercise selection UI has been replaced with a role-based
-  // assignment system (SlotAssignment.tsx). See import-role-assignment.test.tsx
-  // for role assignment tests.
-  describe('Exercise Selection Step', () => {
-    it.todo('role-based exercise selection is tested in import-role-assignment.test.tsx')
-  })
-
-  describe('Weight Input Step', () => {
-    // These tests would require completing previous steps
-    // Testing in isolation with a different approach
-    it.todo('should accept weight input in kg')
-    it.todo('should accept weight input in lbs')
-    it.todo('should validate weight is positive')
-  })
-
-  describe('Completion', () => {
-    it.todo('should call onComplete with configured state')
-    it.todo('should save configuration to localStorage')
-  })
+  // Note: Exercise selection and weight input steps are tested in:
+  // - import-role-assignment.test.tsx (role-based exercise selection)
+  // - weight-setup-step.test.tsx (weight input validation)
+  // - setup-wizard-e2e.test.tsx (full flow integration)
 })

@@ -85,6 +85,7 @@ export interface MainLiftWeights {
 export interface ProgramConfig {
   name: string
   createdAt: string // ISO timestamp
+  workoutsPerWeek: number // Default: 3
   hevyRoutineIds: {
     A1: string | null
     B1: string | null
@@ -239,6 +240,11 @@ export interface GZCLPState {
 
   /** Per-day T3 schedule - maps each day to its T3 exercise IDs */
   t3Schedule: Record<GZCLPDay, string[]>
+
+  /** Total workout count matching GZCLP routines (from Hevy API) */
+  totalWorkouts: number
+  /** Most recent workout date matching GZCLP routines (ISO string) */
+  mostRecentWorkoutDate: string | null
 }
 
 // =============================================================================

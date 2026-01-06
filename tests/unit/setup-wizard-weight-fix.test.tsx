@@ -140,6 +140,7 @@ describe('Phase 8: handleNextWorkoutComplete Weight Fix', () => {
         program: {
           name: 'GZCLP',
           createdAt: new Date().toISOString(),
+          workoutsPerWeek: 3,
           currentDay: 'A1',
           hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
         },
@@ -157,6 +158,7 @@ describe('Phase 8: handleNextWorkoutComplete Weight Fix', () => {
       isSetupRequired: false,
       setApiKey: vi.fn(),
       setWeightUnit: vi.fn(),
+      setWorkoutsPerWeek: vi.fn(),
       addExercise: vi.fn().mockImplementation((config) => {
         const id = `ex-${++exerciseIdCounter}`
         exerciseIdMap[config.name] = id
@@ -165,12 +167,14 @@ describe('Phase 8: handleNextWorkoutComplete Weight Fix', () => {
       updateExercise: vi.fn(),
       removeExercise: vi.fn(),
       setInitialWeight: vi.fn(),
+      setProgressionByKey: vi.fn(),
       updateProgression: vi.fn(),
       updateProgressionBatch: vi.fn(),
       setHevyRoutineId: vi.fn(),
       setHevyRoutineIds: vi.fn(),
       setRoutineIds: vi.fn(),
       setCurrentDay: vi.fn(),
+      setProgramCreatedAt: vi.fn(),
       setT3Schedule: vi.fn(),
       setLastSync: vi.fn(),
       resetState: vi.fn(),
@@ -186,9 +190,10 @@ describe('Phase 8: handleNextWorkoutComplete Weight Fix', () => {
       isLoadingRoutines: false,
       isLoadingTemplates: false,
       connect: vi.fn().mockResolvedValue(true),
+      disconnect: vi.fn(),
       loadRoutines: vi.fn(),
       loadExerciseTemplates: vi.fn(),
-      getAllRoutines: vi.fn().mockResolvedValue([a1Routine, b1Routine, a2Routine, b2Routine]),
+      getAllWorkouts: vi.fn().mockResolvedValue([]),
     }
 
     mockRoutineImport = {

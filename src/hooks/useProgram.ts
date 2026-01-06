@@ -52,7 +52,13 @@ export interface UseProgramResult {
   setHevyRoutineIds: (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => void
   setRoutineIds: (assignment: RoutineAssignment) => void
   setCurrentDay: (day: GZCLPDay) => void
+  setProgramCreatedAt: (createdAt: string) => void
+  setWorkoutsPerWeek: (workoutsPerWeek: number) => void
   setT3Schedule: (schedule: Record<GZCLPDay, string[]>) => void
+
+  // Workout Stats
+  setTotalWorkouts: (count: number) => void
+  setMostRecentWorkoutDate: (date: string | null) => void
 
   // Sync
   setLastSync: (timestamp: string) => void
@@ -355,6 +361,38 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
+   * Set the program creation date (for weeks calculation).
+   */
+  const setProgramCreatedAt = useCallback(
+    (createdAt: string) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          createdAt,
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the number of workouts per week.
+   */
+  const setWorkoutsPerWeek = useCallback(
+    (workoutsPerWeek: number) => {
+      setRawState((prev) => ({
+        ...prev,
+        program: {
+          ...prev.program,
+          workoutsPerWeek,
+        },
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
    * Set the T3 schedule mapping days to exercise IDs.
    */
   const setT3Schedule = useCallback(
@@ -362,6 +400,32 @@ export function useProgram(): UseProgramResult {
       setRawState((prev) => ({
         ...prev,
         t3Schedule: schedule,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the total workout count.
+   */
+  const setTotalWorkouts = useCallback(
+    (count: number) => {
+      setRawState((prev) => ({
+        ...prev,
+        totalWorkouts: count,
+      }))
+    },
+    [setRawState]
+  )
+
+  /**
+   * Set the most recent workout date.
+   */
+  const setMostRecentWorkoutDate = useCallback(
+    (date: string | null) => {
+      setRawState((prev) => ({
+        ...prev,
+        mostRecentWorkoutDate: date,
       }))
     },
     [setRawState]
@@ -414,7 +478,11 @@ export function useProgram(): UseProgramResult {
     setHevyRoutineIds,
     setRoutineIds,
     setCurrentDay,
+    setProgramCreatedAt,
+    setWorkoutsPerWeek,
     setT3Schedule,
+    setTotalWorkouts,
+    setMostRecentWorkoutDate,
     setLastSync,
     resetState,
     importState,

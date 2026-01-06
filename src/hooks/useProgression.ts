@@ -12,8 +12,11 @@ import {
   type WorkoutAnalysisResult,
 } from '@/lib/workout-analysis'
 import { createPendingChangesFromAnalysis } from '@/lib/progression'
+import { deduplicateDiscrepancies } from '@/lib/discrepancy-utils'
+import { useToast } from '@/contexts/ToastContext'
 import type {
   ExerciseConfig,
+  GZCLPDay,
   ProgressionState,
   PendingChange,
   UserSettings,
@@ -30,6 +33,13 @@ export interface UseProgressionProps {
   progression: Record<string, ProgressionState>
   settings: UserSettings
   lastSync: string | null
+  /** Mapping of GZCLP days to Hevy routine IDs - used to filter relevant workouts */
+  hevyRoutineIds: {
+    A1: string | null
+    B1: string | null
+    A2: string | null
+    B2: string | null
+  }
 }
 
 export interface DiscrepancyInfo {
@@ -62,8 +72,24 @@ export interface UseProgressionResult {
 // Hook
 // =============================================================================
 
+/**
+ * Find the GZCLP day that matches a workout's routine ID.
+ * Returns null if the routine ID doesn't match any imported routine.
+ */
+function findDayByRoutineId(
+  routineId: string,
+  hevyRoutineIds: UseProgressionProps['hevyRoutineIds']
+): GZCLPDay | null {
+  if (hevyRoutineIds.A1 === routineId) return 'A1'
+  if (hevyRoutineIds.B1 === routineId) return 'B1'
+  if (hevyRoutineIds.A2 === routineId) return 'A2'
+  if (hevyRoutineIds.B2 === routineId) return 'B2'
+  return null
+}
+
 export function useProgression(props: UseProgressionProps): UseProgressionResult {
-  const { apiKey, exercises, progression, settings, lastSync } = props
+  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds } = props
+  const { showToast } = useToast()
 
   // State
   const [isSyncing, setIsSyncing] = useState(false)
@@ -99,16 +125,20 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       // Sort chronologically (oldest first) for proper processing
       const sortedWorkouts = sortWorkoutsChronologically(workouts)
 
-      // Filter to only new workouts if we have a last sync
-      // Note: For now we process all fetched workouts since we don't track lastProcessedWorkoutId
-      // This will be refined in a future iteration
+      // Filter to only workouts from imported routines
+      // This prevents false discrepancies from other routines in the user's Hevy account
+      const relevantWorkouts = sortedWorkouts.filter((workout) => {
+        const matchedDay = findDayByRoutineId(workout.routine_id, hevyRoutineIds)
+        return matchedDay !== null
+      })
 
-      // Analyze each workout
+      // Analyze each workout with its matched day for accurate tier derivation
       const allAnalysisResults: WorkoutAnalysisResult[] = []
       const allDiscrepancies: DiscrepancyInfo[] = []
 
-      for (const workout of sortedWorkouts) {
-        const results = analyzeWorkout(workout, exercises, progression)
+      for (const workout of relevantWorkouts) {
+        const matchedDay = findDayByRoutineId(workout.routine_id, hevyRoutineIds)
+        const results = analyzeWorkout(workout, exercises, progression, matchedDay ?? undefined)
         allAnalysisResults.push(...results)
 
         // Collect discrepancies
@@ -137,9 +167,17 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
 
       // Update state
       setAnalysisResults(allAnalysisResults)
-      setDiscrepancies(allDiscrepancies)
+      setDiscrepancies(deduplicateDiscrepancies(allDiscrepancies))
       setPendingChanges(changes)
       setLastSyncTime(new Date().toISOString())
+
+      // Show toast notification if new data was detected
+      if (changes.length > 0) {
+        showToast({
+          type: 'success',
+          message: `Synced ${String(changes.length)} workout update${changes.length > 1 ? 's' : ''}!`,
+        })
+      }
     } catch (error) {
       if (error instanceof HevyApiClientError) {
         setSyncError(error.message)
@@ -151,7 +189,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
     } finally {
       setIsSyncing(false)
     }
-  }, [client, exercises, progression, settings.weightUnit])
+  }, [client, exercises, progression, settings.weightUnit, showToast, hevyRoutineIds])
 
   /**
    * Clear sync error.

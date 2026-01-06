@@ -15,9 +15,11 @@ import { SetupComplete } from './SetupComplete'
 import { useHevyApi } from '@/hooks/useHevyApi'
 import { useProgram } from '@/hooks/useProgram'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
-import { MAIN_LIFT_ROLES, type MainLiftRole, type Tier } from '@/types/state'
+import { MAIN_LIFT_ROLES, type MainLiftRole } from '@/types/state'
+import { STORAGE_KEY } from '@/lib/constants'
 import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
 import { getProgressionKey } from '@/lib/role-utils'
+import { calculateCreatedAtFromWorkouts } from '@/lib/weeks-calculator'
 
 type SetupStep =
   | 'welcome'
@@ -80,9 +82,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     apiKey: string
     path: RoutineSourceMode
     unit: WeightUnit
+    workoutsPerWeek: number
   }) => {
     setRoutineSourceMode(data.path)
     program.setWeightUnit(data.unit)
+    program.setWorkoutsPerWeek(data.workoutsPerWeek)
     setUnit(data.unit)
     if (data.path === 'create') {
       setCurrentStep('exercises')
@@ -139,7 +143,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setSelectedDay(day)
   }, [])
 
-  const handleNextWorkoutComplete = useCallback(() => {
+  const handleNextWorkoutComplete = useCallback(async () => {
     if (routineSourceMode === 'import' && routineImport.importResult) {
       const { byDay } = routineImport.importResult
 
@@ -245,12 +249,44 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
       // Save routine IDs to program
       program.setRoutineIds(routineImport.assignment)
+
+      // Calculate workout stats from workout history
+      try {
+        const allWorkouts = await hevy.getAllWorkouts()
+        const weeksResult = calculateCreatedAtFromWorkouts(
+          allWorkouts,
+          routineImport.assignment,
+          { workoutsPerWeek: program.state.program.workoutsPerWeek }
+        )
+
+        // Write directly to localStorage to avoid race condition with component unmount
+        // The React state setters don't complete before navigation happens
+        // IMPORTANT: We must include currentDay here too, because any React state
+        // update after this will overwrite our localStorage changes
+        const currentState = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+        const updatedState = {
+          ...currentState,
+          totalWorkouts: weeksResult.matchingWorkoutCount,
+          mostRecentWorkoutDate: weeksResult.mostRecentWorkoutDate,
+          program: {
+            ...currentState.program,
+            createdAt: weeksResult.calculatedCreatedAt,
+            currentDay: selectedDay,
+          },
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedState))
+        // Skip React state setters - go straight to complete
+        setCurrentStep('complete')
+        return
+      } catch {
+        // Fall through to use React state setters
+      }
     }
 
-    // Set current day and complete
+    // Fallback: Set current day via React state and complete
     program.setCurrentDay(selectedDay)
     setCurrentStep('complete')
-  }, [routineSourceMode, routineImport, selectedDay, program])
+  }, [routineSourceMode, routineImport, selectedDay, program, hevy])
 
   const handleNextWorkoutBack = useCallback(() => {
     // Go back to import-review if import path, or weights if create path

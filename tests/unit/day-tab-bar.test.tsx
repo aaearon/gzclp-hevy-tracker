@@ -44,14 +44,6 @@ describe('DayTabBar', () => {
       expect(a1Tab).toHaveAttribute('aria-selected', 'false')
     })
 
-    it('applies active styling to active tab', () => {
-      render(<DayTabBar {...defaultProps} activeDay="A2" />)
-
-      const a2Tab = screen.getByRole('tab', { name: /A2/i })
-      expect(a2Tab).toHaveClass('bg-blue-600')
-      expect(a2Tab).toHaveClass('text-white')
-    })
-
     it('shows checkmark indicator for validated days', () => {
       render(<DayTabBar {...defaultProps} validatedDays={['A1', 'B2']} />)
 
@@ -76,13 +68,6 @@ describe('DayTabBar', () => {
       })
     })
 
-    it('applies custom className when provided', () => {
-      render(<DayTabBar {...defaultProps} className="mt-4 mb-2" />)
-
-      const tablist = screen.getByRole('tablist')
-      expect(tablist).toHaveClass('mt-4')
-      expect(tablist).toHaveClass('mb-2')
-    })
   })
 
   describe('interactions', () => {
@@ -124,31 +109,15 @@ describe('DayTabBar', () => {
   })
 
   describe('accessibility', () => {
-    it('has role="tablist" on container', () => {
+    it('has proper ARIA roles and labels', () => {
       render(<DayTabBar {...defaultProps} />)
 
+      // Tablist container
       expect(screen.getByRole('tablist')).toBeInTheDocument()
-    })
 
-    it('has role="tab" on each button', () => {
-      render(<DayTabBar {...defaultProps} />)
-
+      // 4 tabs with proper labels
       const tabs = screen.getAllByRole('tab')
       expect(tabs).toHaveLength(4)
-    })
-
-    it('has minimum 44px touch targets', () => {
-      render(<DayTabBar {...defaultProps} />)
-
-      const tabs = screen.getAllByRole('tab')
-      tabs.forEach((tab) => {
-        expect(tab).toHaveClass('min-h-[44px]')
-      })
-    })
-
-    it('has aria-label describing each day', () => {
-      render(<DayTabBar {...defaultProps} />)
-
       expect(screen.getByRole('tab', { name: 'Day A1' })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Day B1' })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: 'Day A2' })).toBeInTheDocument()

@@ -7,9 +7,16 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { useProgression } from '@/hooks/useProgression'
+import { ToastProvider } from '@/contexts/ToastContext'
 import type { Workout, WorkoutExercise, WorkoutSet } from '@/types/hevy'
 import type { ExerciseConfig, ProgressionState, WeightUnit } from '@/types/state'
+
+// Wrapper component for hooks that require ToastProvider
+function TestWrapper({ children }: { children: ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>
+}
 
 // Mock the Hevy client
 const mockGetWorkouts = vi.fn()
@@ -57,16 +64,29 @@ function createWorkoutExercise(
   }
 }
 
+// Mock routine ID for test workouts - must match hevyRoutineIds
+const MOCK_ROUTINE_ID = 'test-routine-a1'
+
+// Mock hevyRoutineIds for useProgression
+const mockHevyRoutineIds = {
+  A1: MOCK_ROUTINE_ID,
+  B1: 'test-routine-b1',
+  A2: 'test-routine-a2',
+  B2: 'test-routine-b2',
+}
+
 // Helper to create a workout
 function createWorkout(
   id: string,
   date: string,
-  exercises: WorkoutExercise[]
+  exercises: WorkoutExercise[],
+  routineId: string = MOCK_ROUTINE_ID
 ): Workout {
   return {
     id,
     title: 'GZCLP Day A1',
-    description: null,
+    routine_id: routineId,
+    description: '',
     start_time: date,
     end_time: date,
     updated_at: date,
@@ -158,14 +178,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -196,14 +219,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -239,14 +265,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -282,14 +311,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -316,14 +348,17 @@ describe('[US2] Sync Flow Integration', () => {
       })
       mockGetWorkouts.mockReturnValue(mockPromise)
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       expect(result.current.isSyncing).toBe(false)
@@ -350,14 +385,17 @@ describe('[US2] Sync Flow Integration', () => {
     it('should set sync error on failure', async () => {
       mockGetWorkouts.mockRejectedValue(new Error('Network error'))
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -376,14 +414,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       expect(result.current.lastSyncTime).toBeNull()
@@ -414,14 +455,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -451,14 +495,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -482,14 +529,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -515,14 +565,17 @@ describe('[US2] Sync Flow Integration', () => {
         page_count: 1,
       })
 
-      const { result } = renderHook(() =>
-        useProgression({
-          apiKey: 'test-api-key',
-          exercises: mockExercises,
-          progression: mockProgression,
-          settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
-          lastSync: null,
-        })
+      const { result } = renderHook(
+        () =>
+          useProgression({
+            apiKey: 'test-api-key',
+            exercises: mockExercises,
+            progression: mockProgression,
+            settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
+            lastSync: null,
+            hevyRoutineIds: mockHevyRoutineIds,
+          }),
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {

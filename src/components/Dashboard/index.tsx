@@ -34,6 +34,7 @@ import { UpdateStatus } from './UpdateStatus'
 import { ReviewModal } from '@/components/ReviewModal'
 import { PostWorkoutSummary } from '@/components/PostWorkoutSummary'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
+import { TodaysWorkoutModal } from './TodaysWorkoutModal'
 
 interface DashboardProps {
   onNavigateToSettings?: () => void
@@ -60,6 +61,9 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   const [showSummary, setShowSummary] = useState(false)
   const [summaryData, setSummaryData] = useState<WorkoutSummaryData | null>(null)
   const previousChangeIds = useRef<Set<string>>(new Set())
+
+  // Today's Workout modal state [GAP-15]
+  const [showTodaysWorkout, setShowTodaysWorkout] = useState(false)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -89,6 +93,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     progression,
     settings,
     lastSync,
+    hevyRoutineIds: program.hevyRoutineIds,
   })
 
   // Auto-sync on mount [GAP-18]
@@ -282,6 +287,20 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Start Workout button [GAP-15] */}
+            <button
+              type="button"
+              onClick={() => { setShowTodaysWorkout(true) }}
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-h-[44px]"
+              data-testid="start-workout-button"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Start Workout
+            </button>
+
             {/* Pending changes indicator */}
             {pendingChanges.length > 0 && (
               <button
@@ -446,6 +465,17 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         }}
         summary={summaryData}
         unit={settings.weightUnit}
+      />
+
+      {/* Today's Workout Modal [GAP-15] */}
+      <TodaysWorkoutModal
+        isOpen={showTodaysWorkout}
+        onClose={() => { setShowTodaysWorkout(false) }}
+        day={program.currentDay}
+        exercises={exercises}
+        progression={progression}
+        weightUnit={settings.weightUnit}
+        t3Schedule={t3Schedule}
       />
     </div>
   )

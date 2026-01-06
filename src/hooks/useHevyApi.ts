@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { createHevyClient, HevyAuthError, type HevyClient } from '@/lib/hevy-client'
-import type { ExerciseTemplate, Routine } from '@/types/hevy'
+import type { ExerciseTemplate, Routine, Workout } from '@/types/hevy'
 
 export interface UseHevyApiState {
   isConnected: boolean
@@ -24,6 +24,7 @@ export interface UseHevyApiActions {
   disconnect: () => void
   loadExerciseTemplates: () => Promise<void>
   loadRoutines: () => Promise<void>
+  getAllWorkouts: () => Promise<Workout[]>
 }
 
 export type UseHevyApiResult = UseHevyApiState & UseHevyApiActions
@@ -121,6 +122,17 @@ export function useHevyApi(initialApiKey?: string): UseHevyApiResult {
     }
   }, [client])
 
+  /**
+   * Get all workouts from Hevy (for weeks calculation).
+   */
+  const getAllWorkouts = useCallback(async (): Promise<Workout[]> => {
+    if (!client) {
+      throw new Error('Not connected to Hevy API')
+    }
+
+    return client.getAllWorkouts()
+  }, [client])
+
   return {
     isConnected,
     isConnecting,
@@ -133,5 +145,6 @@ export function useHevyApi(initialApiKey?: string): UseHevyApiResult {
     disconnect,
     loadExerciseTemplates,
     loadRoutines,
+    getAllWorkouts,
   }
 }

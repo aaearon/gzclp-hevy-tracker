@@ -268,9 +268,9 @@ This is the authoritative functional requirements document (v2.3) that defines:
 |-------|--------|-----------|-----------|
 | Phase 1: Critical Fixes | ✅ Complete | 6/6 | 0 |
 | Phase 2: Core Functionality | ✅ Complete | 6/6 | 0 |
-| Phase 3: UX Enhancements | ⬜ Not Started | 0/7 | 7 |
+| Phase 3: UX Enhancements | 🔄 In Progress | 2/7 | 5 |
 | Phase 4: Polish | ⬜ Not Started | 0/4 | 4 |
-| **TOTAL** | **52% Complete** | **12/23** | **11** |
+| **TOTAL** | **61% Complete** | **14/23** | **9** |
 
 ### Task Status Key
 
@@ -313,8 +313,8 @@ These are **breaking issues** that affect core workflow.
 
 | Task | Gap | Description | Status | Priority |
 |------|-----|-------------|--------|----------|
-| 3.1 | GAP-05 | Toast Notification System | ⬜ | 🟡 HIGH |
-| 3.2 | GAP-15 | "Start Workout" Button + Preview | ⬜ | 🟡 HIGH |
+| 3.1 | GAP-05 | Toast Notification System | ✅ | 🟡 HIGH |
+| 3.2 | GAP-15 | "Start Workout" Button + Preview | ✅ | 🟡 HIGH |
 | 3.3 | GAP-06 | Today's Workout Actions (Open Hevy, Copy) | ⬜ | 🟢 MEDIUM |
 | 3.4 | GAP-07 | Estimated Duration | ⬜ | 🟢 MEDIUM |
 | 3.5 | GAP-08 | AMRAP Notes in Routine | ⬜ | 🟢 MEDIUM |
@@ -1540,7 +1540,7 @@ return Math.max(rounded, barWeight);
 ### Task 3.1: Toast Notification System
 
 **Gap:** GAP-05
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Requirements:** REQ-SYNC-001
 
 #### Problem
@@ -1755,15 +1755,15 @@ export function useProgression() {
 
 #### Acceptance Criteria
 
-- [ ] ToastProvider wraps entire app in App.tsx
-- [ ] useToast hook accessible from any component
-- [ ] Toasts appear in top-right corner
-- [ ] Toasts auto-dismiss after 5 seconds
-- [ ] Click dismiss button removes toast immediately
-- [ ] Action button triggers callback and dismisses
-- [ ] Multiple toasts stack vertically
-- [ ] Slide-in animation works
-- [ ] Z-index higher than all other modals
+- [x] ToastProvider wraps entire app in App.tsx
+- [x] useToast hook accessible from any component
+- [x] Toasts appear in top-right corner
+- [x] Toasts auto-dismiss after 5 seconds
+- [x] Click dismiss button removes toast immediately
+- [x] Action button triggers callback and dismisses
+- [x] Multiple toasts stack vertically
+- [x] Slide-in animation works
+- [x] Z-index higher than all other modals
 
 ---
 
@@ -2186,7 +2186,7 @@ applyProgressionChanges() updates amrapRecord in state
 ### Task 3.6: Today's Workout Preview / Start Button
 
 **Gap:** GAP-15
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Requirements:** REQ-DASH-001, REQ-TODAY-001, REQ-TODAY-002
 
 #### Problem
@@ -2196,10 +2196,15 @@ The spec requires:
 2. Clicking it opens Today's Workout Preview (REQ-TODAY-001)
 3. Preview shows content in specific order with warmups collapsible (REQ-TODAY-002)
 
-Current implementation:
-- NextWorkout component exists but may not have "Start Workout" button
-- Warmup sets not implemented yet (depends on Task 2.1)
-- Need to verify content display order matches spec
+#### Implementation Notes
+
+Created `TodaysWorkoutModal.tsx` component that displays:
+- Header with day name and date
+- Collapsible warmup section (collapsed by default)
+- T1 exercise with AMRAP indicator
+- T2 exercise
+- T3 exercises list
+- (Estimated duration placeholder - depends on Task 3.4/GAP-07)
 
 #### Files to Modify
 
@@ -2244,16 +2249,16 @@ Current implementation:
 
 #### Acceptance Criteria
 
-- [ ] "Start Workout" button visible on Dashboard
-- [ ] Button opens Today's Workout Preview modal/panel
-- [ ] Header shows day name and date
-- [ ] Warmup section is collapsible (uses CollapsibleSection)
-- [ ] Warmup section collapsed by default
-- [ ] T1 exercise shows: name, weight, scheme, AMRAP indicator
-- [ ] T2 exercise shows: name, weight, scheme
-- [ ] T3 exercises listed with weights
-- [ ] Estimated duration displayed (from Task 3.3)
-- [ ] Content order matches spec (warmups → T1 → T2 → T3 → duration)
+- [x] "Start Workout" button visible on Dashboard
+- [x] Button opens Today's Workout Preview modal/panel
+- [x] Header shows day name and date
+- [x] Warmup section is collapsible (uses CollapsibleSection)
+- [x] Warmup section collapsed by default
+- [x] T1 exercise shows: name, weight, scheme, AMRAP indicator
+- [x] T2 exercise shows: name, weight, scheme
+- [x] T3 exercises listed with weights
+- [ ] Estimated duration displayed (from Task 3.4/GAP-07) - *pending dependency*
+- [x] Content order matches spec (warmups → T1 → T2 → T3 → duration)
 
 #### Verification
 

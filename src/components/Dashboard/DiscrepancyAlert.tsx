@@ -66,56 +66,83 @@ export function DiscrepancyAlert({
           </p>
 
           <ul className="mt-3 space-y-3">
-            {discrepancies.map((discrepancy) => (
-              <li
-                key={`${discrepancy.exerciseId}-${discrepancy.workoutId}`}
-                className="bg-white rounded-md p-3 border border-yellow-100"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      {discrepancy.exerciseName} ({discrepancy.tier})
-                    </span>
-                    <div className="text-sm text-gray-600 mt-1">
-                      <span className="text-red-600">
-                        Stored: {discrepancy.storedWeight}
-                        {unit}
-                      </span>
-                      <span className="mx-2">vs</span>
-                      <span className="text-green-600">
-                        Actual: {discrepancy.actualWeight}
-                        {unit}
-                      </span>
+            {discrepancies.map((discrepancy) => {
+              const isHigher = discrepancy.actualWeight > discrepancy.storedWeight
+              const arrow = isHigher ? '\u2191' : '\u2193'
+              const actualColorClass = isHigher ? 'text-green-600' : 'text-amber-600'
+              const formattedDate = new Intl.DateTimeFormat('en-US', {
+                month: 'short',
+                day: 'numeric',
+              }).format(new Date(discrepancy.workoutDate))
+
+              return (
+                <li
+                  key={`${discrepancy.exerciseId}-${discrepancy.workoutId}`}
+                  className="bg-white rounded-md p-3 border border-yellow-100"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">
+                          {discrepancy.exerciseName} ({discrepancy.tier})
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          from {formattedDate}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Hevy shows{' '}
+                        <span className={actualColorClass}>
+                          {arrow} {discrepancy.actualWeight}
+                          {unit}
+                        </span>
+                        {' '}but we expected{' '}
+                        <span className="font-medium">
+                          {discrepancy.storedWeight}
+                          {unit}
+                        </span>
+                        {' '}based on saved progression
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                      <div className="flex flex-col items-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight)
+                          }}
+                          className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100
+                                     hover:bg-green-200 rounded-md min-h-[44px]
+                                     transition-colors"
+                        >
+                          Use {discrepancy.actualWeight}
+                          {unit}
+                        </button>
+                        <span className="text-xs text-gray-500 mt-1">
+                          Update progression
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <button
+                          type="button"
+                          onClick={() => { onKeepStoredWeight(discrepancy.exerciseId) }}
+                          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100
+                                     hover:bg-gray-200 rounded-md min-h-[44px]
+                                     transition-colors"
+                        >
+                          Keep {discrepancy.storedWeight}
+                          {unit}
+                        </button>
+                        <span className="text-xs text-gray-500 mt-1">
+                          Keep current value
+                        </span>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight)
-                      }}
-                      className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100
-                                 hover:bg-green-200 rounded-md min-h-[44px]
-                                 transition-colors"
-                    >
-                      Use {discrepancy.actualWeight}
-                      {unit}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { onKeepStoredWeight(discrepancy.exerciseId) }}
-                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100
-                                 hover:bg-gray-200 rounded-md min-h-[44px]
-                                 transition-colors"
-                    >
-                      Keep {discrepancy.storedWeight}
-                      {unit}
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
 
           {onDismiss && (

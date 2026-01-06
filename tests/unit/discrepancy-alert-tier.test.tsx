@@ -81,9 +81,8 @@ describe('DiscrepancyAlert - Tier Display Bug Fix', () => {
     expect(screen.getByText(/Squat \(T1\)/)).toBeInTheDocument()
     expect(screen.getByText(/Squat \(T2\)/)).toBeInTheDocument()
 
-    // Should show different weights for each
-    expect(screen.getByText(/Stored: 100/)).toBeInTheDocument()
-    expect(screen.getByText(/Stored: 70/)).toBeInTheDocument()
+    // Should show different expected weights for each (in new format)
+    expect(screen.getAllByText(/we expected/).length).toBe(2)
   })
 
   it('shows tier for T3 exercises as "Exercise Name (T3)"', () => {
@@ -137,5 +136,117 @@ describe('useProgression - DiscrepancyInfo with Tier', () => {
   it.skip('analyzeWorkout populates tier in discrepancy', () => {
     // When generating discrepancies, the tier should be determined
     // from the progression key (e.g., "squat-T1" -> tier: "T1")
+  })
+})
+
+describe('DiscrepancyAlert - Enhanced UI', () => {
+  const createDiscrepancy = (
+    name: string,
+    tier: Tier,
+    stored: number,
+    actual: number,
+    workoutDate = '2024-01-15T10:00:00Z'
+  ) => ({
+    exerciseId: `ex-${name.toLowerCase().replace(' ', '-')}`,
+    exerciseName: name,
+    tier,
+    storedWeight: stored,
+    actualWeight: actual,
+    workoutId: 'workout-1',
+    workoutDate,
+  })
+
+  const defaultProps = {
+    discrepancies: [] as ReturnType<typeof createDiscrepancy>[],
+    unit: 'kg' as const,
+    onUseActualWeight: vi.fn(),
+    onKeepStoredWeight: vi.fn(),
+    onDismiss: vi.fn(),
+  }
+
+  it('displays workout date in format "from Jan 15"', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105, '2024-01-15T10:00:00Z')]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/from Jan 15/)).toBeInTheDocument()
+  })
+
+  it('shows up arrow when actual weight is higher than stored', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)] // actual > stored
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    // Should contain up arrow unicode character
+    expect(screen.getByText(/\u2191/)).toBeInTheDocument()
+  })
+
+  it('shows down arrow when actual weight is lower than stored', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 95)] // actual < stored
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    // Should contain down arrow unicode character
+    expect(screen.getByText(/\u2193/)).toBeInTheDocument()
+  })
+
+  it('applies green color class when actual weight is higher', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    // The actual weight span contains the arrow and weight
+    const actualSpan = screen.getByText(/\u2191 105/)
+    expect(actualSpan).toHaveClass('text-green-600')
+  })
+
+  it('applies amber color class when actual weight is lower', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 95)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    // The actual weight span contains the arrow and weight
+    const actualSpan = screen.getByText(/\u2193 95/)
+    expect(actualSpan).toHaveClass('text-amber-600')
+  })
+
+  it('shows impact text "Update progression" under Use button', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/Update progression/)).toBeInTheDocument()
+  })
+
+  it('shows impact text "Keep current value" under Keep button', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/Keep current value/)).toBeInTheDocument()
+  })
+
+  it('shows "Hevy shows" in the message', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/Hevy shows/)).toBeInTheDocument()
+  })
+
+  it('shows "but we expected" in the message', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/but we expected/)).toBeInTheDocument()
+  })
+
+  it('shows "based on saved progression" in the message', () => {
+    const discrepancies = [createDiscrepancy('Squat', 'T1', 100, 105)]
+
+    render(<DiscrepancyAlert {...defaultProps} discrepancies={discrepancies} />)
+
+    expect(screen.getByText(/based on saved progression/)).toBeInTheDocument()
   })
 })

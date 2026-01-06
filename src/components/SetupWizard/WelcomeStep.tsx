@@ -15,6 +15,7 @@ export interface WelcomeStepProps {
     apiKey: string
     path: RoutineSourceMode
     unit: WeightUnit
+    workoutsPerWeek: number
   }) => void
   onValidateKey: (apiKey: string) => Promise<boolean>
   isValidating: boolean
@@ -36,6 +37,7 @@ export function WelcomeStep({
   const [localError, setLocalError] = useState<string | null>(null)
   const [selectedPath, setSelectedPath] = useState<RoutineSourceMode | null>(null)
   const [unit, setUnit] = useState<WeightUnit>('kg')
+  const [workoutsPerWeek, setWorkoutsPerWeek] = useState(3)
 
   const handleValidateKey = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,7 +58,7 @@ export function WelcomeStep({
 
   const handleContinue = () => {
     if (isValidated && selectedPath) {
-      onComplete({ apiKey: apiKey.trim(), path: selectedPath, unit })
+      onComplete({ apiKey: apiKey.trim(), path: selectedPath, unit, workoutsPerWeek })
     }
   }
 
@@ -201,6 +203,33 @@ export function WelcomeStep({
           {/* Unit Selection */}
           <div className="mb-6">
             <UnitSelector value={unit} onChange={setUnit} />
+          </div>
+
+          {/* Workouts Per Week */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Workouts per week
+            </label>
+            <div className="flex gap-2">
+              {[2, 3, 4].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => { setWorkoutsPerWeek(num) }}
+                  className={`flex-1 py-2 px-4 border-2 rounded-lg font-medium transition-colors
+                              focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] ${
+                                workoutsPerWeek === num
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Used to calculate weeks on program
+            </p>
           </div>
 
           {/* Continue Button */}

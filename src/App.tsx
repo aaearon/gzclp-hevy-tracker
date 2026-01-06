@@ -3,6 +3,7 @@ import { SetupWizard } from '@/components/SetupWizard'
 import { Dashboard } from '@/components/Dashboard'
 import { Settings } from '@/components/Settings'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ToastProvider } from '@/contexts/ToastContext'
 import { useProgram } from '@/hooks/useProgram'
 
 type AppView = 'dashboard' | 'settings'
@@ -28,7 +29,9 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </ErrorBoundary>
   )
 }
