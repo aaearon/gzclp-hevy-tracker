@@ -105,11 +105,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     [routineImport]
   )
 
-  const handleRoutineAssignNext = useCallback(() => {
-    // Trigger extraction from assigned routines and go to import-review
-    routineImport.extract(hevy.routines)
+  const handleRoutineAssignNext = useCallback(async () => {
+    // Trigger extraction from assigned routines with workout history
+    await routineImport.extract(hevy.routines, () => hevy.getAllWorkouts())
     setCurrentStep('import-review')
-  }, [routineImport, hevy.routines])
+  }, [routineImport, hevy.routines, hevy])
 
   const handleDayExerciseUpdate = useCallback(
     (day: GZCLPDay, position: 'T1' | 'T2', updates: Partial<ImportedExercise>) => {
@@ -534,6 +534,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               onAssign={handleRoutineAssign}
               onNext={handleRoutineAssignNext}
               onBack={handleBack}
+              isLoading={routineImport.isExtracting}
             />
           )}
 

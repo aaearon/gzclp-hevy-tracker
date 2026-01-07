@@ -116,8 +116,14 @@ export function getRepScheme(tier: Tier, stage: Stage): RepScheme {
 // =============================================================================
 
 export const WARMUP_CONFIG = {
-  percentages: [0, 0.5, 0.7, 0.85], // 0 = bar only
-  reps: [10, 5, 3, 2],
+  /** Light lifts (≤40kg): bar only, 50%, 75% */
+  lightPercentages: [0, 0.5, 0.75],
+  lightReps: [10, 5, 3],
+  /** Heavy lifts (>40kg): 50%, 70%, 85% */
+  heavyPercentages: [0.5, 0.7, 0.85],
+  heavyReps: [5, 3, 2],
+  /** Threshold for heavy vs light warmup protocol */
+  heavyThreshold: 40, // kg
   minWeight: 20, // kg - bar weight
 } as const
 
@@ -158,7 +164,7 @@ export const T3_SUCCESS_THRESHOLD = 25 // Total reps needed to progress
 // State Versioning
 // =============================================================================
 
-export const CURRENT_STATE_VERSION = '2.1.0'
+export const CURRENT_STATE_VERSION = '2.2.0'
 
 // =============================================================================
 // localStorage Key

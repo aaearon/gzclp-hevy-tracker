@@ -8,14 +8,17 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
 import {
   createGZCLPA1Routine,
   createGZCLPB1Routine,
   createRoutineWithUniqueT3s,
 } from '../helpers/routine-mocks'
-import type { Routine } from '@/types/hevy'
+import type { Routine, Workout } from '@/types/hevy'
+
+// Mock fetchWorkouts that returns empty array (no workout history)
+const mockFetchWorkouts = (): Promise<Workout[]> => Promise.resolve([])
 
 describe('useRoutineImport', () => {
   let mockRoutines: Routine[]
@@ -29,7 +32,7 @@ describe('useRoutineImport', () => {
   })
 
   describe('per-day import data storage', () => {
-    it('stores importResult with byDay structure after extract()', () => {
+    it('stores importResult with byDay structure after extract()', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
@@ -37,8 +40,8 @@ describe('useRoutineImport', () => {
         result.current.setAssignment('B1', b1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       expect(result.current.importResult).not.toBeNull()
@@ -49,15 +52,15 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult?.byDay.B2).toBeDefined()
     })
 
-    it('each day has t1, t2, t3s fields populated correctly', () => {
+    it('each day has t1, t2, t3s fields populated correctly', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       const a1Data = result.current.importResult?.byDay.A1
@@ -69,15 +72,15 @@ describe('useRoutineImport', () => {
       expect(a1Data?.t3s.length).toBeGreaterThan(0)
     })
 
-    it('unassigned days have null t1/t2 and empty t3s', () => {
+    it('unassigned days have null t1/t2 and empty t3s', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       // B2 is not assigned
@@ -89,15 +92,15 @@ describe('useRoutineImport', () => {
   })
 
   describe('updateDayExercise', () => {
-    it('updates T1 exercise weight for specific day', () => {
+    it('updates T1 exercise weight for specific day', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       act(() => {
@@ -107,15 +110,15 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult?.byDay.A1.t1?.userWeight).toBe(100)
     })
 
-    it('updates T2 exercise stage for specific day', () => {
+    it('updates T2 exercise stage for specific day', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       act(() => {
@@ -125,7 +128,7 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult?.byDay.A1.t2?.userStage).toBe(1)
     })
 
-    it('updates only the specified day, not other days', () => {
+    it('updates only the specified day, not other days', async () => {
       const a1 = createRoutineWithUniqueT3s('A1', ['A1 Lat Pulldown'])
       const b1 = createRoutineWithUniqueT3s('B1', ['B1 Leg Press'])
       const routines = [a1, b1]
@@ -137,8 +140,8 @@ describe('useRoutineImport', () => {
         result.current.setAssignment('B1', b1.id)
       })
 
-      act(() => {
-        result.current.extract(routines)
+      await act(async () => {
+        await result.current.extract(routines, mockFetchWorkouts)
       })
 
       const originalB1T1Weight = result.current.importResult?.byDay.B1.t1?.detectedWeight
@@ -165,15 +168,15 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult).toBeNull()
     })
 
-    it('does nothing when day has no T1/T2', () => {
+    it('does nothing when day has no T1/T2', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       // B2 is not assigned, so it has no T1
@@ -186,15 +189,15 @@ describe('useRoutineImport', () => {
   })
 
   describe('updateDayT3', () => {
-    it('updates T3 at index for specific day', () => {
+    it('updates T3 at index for specific day', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       act(() => {
@@ -204,15 +207,15 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult?.byDay.A1.t3s[0].userWeight).toBe(25)
     })
 
-    it('updates only the specified T3, not others', () => {
+    it('updates only the specified T3, not others', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       const t3Count = result.current.importResult?.byDay.A1.t3s.length ?? 0
@@ -228,15 +231,15 @@ describe('useRoutineImport', () => {
       expect(result.current.importResult?.byDay.A1.t3s[1].userWeight).toBeUndefined()
     })
 
-    it('does nothing when index is out of bounds', () => {
+    it('does nothing when index is out of bounds', async () => {
       const { result } = renderHook(() => useRoutineImport(mockRoutines))
 
       act(() => {
         result.current.setAssignment('A1', a1Routine.id)
       })
 
-      act(() => {
-        result.current.extract(mockRoutines)
+      await act(async () => {
+        await result.current.extract(mockRoutines, mockFetchWorkouts)
       })
 
       const t3CountBefore = result.current.importResult?.byDay.A1.t3s.length

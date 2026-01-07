@@ -191,7 +191,8 @@ describe('[US4] Routine Manager', () => {
         mockExercises,
         mockProgression,
         defaultSettings,
-        123
+        undefined, // t3Schedule
+        123 // folderId
       )
 
       const payload = mockClient.createRoutine.mock.calls[0][0]
@@ -222,17 +223,22 @@ describe('[US4] Routine Manager', () => {
 
   describe('updateGZCLPRoutine', () => {
     let mockClient: {
+      getRoutine: ReturnType<typeof vi.fn>
       updateRoutine: ReturnType<typeof vi.fn>
     }
 
     beforeEach(() => {
       mockClient = {
+        getRoutine: vi.fn(),
         updateRoutine: vi.fn(),
       }
     })
 
-    it('should update an existing routine', async () => {
-      const updatedRoutine = createMockRoutine('GZCLP Day A1', 'existing-routine-id')
+    it('should update an existing routine while preserving original name', async () => {
+      // User's custom name should be preserved
+      const existingRoutine = createMockRoutine('My Custom A1 Workout', 'existing-routine-id')
+      const updatedRoutine = createMockRoutine('My Custom A1 Workout', 'existing-routine-id')
+      mockClient.getRoutine.mockResolvedValue(existingRoutine)
       mockClient.updateRoutine.mockResolvedValue(updatedRoutine)
 
       const result = await updateGZCLPRoutine(
@@ -244,12 +250,13 @@ describe('[US4] Routine Manager', () => {
         defaultSettings
       )
 
+      expect(mockClient.getRoutine).toHaveBeenCalledWith('existing-routine-id')
       expect(mockClient.updateRoutine).toHaveBeenCalledTimes(1)
       expect(mockClient.updateRoutine).toHaveBeenCalledWith(
         'existing-routine-id',
         expect.objectContaining({
           routine: expect.objectContaining({
-            title: 'GZCLP Day A1',
+            title: 'My Custom A1 Workout', // Original name preserved
           }),
         })
       )
@@ -265,7 +272,9 @@ describe('[US4] Routine Manager', () => {
         },
       }
 
+      const existingRoutine = createMockRoutine('GZCLP Day A1', 'existing-routine-id')
       const updatedRoutine = createMockRoutine('GZCLP Day A1', 'existing-routine-id')
+      mockClient.getRoutine.mockResolvedValue(existingRoutine)
       mockClient.updateRoutine.mockResolvedValue(updatedRoutine)
 
       await updateGZCLPRoutine(
@@ -286,6 +295,7 @@ describe('[US4] Routine Manager', () => {
   describe('ensureGZCLPRoutines', () => {
     let mockClient: {
       getAllRoutines: ReturnType<typeof vi.fn>
+      getRoutine: ReturnType<typeof vi.fn>
       createRoutine: ReturnType<typeof vi.fn>
       updateRoutine: ReturnType<typeof vi.fn>
     }
@@ -293,6 +303,7 @@ describe('[US4] Routine Manager', () => {
     beforeEach(() => {
       mockClient = {
         getAllRoutines: vi.fn(),
+        getRoutine: vi.fn(),
         createRoutine: vi.fn(),
         updateRoutine: vi.fn(),
       }
@@ -305,6 +316,12 @@ describe('[US4] Routine Manager', () => {
         createMockRoutine('GZCLP Day B1', 'routine-b1'),
       ]
       mockClient.getAllRoutines.mockResolvedValue(existingRoutines)
+
+      // Mock getRoutine to return existing routines (for preserving names)
+      mockClient.getRoutine.mockImplementation((id: string) => {
+        const routine = existingRoutines.find((r) => r.id === id)
+        return Promise.resolve(routine)
+      })
 
       // Mock create/update responses
       mockClient.createRoutine.mockImplementation((payload: { routine: { title: string } }) =>
@@ -370,6 +387,10 @@ describe('[US4] Routine Manager', () => {
         createMockRoutine('GZCLP Day B2', 'routine-b2'),
       ]
       mockClient.getAllRoutines.mockResolvedValue(existingRoutines)
+      mockClient.getRoutine.mockImplementation((id: string) => {
+        const routine = existingRoutines.find((r) => r.id === id)
+        return Promise.resolve(routine)
+      })
       mockClient.updateRoutine.mockImplementation((id: string) =>
         Promise.resolve(createMockRoutine('Updated', id))
       )
@@ -399,13 +420,51 @@ describe('[US4] Routine Manager', () => {
         mockExercises,
         mockProgression,
         defaultSettings,
-        456
+        undefined, // existingRoutineIds
+        undefined, // t3Schedule
+        456 // folderId
       )
 
       // Verify folder_id was passed to all create calls
       for (const call of mockClient.createRoutine.mock.calls) {
         expect(call[0].routine.folder_id).toBe(456)
       }
+    })
+
+    it('should use existing routine IDs when provided', async () => {
+      const existingIds = {
+        A1: 'imported-a1-id',
+        B1: 'imported-b1-id',
+        A2: 'imported-a2-id',
+        B2: 'imported-b2-id',
+      }
+
+      // Mock getRoutine to return existing routines (preserving original names)
+      mockClient.getRoutine.mockImplementation((id: string) =>
+        Promise.resolve(createMockRoutine(`Original ${id}`, id))
+      )
+      mockClient.updateRoutine.mockImplementation(
+        (id: string, _payload: { routine: { title: string } }) =>
+          Promise.resolve(createMockRoutine(`Updated ${id}`, id))
+      )
+
+      await ensureGZCLPRoutines(
+        mockClient as unknown as HevyClient,
+        mockExercises,
+        mockProgression,
+        defaultSettings,
+        existingIds
+      )
+
+      // Should NOT fetch routines since we provided IDs
+      expect(mockClient.getAllRoutines).not.toHaveBeenCalled()
+
+      // Should update all 4 with the provided IDs
+      expect(mockClient.updateRoutine).toHaveBeenCalledTimes(4)
+      expect(mockClient.updateRoutine).toHaveBeenCalledWith('imported-a1-id', expect.anything())
+      expect(mockClient.updateRoutine).toHaveBeenCalledWith('imported-b1-id', expect.anything())
+      expect(mockClient.updateRoutine).toHaveBeenCalledWith('imported-a2-id', expect.anything())
+      expect(mockClient.updateRoutine).toHaveBeenCalledWith('imported-b2-id', expect.anything())
     })
   })
 })

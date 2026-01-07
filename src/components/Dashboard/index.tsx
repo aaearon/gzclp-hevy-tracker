@@ -15,10 +15,17 @@ import { useProgression } from '@/hooks/useProgression'
 import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
-import { ensureGZCLPRoutines } from '@/lib/routine-manager'
-import type { GZCLPDay, ProgressionState, WorkoutSummaryData } from '@/types/state'
+import { syncGZCLPRoutines } from '@/lib/routine-manager'
+import {
+  fetchCurrentHevyState,
+  buildSelectablePushPreview,
+  updatePreviewAction,
+  type SelectablePushPreview,
+  type SyncAction,
+  type HevyRoutineState,
+} from '@/lib/push-preview'
+import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
-import { buildSummaryFromChanges, getMostRecentWorkoutDate } from '@/utils/summary'
 import { MainLiftCard } from './MainLiftCard'
 import { QuickStats } from './QuickStats'
 import { CurrentWorkout } from './CurrentWorkout'
@@ -30,11 +37,11 @@ import { DiscrepancyAlert } from './DiscrepancyAlert'
 import { UpdateHevyButton } from './UpdateHevyButton'
 import { UpdateStatus } from './UpdateStatus'
 import { ReviewModal } from '@/components/ReviewModal'
-import { PostWorkoutSummary } from '@/components/PostWorkoutSummary'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 import { TodaysWorkoutModal } from './TodaysWorkoutModal'
 import { ProgressionChartContainer } from '@/components/ProgressionChart'
 import { CollapsibleSection } from '@/components/common/CollapsibleSection'
+import { PushConfirmDialog } from './PushConfirmDialog'
 
 interface DashboardProps {
   onNavigateToSettings?: () => void
@@ -48,19 +55,26 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
+    acknowledgeDiscrepancy,
   } = useProgram()
   const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
+  // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
+  const acknowledgedDiscrepancies = state.acknowledgedDiscrepancies ?? []
 
   // Local state for modals and updates
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [isUpdatingHevy, setIsUpdatingHevy] = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [updateSuccess, setUpdateSuccess] = useState(false)
-  const [resolvedDiscrepancies, setResolvedDiscrepancies] = useState<Set<string>>(new Set())
 
-  // Post-workout summary panel state [GAP-02]
-  const [showSummary, setShowSummary] = useState(false)
-  const [summaryData, setSummaryData] = useState<WorkoutSummaryData | null>(null)
+  // Push confirmation dialog state
+  const [isPushDialogOpen, setIsPushDialogOpen] = useState(false)
+  const [pushPreviewLoading, setPushPreviewLoading] = useState(false)
+  const [pushPreviewError, setPushPreviewError] = useState<string | null>(null)
+  const [pushPreview, setPushPreview] = useState<SelectablePushPreview | null>(null)
+  const [hevyState, setHevyState] = useState<Record<GZCLPDay, HevyRoutineState> | null>(null)
+
+  // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
 
   // Today's Workout modal state [GAP-15]
@@ -130,30 +144,12 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     return [...storedPendingChanges, ...newFromSync]
   }, [storedPendingChanges, syncPendingChanges])
 
-  // Show post-workout summary when new changes are detected [GAP-02]
+  // Post-workout summary disabled - not adding value currently
+  // Track seen changes to avoid re-processing on future syncs
   useEffect(() => {
     if (syncPendingChanges.length === 0) return
-
-    // Check if there are any new changes (not previously seen)
-    const newChanges = syncPendingChanges.filter(
-      (c) => !previousChangeIds.current.has(c.id)
-    )
-
-    if (newChanges.length > 0) {
-      // Build and show the summary
-      const workoutDate = getMostRecentWorkoutDate(newChanges)
-      const summary = buildSummaryFromChanges(
-        newChanges,
-        `Day ${program.currentDay}`,
-        workoutDate
-      )
-      setSummaryData(summary)
-      setShowSummary(true)
-
-      // Track these change IDs as seen
-      newChanges.forEach((c) => previousChangeIds.current.add(c.id))
-    }
-  }, [syncPendingChanges, program.currentDay])
+    syncPendingChanges.forEach((c) => previousChangeIds.current.add(c.id))
+  }, [syncPendingChanges])
 
   // Use pending changes hook
   const {
@@ -183,9 +179,9 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     setLastSync(new Date().toISOString())
   }, [syncWorkouts, setLastSync])
 
-  // Handle discrepancy resolution - use actual weight
+  // Handle discrepancy resolution - use actual weight (updates progression to match Hevy)
   const handleUseActualWeight = useCallback(
-    (exerciseId: string, actualWeight: number) => {
+    (exerciseId: string, actualWeight: number, tier: import('@/types/state').Tier) => {
       const existingProgression = progression[exerciseId]
       if (existingProgression) {
         updateProgressionBatch({
@@ -197,49 +193,139 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
           },
         })
       }
-      setResolvedDiscrepancies((prev) => new Set([...prev, exerciseId]))
+      // Also acknowledge so it doesn't reappear if user syncs again before doing another workout
+      acknowledgeDiscrepancy(exerciseId, actualWeight, tier)
     },
-    [progression, updateProgressionBatch]
+    [progression, updateProgressionBatch, acknowledgeDiscrepancy]
   )
 
-  // Handle discrepancy resolution - keep stored weight
+  // Handle discrepancy resolution - keep stored weight (acknowledge and hide)
   const handleKeepStoredWeight = useCallback(
-    (exerciseId: string) => {
-      setResolvedDiscrepancies((prev) => new Set([...prev, exerciseId]))
+    (exerciseId: string, actualWeight: number, tier: import('@/types/state').Tier) => {
+      acknowledgeDiscrepancy(exerciseId, actualWeight, tier)
     },
-    []
+    [acknowledgeDiscrepancy]
   )
 
   // Handle dismissing all discrepancies
   const handleDismissDiscrepancies = useCallback(() => {
-    const allIds = discrepancies.map((d) => d.exerciseId)
-    setResolvedDiscrepancies((prev) => new Set([...prev, ...allIds]))
-  }, [discrepancies])
+    for (const d of discrepancies) {
+      acknowledgeDiscrepancy(d.exerciseId, d.actualWeight, d.tier)
+    }
+  }, [discrepancies, acknowledgeDiscrepancy])
 
-  // Filter out resolved discrepancies
-  const unresolvedDiscrepancies = useMemo(() => {
-    return discrepancies.filter((d) => !resolvedDiscrepancies.has(d.exerciseId))
-  }, [discrepancies, resolvedDiscrepancies])
-
-  // Handle updating Hevy routines
-  const handleUpdateHevy = useCallback(async () => {
+  // Handle opening push confirmation dialog
+  const handleOpenPushDialog = useCallback(async () => {
     if (!hevyClient) {
       setUpdateError('Not connected to Hevy API')
       return
     }
 
+    setIsPushDialogOpen(true)
+    setPushPreviewLoading(true)
+    setPushPreviewError(null)
+    setPushPreview(null)
+    setHevyState(null)
+
+    try {
+      const fetchedHevyState = await fetchCurrentHevyState(hevyClient, program.hevyRoutineIds)
+      setHevyState(fetchedHevyState)
+      const preview = buildSelectablePushPreview(
+        fetchedHevyState,
+        exercises,
+        progression,
+        t3Schedule,
+        settings.weightUnit
+      )
+      setPushPreview(preview)
+    } catch (error) {
+      if (error instanceof Error) {
+        setPushPreviewError(error.message)
+      } else {
+        setPushPreviewError('Failed to fetch current routines from Hevy')
+      }
+    } finally {
+      setPushPreviewLoading(false)
+    }
+  }, [hevyClient, program.hevyRoutineIds, exercises, progression, t3Schedule, settings.weightUnit])
+
+  // Handle closing push dialog
+  const handleClosePushDialog = useCallback(() => {
+    setIsPushDialogOpen(false)
+    setPushPreview(null)
+    setPushPreviewError(null)
+    setHevyState(null)
+  }, [])
+
+  // Handle action change in push dialog
+  const handleActionChange = useCallback((progressionKey: string, action: SyncAction) => {
+    setPushPreview((prev) => {
+      if (!prev) return null
+      return updatePreviewAction(prev, progressionKey, action)
+    })
+  }, [])
+
+  // Filter out acknowledged discrepancies (persisted in localStorage)
+  const unresolvedDiscrepancies = useMemo(() => {
+    return discrepancies.filter((d) => {
+      // Check if this exact discrepancy has been acknowledged
+      const isAcknowledged = acknowledgedDiscrepancies.some(
+        (ack) =>
+          ack.exerciseId === d.exerciseId &&
+          ack.acknowledgedWeight === d.actualWeight &&
+          ack.tier === d.tier
+      )
+      return !isAcknowledged
+    })
+  }, [discrepancies, acknowledgedDiscrepancies])
+
+  // Handle confirming push with selective sync
+  const handleConfirmPush = useCallback(async () => {
+    if (!hevyClient || !pushPreview || !hevyState) {
+      setUpdateError('Missing data for sync')
+      handleClosePushDialog()
+      return
+    }
+
+    // Check if there are any actions to perform
+    if (pushPreview.pushCount === 0 && pushPreview.pullCount === 0) {
+      handleClosePushDialog()
+      return
+    }
+
+    handleClosePushDialog()
     setIsUpdatingHevy(true)
     setUpdateError(null)
     setUpdateSuccess(false)
 
     try {
-      const routineIds = await ensureGZCLPRoutines(
+      const { routineIds, pullUpdates } = await syncGZCLPRoutines(
         hevyClient,
         exercises,
         progression,
-        settings
+        settings,
+        pushPreview,
+        hevyState,
+        program.hevyRoutineIds,
+        t3Schedule
       )
-      // Only set non-null routine IDs
+
+      // Apply pull updates to local progression state
+      if (pullUpdates.length > 0) {
+        const updatedProgression = { ...progression }
+        for (const { progressionKey, weight } of pullUpdates) {
+          if (updatedProgression[progressionKey]) {
+            updatedProgression[progressionKey] = {
+              ...updatedProgression[progressionKey],
+              currentWeight: weight,
+              baseWeight: weight, // Reset base weight on pull
+            }
+          }
+        }
+        updateProgressionBatch(updatedProgression)
+      }
+
+      // Update stored routine IDs
       const updates: { A1?: string; B1?: string; A2?: string; B2?: string } = {}
       if (routineIds.A1) updates.A1 = routineIds.A1
       if (routineIds.B1) updates.B1 = routineIds.B1
@@ -251,12 +337,24 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
       if (error instanceof Error) {
         setUpdateError(error.message)
       } else {
-        setUpdateError('Failed to update Hevy routines')
+        setUpdateError('Failed to sync with Hevy')
       }
     } finally {
       setIsUpdatingHevy(false)
     }
-  }, [hevyClient, exercises, progression, settings, setHevyRoutineIds])
+  }, [
+    hevyClient,
+    pushPreview,
+    hevyState,
+    exercises,
+    progression,
+    settings,
+    program.hevyRoutineIds,
+    t3Schedule,
+    handleClosePushDialog,
+    updateProgressionBatch,
+    setHevyRoutineIds,
+  ])
 
   // Disable sync/update when offline
   const isOffline = !isOnline || !isHevyReachable
@@ -296,7 +394,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
 
             {/* Update Hevy button */}
             <UpdateHevyButton
-              onClick={handleUpdateHevy}
+              onClick={handleOpenPushDialog}
               isUpdating={isUpdatingHevy}
               disabled={!apiKey || isOffline}
             />
@@ -430,17 +528,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         onClose={() => { setIsReviewModalOpen(false) }}
       />
 
-      {/* Post-Workout Summary Panel [GAP-02] */}
-      <PostWorkoutSummary
-        isOpen={showSummary}
-        onClose={() => { setShowSummary(false) }}
-        onReviewChanges={() => {
-          setShowSummary(false)
-          setIsReviewModalOpen(true)
-        }}
-        summary={summaryData}
-        unit={settings.weightUnit}
-      />
+      {/* Post-Workout Summary Panel disabled - not adding value currently */}
 
       {/* Today's Workout Modal [GAP-15] */}
       <TodaysWorkoutModal
@@ -451,6 +539,19 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         progression={progression}
         weightUnit={settings.weightUnit}
         t3Schedule={t3Schedule}
+      />
+
+      {/* Push Confirmation Dialog */}
+      <PushConfirmDialog
+        isOpen={isPushDialogOpen}
+        isLoading={pushPreviewLoading}
+        error={pushPreviewError}
+        preview={pushPreview}
+        weightUnit={settings.weightUnit}
+        onConfirm={() => { void handleConfirmPush() }}
+        onCancel={handleClosePushDialog}
+        onRetry={() => { void handleOpenPushDialog() }}
+        onActionChange={handleActionChange}
       />
     </div>
   )

@@ -2,9 +2,9 @@
  * Unit Tests: T3 Progression Logic
  *
  * Tests for T3 (accessory) progression rules:
- * - 3x15+ sets (AMRAP on each set)
- * - Success: Total reps across all sets >= 25 -> add weight
- * - Failure: Total reps < 25 -> repeat same weight
+ * - 3x15+ sets (AMRAP on final set)
+ * - Success: AMRAP (last) set >= 25 reps -> add weight
+ * - Failure: AMRAP set < 25 reps -> repeat same weight
  *
  * [US2] User Story 2 - Sync Workouts and Calculate Progression
  */
@@ -27,38 +27,46 @@ describe('[US2] T3 Progression Logic', () => {
     amrapRecord: 0,
   }
 
-  describe('Success Detection', () => {
-    it('should detect success when total reps >= 25', () => {
-      expect(isT3Success([15, 10, 5])).toBe(true) // 30 total
-      expect(isT3Success([10, 10, 5])).toBe(true) // 25 total
-      expect(isT3Success([8, 8, 9])).toBe(true) // 25 total
+  describe('Success Detection (AMRAP-based)', () => {
+    it('should detect success when AMRAP set >= 25', () => {
+      expect(isT3Success([15, 15, 25])).toBe(true) // AMRAP = 25
+      expect(isT3Success([10, 10, 30])).toBe(true) // AMRAP = 30
+      expect(isT3Success([8, 8, 26])).toBe(true) // AMRAP = 26
     })
 
-    it('should detect failure when total reps < 25', () => {
-      expect(isT3Success([10, 8, 6])).toBe(false) // 24 total
-      expect(isT3Success([8, 8, 8])).toBe(false) // 24 total
-      expect(isT3Success([5, 5, 5])).toBe(false) // 15 total
+    it('should detect failure when AMRAP set < 25', () => {
+      expect(isT3Success([15, 15, 24])).toBe(false) // AMRAP = 24
+      expect(isT3Success([20, 20, 20])).toBe(false) // AMRAP = 20 (60 total but AMRAP fails)
+      expect(isT3Success([15, 10, 5])).toBe(false) // AMRAP = 5 (30 total but AMRAP fails)
     })
 
-    it('should handle exactly 25 reps as success', () => {
-      expect(isT3Success([9, 8, 8])).toBe(true) // Exactly 25
+    it('should handle exactly 25 reps on AMRAP as success', () => {
+      expect(isT3Success([15, 15, 25])).toBe(true) // Exactly 25 on AMRAP
     })
 
-    it('should handle more than 3 sets (sum all)', () => {
-      expect(isT3Success([8, 8, 8, 5])).toBe(true) // 29 total
+    it('should check only the last set regardless of earlier sets', () => {
+      // High earlier sets don't matter - only AMRAP counts
+      expect(isT3Success([30, 30, 10])).toBe(false) // 70 total but AMRAP = 10
+      expect(isT3Success([5, 5, 25])).toBe(true) // Only 35 total but AMRAP = 25
+    })
+
+    it('should handle more than 3 sets (use last as AMRAP)', () => {
+      expect(isT3Success([15, 15, 15, 25])).toBe(true) // AMRAP (4th set) = 25
+      expect(isT3Success([15, 15, 25, 10])).toBe(false) // AMRAP (4th set) = 10
     })
 
     it('should handle fewer than 3 sets', () => {
-      expect(isT3Success([15, 10])).toBe(true) // 25 total with only 2 sets
-      expect(isT3Success([10, 10])).toBe(false) // 20 total
+      expect(isT3Success([15, 25])).toBe(true) // AMRAP (2nd set) = 25
+      expect(isT3Success([30])).toBe(true) // Single set AMRAP = 30
+      expect(isT3Success([20])).toBe(false) // Single set AMRAP = 20
     })
   })
 
   describe('Success Progression', () => {
-    it('should add weight when total reps >= 25 (upper body)', () => {
+    it('should add weight when AMRAP set >= 25 (upper body)', () => {
       const result = calculateT3Progression(
         baseProgression,
-        [15, 12, 10], // 37 total
+        [15, 15, 27], // AMRAP = 27
         'upper',
         'kg'
       )
@@ -66,12 +74,13 @@ describe('[US2] T3 Progression Logic', () => {
       expect(result.newWeight).toBe(22.5) // +2.5kg for upper
       expect(result.newStage).toBe(0) // T3 always stays at stage 0
       expect(result.type).toBe('progress')
+      expect(result.success).toBe(true)
     })
 
     it('should add weight for lower body exercises', () => {
       const result = calculateT3Progression(
         baseProgression,
-        [15, 10, 8], // 33 total
+        [15, 15, 25], // AMRAP = 25
         'lower',
         'kg'
       )
@@ -82,20 +91,32 @@ describe('[US2] T3 Progression Logic', () => {
     it('should add weight in lbs correctly', () => {
       const result = calculateT3Progression(
         { ...baseProgression, currentWeight: 25 },
-        [15, 10, 5],
+        [15, 15, 26],
         'upper',
         'lbs'
       )
 
       expect(result.newWeight).toBe(30) // +5lbs for upper
     })
+
+    it('should include AMRAP reps in reason message', () => {
+      const result = calculateT3Progression(
+        baseProgression,
+        [15, 15, 28],
+        'upper',
+        'kg'
+      )
+
+      expect(result.reason).toContain('28')
+      expect(result.reason).toContain('AMRAP')
+    })
   })
 
   describe('Repeat on Failure', () => {
-    it('should repeat same weight when total reps < 25', () => {
+    it('should repeat same weight when AMRAP set < 25', () => {
       const result = calculateT3Progression(
         baseProgression,
-        [10, 8, 6], // 24 total, just under threshold
+        [15, 15, 24], // AMRAP = 24, just under threshold
         'upper',
         'kg'
       )
@@ -103,27 +124,41 @@ describe('[US2] T3 Progression Logic', () => {
       expect(result.newWeight).toBe(20) // Weight unchanged
       expect(result.newStage).toBe(0)
       expect(result.type).toBe('repeat')
+      expect(result.success).toBe(false)
+    })
+
+    it('should repeat even with high total reps if AMRAP is low', () => {
+      const result = calculateT3Progression(
+        baseProgression,
+        [30, 30, 15], // 75 total but AMRAP = 15
+        'upper',
+        'kg'
+      )
+
+      expect(result.type).toBe('repeat')
+      expect(result.newWeight).toBe(20)
     })
 
     it('should provide helpful reason for repeat', () => {
       const result = calculateT3Progression(
         baseProgression,
-        [8, 8, 8], // 24 total
+        [15, 15, 20], // AMRAP = 20
         'upper',
         'kg'
       )
 
-      expect(result.reason).toContain('24')
+      expect(result.reason).toContain('20')
       expect(result.reason).toContain('25')
+      expect(result.reason).toContain('AMRAP')
     })
   })
 
   describe('No Deload for T3', () => {
     it('should never deload T3 exercises', () => {
-      // Even with very low reps, T3 just repeats
+      // Even with very low AMRAP, T3 just repeats
       const result = calculateT3Progression(
         baseProgression,
-        [5, 5, 5], // 15 total, very low
+        [5, 5, 5], // AMRAP = 5, very low
         'upper',
         'kg'
       )
@@ -143,17 +178,29 @@ describe('[US2] T3 Progression Logic', () => {
       )
 
       expect(result.type).toBe('repeat')
+      expect(isT3Success([])).toBe(false)
     })
 
-    it('should handle zero reps in sets', () => {
+    it('should handle zero reps on AMRAP set', () => {
       const result = calculateT3Progression(
         baseProgression,
-        [15, 0, 10], // 25 total despite zero set
+        [15, 15, 0], // AMRAP = 0 (failed set)
         'upper',
         'kg'
       )
 
-      expect(result.type).toBe('progress')
+      expect(result.type).toBe('repeat')
+    })
+
+    it('should track AMRAP reps in result', () => {
+      const result = calculateT3Progression(
+        baseProgression,
+        [15, 15, 28],
+        'upper',
+        'kg'
+      )
+
+      expect(result.amrapReps).toBe(28)
     })
   })
 })

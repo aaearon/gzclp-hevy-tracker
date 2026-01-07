@@ -20,8 +20,8 @@ export interface DiscrepancyInfo {
 export interface DiscrepancyAlertProps {
   discrepancies: DiscrepancyInfo[]
   unit: WeightUnit
-  onUseActualWeight: (exerciseId: string, actualWeight: number) => void
-  onKeepStoredWeight: (exerciseId: string) => void
+  onUseActualWeight: (exerciseId: string, actualWeight: number, tier: Tier) => void
+  onKeepStoredWeight: (exerciseId: string, actualWeight: number, tier: Tier) => void
   onDismiss?: () => void
 }
 
@@ -110,7 +110,7 @@ export function DiscrepancyAlert({
                         <button
                           type="button"
                           onClick={() => {
-                            onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight)
+                            onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight, discrepancy.tier)
                           }}
                           className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100
                                      hover:bg-green-200 rounded-md min-h-[44px]
@@ -126,7 +126,7 @@ export function DiscrepancyAlert({
                       <div className="flex flex-col items-center">
                         <button
                           type="button"
-                          onClick={() => { onKeepStoredWeight(discrepancy.exerciseId) }}
+                          onClick={() => { onKeepStoredWeight(discrepancy.exerciseId, discrepancy.actualWeight, discrepancy.tier) }}
                           className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100
                                      hover:bg-gray-200 rounded-md min-h-[44px]
                                      transition-colors"

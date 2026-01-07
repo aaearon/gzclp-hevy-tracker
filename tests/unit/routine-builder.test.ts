@@ -24,6 +24,14 @@ describe('[US4] Routine Builder', () => {
     restTimers: { t1: 180, t2: 120, t3: 60 },
   }
 
+  // T3 schedule - all T3s on all days for backward compatibility with old tests
+  const mockT3Schedule: Record<GZCLPDay, string[]> = {
+    A1: ['ex-curl-t3', 'ex-row-t3', 'ex-legcurl-t3'],
+    B1: ['ex-curl-t3', 'ex-row-t3', 'ex-legcurl-t3'],
+    A2: ['ex-curl-t3', 'ex-row-t3', 'ex-legcurl-t3'],
+    B2: ['ex-curl-t3', 'ex-row-t3', 'ex-legcurl-t3'],
+  }
+
   // Role-based exercise configs
   const mockExercises: Record<string, ExerciseConfig> = {
     'ex-squat': {
@@ -70,8 +78,11 @@ describe('[US4] Routine Builder', () => {
     },
   }
 
+  // Progression keyed by role-tier for main lifts (e.g., "squat-T1", "bench-T2")
+  // and by exerciseId for T3s
   const mockProgression: Record<string, ProgressionState> = {
-    'ex-squat': {
+    // Squat progressions (T1 on A1, T2 on A2)
+    'squat-T1': {
       exerciseId: 'ex-squat',
       currentWeight: 100,
       stage: 0,
@@ -80,7 +91,17 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-bench': {
+    'squat-T2': {
+      exerciseId: 'ex-squat',
+      currentWeight: 100,
+      stage: 0,
+      baseWeight: 100,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    // Bench progressions (T1 on A2, T2 on A1)
+    'bench-T1': {
       exerciseId: 'ex-bench',
       currentWeight: 80,
       stage: 0,
@@ -89,7 +110,17 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-ohp': {
+    'bench-T2': {
+      exerciseId: 'ex-bench',
+      currentWeight: 80,
+      stage: 0,
+      baseWeight: 80,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    // OHP progressions (T1 on B1, T2 on B2)
+    'ohp-T1': {
       exerciseId: 'ex-ohp',
       currentWeight: 50,
       stage: 1,
@@ -98,7 +129,17 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
-    'ex-deadlift': {
+    'ohp-T2': {
+      exerciseId: 'ex-ohp',
+      currentWeight: 50,
+      stage: 1,
+      baseWeight: 50,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    // Deadlift progressions (T1 on B2, T2 on B1)
+    'deadlift-T1': {
       exerciseId: 'ex-deadlift',
       currentWeight: 120,
       stage: 2,
@@ -107,6 +148,16 @@ describe('[US4] Routine Builder', () => {
       lastWorkoutDate: null,
       amrapRecord: 0,
     },
+    'deadlift-T2': {
+      exerciseId: 'ex-deadlift',
+      currentWeight: 120,
+      stage: 2,
+      baseWeight: 120,
+      lastWorkoutId: null,
+      lastWorkoutDate: null,
+      amrapRecord: 0,
+    },
+    // T3 exercises use exerciseId as key
     'ex-curl-t3': {
       exerciseId: 'ex-curl-t3',
       currentWeight: 15,
@@ -162,47 +213,60 @@ describe('[US4] Routine Builder', () => {
   })
 
   describe('buildWarmupSets', () => {
-    it('should build warmup sets with correct percentages for 100kg', () => {
-      const warmups = buildWarmupSets(100)
+    it('should build heavy warmup sets (50%, 70%, 85%) for 100kg', () => {
+      const warmups = buildWarmupSets(100) // >40kg = heavy protocol
 
-      // Bar only, 50%, 70%, 85%
-      expect(warmups).toHaveLength(4)
-      expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 20, reps: 10 }) // Bar
-      expect(warmups[1]).toEqual({ type: 'warmup', weight_kg: 50, reps: 5 }) // 50%
-      expect(warmups[2]).toEqual({ type: 'warmup', weight_kg: 70, reps: 3 }) // 70%
-      expect(warmups[3]).toEqual({ type: 'warmup', weight_kg: 85, reps: 2 }) // 85%
+      // Heavy protocol: 50%, 70%, 85%
+      expect(warmups).toHaveLength(3)
+      expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 50, reps: 5 }) // 50%
+      expect(warmups[1]).toEqual({ type: 'warmup', weight_kg: 70, reps: 3 }) // 70%
+      expect(warmups[2]).toEqual({ type: 'warmup', weight_kg: 85, reps: 2 }) // 85%
+    })
+
+    it('should build light warmup sets (bar, 50%, 75%) for 30kg', () => {
+      const warmups = buildWarmupSets(30) // ≤40kg = light protocol
+
+      // Light protocol: bar, 50%, 75% (with deduplication)
+      // 50% = 15 -> capped at 20 (same as bar), should be skipped
+      // 75% = 22.5
+      expect(warmups.some((w) => w.weight_kg === 20)).toBe(true) // Bar
+      expect(warmups.filter((w) => w.weight_kg === 20)).toHaveLength(1) // No duplicates
     })
 
     it('should round warmup weights to nearest 2.5kg', () => {
-      const warmups = buildWarmupSets(73) // Awkward number
+      const warmups = buildWarmupSets(73) // >40kg = heavy protocol
 
-      // 50% = 36.5 -> 37.5, 70% = 51.1 -> 50, 85% = 62.05 -> 62.5
-      expect(warmups[1]?.weight_kg).toBe(37.5) // 50% rounded
-      expect(warmups[2]?.weight_kg).toBe(50) // 70% rounded
-      expect(warmups[3]?.weight_kg).toBe(62.5) // 85% rounded
+      // Heavy protocol: 50% = 36.5 -> 37.5, 70% = 51.1 -> 50, 85% = 62.05 -> 62.5
+      expect(warmups[0]?.weight_kg).toBe(37.5) // 50% rounded
+      expect(warmups[1]?.weight_kg).toBe(50) // 70% rounded (51.1 -> 50)
+      expect(warmups[2]?.weight_kg).toBe(62.5) // 85% rounded
     })
 
     it('should skip duplicate warmup weights at low working weight', () => {
-      const warmups = buildWarmupSets(30) // Low weight
+      const warmups = buildWarmupSets(30) // Light protocol
 
       // 50% = 15 -> capped at 20 (same as bar), should be skipped
-      // 70% = 21 -> rounds to 20 (same as bar), should be skipped
-      // 85% = 25.5 -> rounds to 25
+      // 75% = 22.5
       expect(warmups.some((w) => w.weight_kg === 20)).toBe(true) // Bar only once
       expect(warmups.filter((w) => w.weight_kg === 20)).toHaveLength(1) // No duplicates
     })
 
-    it('should always start with bar weight (20kg)', () => {
-      const warmups = buildWarmupSets(200)
+    it('should start with bar weight for light lifts (≤40kg)', () => {
+      const warmups = buildWarmupSets(35) // Light protocol
 
       expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 20, reps: 10 })
     })
 
+    it('should start with 50% for heavy lifts (>40kg)', () => {
+      const warmups = buildWarmupSets(120) // Heavy protocol
+
+      expect(warmups[0]).toEqual({ type: 'warmup', weight_kg: 60, reps: 5 }) // 50%
+    })
+
     it('should cap warmup weights at minimum bar weight', () => {
-      const warmups = buildWarmupSets(20) // Bar weight only
+      const warmups = buildWarmupSets(20) // Bar weight only, light protocol
 
       // All percentages would be below bar, should have at most 2 distinct sets
-      // Bar (20) x10, and potentially 85% (17) capped to 20 which would be skipped
       expect(warmups.every((w) => w.weight_kg >= 20)).toBe(true)
     })
 
@@ -215,22 +279,22 @@ describe('[US4] Routine Builder', () => {
 
   describe('buildRoutineExercise', () => {
     it('should build T1 stage 0 exercise (5x3) on A1 day with warmup sets', () => {
-      // Squat is T1 on A1
+      // Squat is T1 on A1 at 100kg (heavy protocol: 50%, 70%, 85%)
       const exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
-        mockProgression['ex-squat']!,
+        mockProgression['squat-T1']!,
         defaultSettings,
         'A1'
       )
 
       expect(exercise.exercise_template_id).toBe('hevy-squat')
       expect(exercise.rest_seconds).toBe(180) // T1 rest
-      // 4 warmup sets + 5 working sets = 9 total
-      expect(exercise.sets).toHaveLength(9)
-      // First 4 should be warmup sets
-      expect(exercise.sets.slice(0, 4).every((s) => s.type === 'warmup')).toBe(true)
+      // Heavy protocol: 3 warmup sets + 5 working sets = 8 total
+      expect(exercise.sets).toHaveLength(8)
+      // First 3 should be warmup sets
+      expect(exercise.sets.slice(0, 3).every((s) => s.type === 'warmup')).toBe(true)
       // Last 5 should be working sets at 100kg
-      const workingSets = exercise.sets.slice(4)
+      const workingSets = exercise.sets.slice(3)
       expect(workingSets).toHaveLength(5)
       expect(workingSets.every((s) => s.weight_kg === 100 && s.reps === 3)).toBe(true)
     })
@@ -239,7 +303,7 @@ describe('[US4] Routine Builder', () => {
       // OHP is T1 on B1, and it's at stage 1
       const exercise = buildRoutineExercise(
         mockExercises['ex-ohp']!,
-        mockProgression['ex-ohp']!,
+        mockProgression['ohp-T1']!,
         defaultSettings,
         'B1'
       )
@@ -257,7 +321,7 @@ describe('[US4] Routine Builder', () => {
       // Deadlift is T1 on B2, and it's at stage 2
       const exercise = buildRoutineExercise(
         mockExercises['ex-deadlift']!,
-        mockProgression['ex-deadlift']!,
+        mockProgression['deadlift-T1']!,
         defaultSettings,
         'B2'
       )
@@ -274,7 +338,7 @@ describe('[US4] Routine Builder', () => {
       // Bench is T2 on A1
       const exercise = buildRoutineExercise(
         mockExercises['ex-bench']!,
-        mockProgression['ex-bench']!,
+        mockProgression['bench-T2']!,
         defaultSettings,
         'A1'
       )
@@ -288,7 +352,7 @@ describe('[US4] Routine Builder', () => {
       // OHP is T2 on B2, and it's at stage 1
       const exercise = buildRoutineExercise(
         mockExercises['ex-ohp']!,
-        mockProgression['ex-ohp']!,
+        mockProgression['ohp-T2']!,
         defaultSettings,
         'B2'
       )
@@ -301,7 +365,7 @@ describe('[US4] Routine Builder', () => {
       // Deadlift is T2 on B1, and it's at stage 2
       const exercise = buildRoutineExercise(
         mockExercises['ex-deadlift']!,
-        mockProgression['ex-deadlift']!,
+        mockProgression['deadlift-T2']!,
         defaultSettings,
         'B1'
       )
@@ -327,7 +391,7 @@ describe('[US4] Routine Builder', () => {
       // Bench is T2 on A1
       const exercise = buildRoutineExercise(
         mockExercises['ex-bench']!,
-        mockProgression['ex-bench']!,
+        mockProgression['bench-T2']!,
         defaultSettings,
         'A1'
       )
@@ -358,13 +422,13 @@ describe('[US4] Routine Builder', () => {
 
       const t1Exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
-        mockProgression['ex-squat']!,
+        mockProgression['squat-T1']!,
         customSettings,
         'A1'
       )
       const t2Exercise = buildRoutineExercise(
         mockExercises['ex-bench']!,
-        mockProgression['ex-bench']!,
+        mockProgression['bench-T2']!,
         customSettings,
         'A1'
       )
@@ -387,7 +451,8 @@ describe('[US4] Routine Builder', () => {
         'A1',
         mockExercises,
         mockProgression,
-        defaultSettings
+        defaultSettings,
+        mockT3Schedule
       )
 
       expect(routine.title).toBe('GZCLP Day A1')
@@ -404,7 +469,8 @@ describe('[US4] Routine Builder', () => {
         'B1',
         mockExercises,
         mockProgression,
-        defaultSettings
+        defaultSettings,
+        mockT3Schedule
       )
 
       expect(routine.title).toBe('GZCLP Day B1')
@@ -419,7 +485,8 @@ describe('[US4] Routine Builder', () => {
         'A2',
         mockExercises,
         mockProgression,
-        defaultSettings
+        defaultSettings,
+        mockT3Schedule
       )
 
       expect(routine.title).toBe('GZCLP Day A2')
@@ -434,7 +501,8 @@ describe('[US4] Routine Builder', () => {
         'B2',
         mockExercises,
         mockProgression,
-        defaultSettings
+        defaultSettings,
+        mockT3Schedule
       )
 
       expect(routine.title).toBe('GZCLP Day B2')
@@ -448,7 +516,7 @@ describe('[US4] Routine Builder', () => {
       const days: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
       for (const day of days) {
-        const routine = buildDayRoutine(day, mockExercises, mockProgression, defaultSettings)
+        const routine = buildDayRoutine(day, mockExercises, mockProgression, defaultSettings, mockT3Schedule)
         // T3 exercises should be after T1 and T2
         const t3Exercises = routine.exercises.slice(2)
         expect(t3Exercises).toHaveLength(3)
@@ -460,16 +528,18 @@ describe('[US4] Routine Builder', () => {
         'ex-squat': mockExercises['ex-squat']!,
         'ex-bench': mockExercises['ex-bench']!,
       }
+      // Progression keyed by role-tier for main lifts
       const progressionWithoutT3: Record<string, ProgressionState> = {
-        'ex-squat': mockProgression['ex-squat']!,
-        'ex-bench': mockProgression['ex-bench']!,
+        'squat-T1': mockProgression['squat-T1']!,
+        'bench-T2': mockProgression['bench-T2']!,
       }
 
       const routine = buildDayRoutine(
         'A1',
         exercisesWithoutT3,
         progressionWithoutT3,
-        defaultSettings
+        defaultSettings,
+        { A1: [], B1: [], A2: [], B2: [] } // Empty T3 schedule
       )
 
       // Should still build with T1 and T2 only
@@ -483,7 +553,8 @@ describe('[US4] Routine Builder', () => {
         'A1',
         mockExercises,
         mockProgression,
-        defaultSettings
+        defaultSettings,
+        mockT3Schedule
       )
 
       expect(payload.routine.title).toBe('GZCLP Day A1')
@@ -497,6 +568,7 @@ describe('[US4] Routine Builder', () => {
         mockExercises,
         mockProgression,
         defaultSettings,
+        mockT3Schedule,
         123
       )
 
@@ -523,16 +595,14 @@ describe('[US4] Routine Builder', () => {
       }
       // Progression stores weight in the user's unit (lbs in this case)
       // But Hevy API always expects kg
-      const lbsProgression: Record<string, ProgressionState> = {
-        'ex-squat': {
-          ...mockProgression['ex-squat']!,
-          currentWeight: 225, // 225 lbs
-        },
+      const lbsProgression: ProgressionState = {
+        ...mockProgression['squat-T1']!,
+        currentWeight: 225, // 225 lbs
       }
 
       const exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
-        lbsProgression['ex-squat']!,
+        lbsProgression,
         lbsSettings,
         'A1'
       )
@@ -548,7 +618,7 @@ describe('[US4] Routine Builder', () => {
     it('should pass through kg weights unchanged', () => {
       const exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
-        mockProgression['ex-squat']!,
+        mockProgression['squat-T1']!,
         defaultSettings,
         'A1'
       )

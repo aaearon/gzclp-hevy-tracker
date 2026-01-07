@@ -45,6 +45,16 @@ const MIGRATIONS: Record<string, MigrationFn> = {
       progressionHistory: typedState.progressionHistory ?? {},
     }
   },
+
+  // v2.2.0: Add acknowledgedDiscrepancies for persistent discrepancy dismissal
+  // Non-breaking: adds empty array for tracking dismissed discrepancies
+  '2.2.0': (state) => {
+    const typedState = state as Record<string, unknown>
+    return {
+      ...typedState,
+      acknowledgedDiscrepancies: typedState.acknowledgedDiscrepancies ?? [],
+    }
+  },
 }
 
 /**

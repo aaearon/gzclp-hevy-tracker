@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { toAvailableRoutine, extractFromRoutines } from '@/lib/routine-importer'
+import {
+  toAvailableRoutine,
+  extractFromRoutines,
+  resolveWeightsFromWorkoutHistory,
+} from '@/lib/routine-importer'
+import type { Workout, WorkoutExercise, WorkoutSet } from '@/types/hevy'
 import {
   createMockRoutine,
   createGZCLPA1Routine,
@@ -611,6 +616,386 @@ describe('extractFromRoutines', () => {
         expect(result.byDay.B1.t3s).toHaveLength(1)
         expect(result.byDay.B1.t3s[0].name).toBe('Leg Press')
       })
+    })
+  })
+})
+
+// =============================================================================
+// Helper functions for workout history tests
+// =============================================================================
+
+function createWorkoutSet(weight: number, reps: number, type: 'normal' | 'warmup' = 'normal'): WorkoutSet {
+  return {
+    index: 0,
+    type,
+    weight_kg: weight,
+    reps,
+    distance_meters: null,
+    duration_seconds: null,
+    rpe: null,
+    custom_metric: null,
+  }
+}
+
+function createWorkoutExercise(templateId: string, title: string, weight: number): WorkoutExercise {
+  return {
+    index: 0,
+    title,
+    notes: '',
+    exercise_template_id: templateId,
+    supersets_id: null,
+    sets: [
+      createWorkoutSet(weight * 0.5, 10, 'warmup'),
+      createWorkoutSet(weight, 5, 'normal'),
+      createWorkoutSet(weight, 5, 'normal'),
+      createWorkoutSet(weight, 5, 'normal'),
+    ],
+  }
+}
+
+function createMockWorkout(
+  routineId: string,
+  exercises: WorkoutExercise[],
+  startTime: string = '2025-01-01T10:00:00Z'
+): Workout {
+  return {
+    id: `workout-${routineId}-${startTime}`,
+    title: 'Test Workout',
+    routine_id: routineId,
+    description: '',
+    start_time: startTime,
+    end_time: startTime,
+    updated_at: startTime,
+    created_at: startTime,
+    exercises,
+  }
+}
+
+// =============================================================================
+// resolveWeightsFromWorkoutHistory Tests
+// =============================================================================
+
+describe('resolveWeightsFromWorkoutHistory', () => {
+  describe('weight resolution from workout history', () => {
+    it('extracts weights from workout history, not routine templates', () => {
+      // Create routine with template weights (these should be ignored)
+      const a1Routine = createGZCLPA1Routine() // Template has weights like 100kg
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      // Extract with template weights
+      const baseResult = extractFromRoutines(routines, assignment)
+      const templateWeight = baseResult.byDay.A1.t1?.detectedWeight // e.g., 100kg
+
+      // Create workout with different weights
+      // Template IDs match pattern: template-{title.toLowerCase().replace(/\s+/g, '-')}
+      const workoutWeight = 75 // Different from template
+      const workout = createMockWorkout(a1Routine.id, [
+        createWorkoutExercise('template-squat', 'Squat', workoutWeight),
+        createWorkoutExercise('template-bench-press', 'Bench Press', 50),
+      ])
+
+      // Resolve weights from workout history
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+
+      // Should use workout weight, not template weight
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(workoutWeight)
+      expect(result.byDay.A1.t1?.detectedWeight).not.toBe(templateWeight)
+    })
+
+    it('adds history_missing warning when no workout exists for routine', () => {
+      const a1Routine = createGZCLPA1Routine()
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // Resolve with empty workout array - no history
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [])
+
+      // Should have history_missing warning
+      const historyWarnings = result.warnings.filter((w) => w.type === 'history_missing')
+      expect(historyWarnings.length).toBeGreaterThan(0)
+      expect(historyWarnings[0].day).toBe('A1')
+      expect(historyWarnings[0].message).toContain('No workout history')
+
+      // Weights should be set to 0 for manual entry
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(0)
+      expect(result.byDay.A1.t2?.detectedWeight).toBe(0)
+    })
+
+    it('uses most recent workout when multiple exist', () => {
+      const a1Routine = createGZCLPA1Routine()
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // Create two workouts - older with 50kg, newer with 80kg
+      const olderWorkout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 50),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 40),
+        ],
+        '2025-01-01T10:00:00Z'
+      )
+      const newerWorkout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 80),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 60),
+        ],
+        '2025-01-15T10:00:00Z'
+      )
+
+      // Pass workouts in any order
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [
+        olderWorkout,
+        newerWorkout,
+      ])
+
+      // Should use weight from newer workout
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(80)
+      expect(result.byDay.A1.t2?.detectedWeight).toBe(60)
+    })
+
+    it('handles missing exercise in workout (skipped exercise)', () => {
+      const a1Routine = createGZCLPA1Routine()
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // Workout has T1 but not T2 (user skipped bench press)
+      const workout = createMockWorkout(a1Routine.id, [
+        createWorkoutExercise('template-squat', 'Squat', 100),
+        // No bench press in workout
+      ])
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+
+      // T1 should have weight from workout
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(100)
+      // T2 should be 0 (missing from workout)
+      expect(result.byDay.A1.t2?.detectedWeight).toBe(0)
+    })
+
+    it('preserves exercise structure (name, role, templateId) from routine', () => {
+      const a1Routine = createGZCLPA1Routine()
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+      const originalT1 = baseResult.byDay.A1.t1!
+
+      const workout = createMockWorkout(a1Routine.id, [
+        createWorkoutExercise('template-squat', 'Squat', 75),
+      ])
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+
+      // Structure should be preserved, only weight changed
+      expect(result.byDay.A1.t1?.name).toBe(originalT1.name)
+      expect(result.byDay.A1.t1?.templateId).toBe(originalT1.templateId)
+      expect(result.byDay.A1.t1?.role).toBe(originalT1.role)
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(75) // Weight from workout
+    })
+
+    it('only matches workouts with same routine_id', () => {
+      const a1Routine = createGZCLPA1Routine()
+      const a2Routine = createGZCLPA2Routine()
+      const routines = new Map([
+        [a1Routine.id, a1Routine],
+        [a2Routine.id, a2Routine],
+      ])
+      const assignment = createPartialAssignment({ A1: a1Routine.id, A2: a2Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // Workout for A2 routine only
+      const a2Workout = createMockWorkout(a2Routine.id, [
+        createWorkoutExercise('template-bench-press', 'Bench Press', 65),
+        createWorkoutExercise('template-squat', 'Squat', 55),
+      ])
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a2Workout])
+
+      // A1 should have warning (no matching workout)
+      const a1Warnings = result.warnings.filter(
+        (w) => w.type === 'history_missing' && w.day === 'A1'
+      )
+      expect(a1Warnings.length).toBe(1)
+      expect(result.byDay.A1.t1?.detectedWeight).toBe(0)
+
+      // A2 should have weights from workout
+      expect(result.byDay.A2.t1?.detectedWeight).toBe(65) // Bench T1
+      expect(result.byDay.A2.t2?.detectedWeight).toBe(55) // Squat T2
+    })
+  })
+
+  describe('T3 weight unification across days', () => {
+    it('uses most recent weight for T3 across all days', () => {
+      // Scenario: Same T3 (Lat Pulldown) appears on A1 and A2
+      // A1 workout was older (Jan 2) with 12kg
+      // A2 workout was newer (Jan 5) with 14kg
+      // Both should use 14kg after unification
+
+      const a1Routine = createRoutineWithUniqueT3s('A1', ['Hammer Curl'])
+      const a2Routine = createRoutineWithUniqueT3s('A2', ['Hammer Curl']) // Same T3
+
+      const routines = new Map([
+        [a1Routine.id, a1Routine],
+        [a2Routine.id, a2Routine],
+      ])
+      const assignment = createPartialAssignment({ A1: a1Routine.id, A2: a2Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // Create workouts with different dates and weights
+      // A1 workout: older date, 12kg
+      const a1Workout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 100),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 60),
+          createWorkoutExercise('template-hammer-curl', 'Hammer Curl', 12),
+        ],
+        '2025-01-02T10:00:00Z'
+      )
+
+      // A2 workout: newer date, 14kg (same T3)
+      const a2Workout = createMockWorkout(
+        a2Routine.id,
+        [
+          createWorkoutExercise('template-bench-press', 'Bench Press', 65),
+          createWorkoutExercise('template-squat', 'Squat', 55),
+          createWorkoutExercise('template-hammer-curl', 'Hammer Curl', 14),
+        ],
+        '2025-01-05T10:00:00Z'
+      )
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout])
+
+      // Both days should have the LATEST weight (14kg from Jan 5)
+      const a1T3 = result.byDay.A1.t3s.find((t) => t.name === 'Hammer Curl')
+      const a2T3 = result.byDay.A2.t3s.find((t) => t.name === 'Hammer Curl')
+
+      expect(a1T3?.detectedWeight).toBe(14) // Unified to latest
+      expect(a2T3?.detectedWeight).toBe(14) // Latest weight
+    })
+
+    it('different T3 exercises maintain their own weights', () => {
+      // Lat Pulldown done at 30kg on A1 (Jan 5)
+      // Hammer Curl done at 14kg on A2 (Jan 3)
+      // Each should keep its own most recent weight
+
+      const a1Routine = createRoutineWithUniqueT3s('A1', ['Lat Pulldown'])
+      const a2Routine = createRoutineWithUniqueT3s('A2', ['Hammer Curl'])
+
+      const routines = new Map([
+        [a1Routine.id, a1Routine],
+        [a2Routine.id, a2Routine],
+      ])
+      const assignment = createPartialAssignment({ A1: a1Routine.id, A2: a2Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      const a1Workout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 100),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 60),
+          createWorkoutExercise('template-lat-pulldown', 'Lat Pulldown', 30),
+        ],
+        '2025-01-05T10:00:00Z'
+      )
+
+      const a2Workout = createMockWorkout(
+        a2Routine.id,
+        [
+          createWorkoutExercise('template-bench-press', 'Bench Press', 65),
+          createWorkoutExercise('template-squat', 'Squat', 55),
+          createWorkoutExercise('template-hammer-curl', 'Hammer Curl', 14),
+        ],
+        '2025-01-03T10:00:00Z'
+      )
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout])
+
+      // Each T3 keeps its own weight
+      expect(result.byDay.A1.t3s[0]?.detectedWeight).toBe(30)
+      expect(result.byDay.A2.t3s[0]?.detectedWeight).toBe(14)
+    })
+
+    it('T3 on single day still gets correct weight', () => {
+      // T3 only on A1, should use that weight
+      const a1Routine = createRoutineWithUniqueT3s('A1', ['Face Pull'])
+
+      const routines = new Map([[a1Routine.id, a1Routine]])
+      const assignment = createPartialAssignment({ A1: a1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      const workout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 100),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 60),
+          createWorkoutExercise('template-face-pull', 'Face Pull', 15),
+        ],
+        '2025-01-10T10:00:00Z'
+      )
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+
+      expect(result.byDay.A1.t3s[0]?.detectedWeight).toBe(15)
+    })
+
+    it('finds T3 weight from workout not in assigned routines', () => {
+      // T3 is on A1 routine, but the most recent instance was in a B1 workout
+      // This tests that unification looks at ALL workouts, not just the routine's workouts
+
+      const a1Routine = createRoutineWithUniqueT3s('A1', ['Hammer Curl'])
+      const b1Routine = createRoutineWithUniqueT3s('B1', ['Hammer Curl']) // Same T3
+
+      const routines = new Map([
+        [a1Routine.id, a1Routine],
+        [b1Routine.id, b1Routine],
+      ])
+      const assignment = createPartialAssignment({ A1: a1Routine.id, B1: b1Routine.id })
+
+      const baseResult = extractFromRoutines(routines, assignment)
+
+      // B1 workout is more recent with higher weight
+      const a1Workout = createMockWorkout(
+        a1Routine.id,
+        [
+          createWorkoutExercise('template-squat', 'Squat', 100),
+          createWorkoutExercise('template-bench-press', 'Bench Press', 60),
+          createWorkoutExercise('template-hammer-curl', 'Hammer Curl', 10),
+        ],
+        '2025-01-01T10:00:00Z'
+      )
+
+      const b1Workout = createMockWorkout(
+        b1Routine.id,
+        [
+          createWorkoutExercise('template-overhead-press', 'OHP', 40),
+          createWorkoutExercise('template-deadlift', 'Deadlift', 120),
+          createWorkoutExercise('template-hammer-curl', 'Hammer Curl', 16),
+        ],
+        '2025-01-10T10:00:00Z'
+      )
+
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, b1Workout])
+
+      // Both should use B1's weight (16kg) since it's more recent
+      const a1T3 = result.byDay.A1.t3s.find((t) => t.name === 'Hammer Curl')
+      const b1T3 = result.byDay.B1.t3s.find((t) => t.name === 'Hammer Curl')
+
+      expect(a1T3?.detectedWeight).toBe(16)
+      expect(b1T3?.detectedWeight).toBe(16)
     })
   })
 })

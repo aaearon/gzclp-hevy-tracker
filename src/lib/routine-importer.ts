@@ -5,7 +5,7 @@
  * Maps exercises to GZCLP roles based on position and day.
  */
 
-import type { Routine, RoutineExerciseRead } from '@/types/hevy'
+import type { Routine, RoutineExerciseRead, Workout } from '@/types/hevy'
 import type {
   ExerciseRole,
   GZCLPDay,
@@ -24,6 +24,7 @@ import { MAIN_LIFT_ROLES } from '@/types/state'
 import { getT1RoleForDay, getT2RoleForDay, T1_MAPPING, T2_MAPPING } from './role-utils'
 import { WEIGHT_ROUNDING } from './constants'
 import { detectStage, extractWeight } from './stage-detector'
+import { extractWorkingWeight } from './workout-analysis'
 
 // =============================================================================
 // Constants
@@ -538,4 +539,370 @@ export function detectMainLiftWeights(
   }
 
   return results
+}
+
+// =============================================================================
+// Workout History Weight Resolution
+// =============================================================================
+
+/**
+ * Find the most recent workout for a given routine ID.
+ */
+function findMostRecentWorkout(workouts: Workout[], routineId: string): Workout | null {
+  const matching = workouts
+    .filter((w) => w.routine_id === routineId)
+    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+
+  return matching[0] ?? null
+}
+
+/**
+ * Resolve weights from workout history instead of routine templates.
+ *
+ * This function takes the base import result (which has exercise structure from
+ * routine templates) and updates the weights using actual workout history data.
+ *
+ * @param baseResult - ImportResult from extractFromRoutines() with template-based weights
+ * @param assignment - RoutineAssignment mapping days to routine IDs
+ * @param workouts - All workouts from HevyClient.getAllWorkouts()
+ * @returns Updated ImportResult with weights from workout history
+ */
+export function resolveWeightsFromWorkoutHistory(
+  baseResult: ImportResult,
+  assignment: RoutineAssignment,
+  workouts: Workout[]
+): ImportResult {
+  const warnings: ImportWarning[] = [...baseResult.warnings]
+  const updatedByDay: Record<GZCLPDay, DayImportData> = {
+    A1: { ...baseResult.byDay.A1 },
+    B1: { ...baseResult.byDay.B1 },
+    A2: { ...baseResult.byDay.A2 },
+    B2: { ...baseResult.byDay.B2 },
+  }
+
+  for (const day of GZCLP_DAYS) {
+    const routineId = assignment[day]
+    if (!routineId) continue
+
+    const recentWorkout = findMostRecentWorkout(workouts, routineId)
+
+    if (!recentWorkout) {
+      // No workout history for this routine - add warning
+      warnings.push({
+        type: 'history_missing',
+        day,
+        message: `${day}: No workout history found for this routine. Please enter weights manually.`,
+      })
+
+      // Set weights to 0 for manual entry
+      const dayData = updatedByDay[day]
+      if (dayData.t1) {
+        updatedByDay[day] = {
+          ...dayData,
+          t1: { ...dayData.t1, detectedWeight: 0 },
+        }
+      }
+      if (dayData.t2) {
+        const currentDayData = updatedByDay[day]
+        updatedByDay[day] = {
+          ...currentDayData,
+          t2: { ...currentDayData.t2!, detectedWeight: 0 },
+        }
+      }
+      // Set T3 weights to 0 as well
+      if (dayData.t3s.length > 0) {
+        const currentDayData = updatedByDay[day]
+        updatedByDay[day] = {
+          ...currentDayData,
+          t3s: currentDayData.t3s.map((t3) => ({ ...t3, detectedWeight: 0 })),
+        }
+      }
+      continue
+    }
+
+    // Build lookup map: exercise_template_id → weight from workout
+    const exerciseWeights = new Map<string, number>()
+    for (const exercise of recentWorkout.exercises) {
+      const weight = extractWorkingWeight(exercise.sets)
+      exerciseWeights.set(exercise.exercise_template_id, weight)
+    }
+
+    // Update T1, T2, T3 weights from workout data
+    const dayData = updatedByDay[day]
+
+    if (dayData.t1) {
+      const workoutWeight = exerciseWeights.get(dayData.t1.templateId)
+      updatedByDay[day] = {
+        ...dayData,
+        t1: {
+          ...dayData.t1,
+          detectedWeight: workoutWeight ?? 0,
+        },
+      }
+    }
+
+    if (dayData.t2) {
+      const currentDayData = updatedByDay[day]
+      const workoutWeight = exerciseWeights.get(currentDayData.t2!.templateId)
+      updatedByDay[day] = {
+        ...currentDayData,
+        t2: {
+          ...currentDayData.t2!,
+          detectedWeight: workoutWeight ?? 0,
+        },
+      }
+    }
+
+    if (dayData.t3s.length > 0) {
+      const currentDayData = updatedByDay[day]
+      updatedByDay[day] = {
+        ...currentDayData,
+        t3s: currentDayData.t3s.map((t3) => ({
+          ...t3,
+          detectedWeight: exerciseWeights.get(t3.templateId) ?? 0,
+        })),
+      }
+    }
+  }
+
+  // Unify T3 weights across all days - use most recent weight for each exercise
+  const unifiedByDay = unifyT3WeightsAcrossDays(updatedByDay, workouts)
+
+  return {
+    byDay: unifiedByDay,
+    warnings,
+    routineIds: baseResult.routineIds,
+  }
+}
+
+/**
+ * Unify T3 weights across all days - use most recent weight for each exercise.
+ *
+ * T3 exercises should have consistent weights regardless of which day they're on.
+ * For example, if Hammer Curl was done at 12kg on A1 (Jan 2) and 14kg on A2 (Jan 5),
+ * both instances should use 14kg (the most recent weight).
+ *
+ * @param byDay - Per-day import data with T3s
+ * @param workouts - All workouts from HevyClient.getAllWorkouts()
+ * @returns Updated per-day data with unified T3 weights
+ */
+function unifyT3WeightsAcrossDays(
+  byDay: Record<GZCLPDay, DayImportData>,
+  workouts: Workout[]
+): Record<GZCLPDay, DayImportData> {
+  // 1. Collect all unique T3 template IDs across all days
+  const allT3TemplateIds = new Set<string>()
+  for (const dayData of Object.values(byDay)) {
+    for (const t3 of dayData.t3s) {
+      allT3TemplateIds.add(t3.templateId)
+    }
+  }
+
+  // If no T3s, return as-is
+  if (allT3TemplateIds.size === 0) {
+    return byDay
+  }
+
+  // 2. Find most recent weight for each T3 from ALL workouts
+  const latestT3Weights = new Map<string, number>()
+
+  // Sort workouts by date (newest first)
+  const sortedWorkouts = [...workouts].sort(
+    (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+  )
+
+  for (const workout of sortedWorkouts) {
+    for (const exercise of workout.exercises) {
+      if (allT3TemplateIds.has(exercise.exercise_template_id)) {
+        const templateId = exercise.exercise_template_id
+        // Only set if we haven't found this exercise yet (first = most recent)
+        if (!latestT3Weights.has(templateId)) {
+          const weight = extractWorkingWeight(exercise.sets)
+          if (weight > 0) {
+            latestT3Weights.set(templateId, weight)
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Apply unified weights to all T3s across all days
+  const result: Record<GZCLPDay, DayImportData> = {
+    A1: { ...byDay.A1 },
+    B1: { ...byDay.B1 },
+    A2: { ...byDay.A2 },
+    B2: { ...byDay.B2 },
+  }
+
+  for (const day of GZCLP_DAYS) {
+    const dayData = result[day]
+    if (dayData.t3s.length > 0) {
+      result[day] = {
+        ...dayData,
+        t3s: dayData.t3s.map((t3) => {
+          const latestWeight = latestT3Weights.get(t3.templateId)
+          // Use latest weight if found and non-zero, otherwise keep existing
+          return {
+            ...t3,
+            detectedWeight: latestWeight ?? t3.detectedWeight,
+          }
+        }),
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Detect main lift weights from workout history.
+ *
+ * Similar to detectMainLiftWeights but uses actual workout data instead of
+ * routine template positions.
+ *
+ * @param routines - Map of routine ID to full Routine object (for exercise structure)
+ * @param assignment - Which routine is assigned to which day
+ * @param workouts - All workouts from HevyClient.getAllWorkouts()
+ * @returns Array of detected weights for each main lift
+ */
+export function detectMainLiftWeightsFromHistory(
+  routines: Map<string, Routine>,
+  assignment: RoutineAssignment,
+  workouts: Workout[]
+): MainLiftWeights[] {
+  const results: MainLiftWeights[] = []
+
+  for (const role of MAIN_LIFT_ROLES) {
+    // Find which days this role is T1 and T2
+    const t1Day = getT1Day(role)
+    const t2Day = getT2Day(role)
+
+    // Get the routine for T1 day to find the exercise template ID
+    const t1RoutineId = assignment[t1Day]
+    const t1Routine = t1RoutineId ? routines.get(t1RoutineId) : null
+
+    // Get the routine for T2 day
+    const t2RoutineId = assignment[t2Day]
+    const t2Routine = t2RoutineId ? routines.get(t2RoutineId) : null
+
+    // Find template ID for this role's exercise in each routine
+    // T1 position is index 0 (after skipping warmups)
+    // T2 position is index 1 (after skipping warmups)
+    let t1TemplateId: string | null = null
+    let t2TemplateId: string | null = null
+
+    if (t1Routine) {
+      const t1Exercise = findFirstNonWarmupExercise(t1Routine.exercises, 0)
+      t1TemplateId = t1Exercise?.exercise_template_id ?? null
+    }
+
+    if (t2Routine) {
+      const t2Exercise = findFirstNonWarmupExercise(t2Routine.exercises, 1)
+      t2TemplateId = t2Exercise?.exercise_template_id ?? null
+    }
+
+    // Now look up weights from workout history
+    let t1Detected: DetectedWeight | null = null
+    let t2Detected: DetectedWeight | null = null
+
+    if (t1RoutineId && t1TemplateId) {
+      const workout = findMostRecentWorkout(workouts, t1RoutineId)
+      if (workout) {
+        const exercise = workout.exercises.find(
+          (e) => e.exercise_template_id === t1TemplateId
+        )
+        if (exercise) {
+          const weight = extractWorkingWeight(exercise.sets)
+          t1Detected = {
+            weight,
+            source: `${t1Day} workout history`,
+            stage: 0,
+          }
+        }
+      }
+    }
+
+    if (t2RoutineId && t2TemplateId) {
+      const workout = findMostRecentWorkout(workouts, t2RoutineId)
+      if (workout) {
+        const exercise = workout.exercises.find(
+          (e) => e.exercise_template_id === t2TemplateId
+        )
+        if (exercise) {
+          const weight = extractWorkingWeight(exercise.sets)
+          t2Detected = {
+            weight,
+            source: `${t2Day} workout history`,
+            stage: 0,
+          }
+        }
+      }
+    }
+
+    // Determine final values with fallback to 0
+    let hasWarning = false
+    let t1Final: DetectedWeight
+    let t2Final: DetectedWeight
+
+    if (t1Detected && t2Detected) {
+      t1Final = t1Detected
+      t2Final = t2Detected
+    } else if (t1Detected && !t2Detected) {
+      hasWarning = true
+      t1Final = t1Detected
+      t2Final = {
+        weight: 0,
+        source: 'No workout history',
+        stage: 0,
+      }
+    } else if (!t1Detected && t2Detected) {
+      hasWarning = true
+      t1Final = {
+        weight: 0,
+        source: 'No workout history',
+        stage: 0,
+      }
+      t2Final = t2Detected
+    } else {
+      hasWarning = true
+      t1Final = {
+        weight: 0,
+        source: 'No workout history',
+        stage: 0,
+      }
+      t2Final = {
+        weight: 0,
+        source: 'No workout history',
+        stage: 0,
+      }
+    }
+
+    results.push({
+      role,
+      t1: t1Final,
+      t2: t2Final,
+      hasWarning,
+    })
+  }
+
+  return results
+}
+
+/**
+ * Find the nth non-warmup exercise in a routine.
+ */
+function findFirstNonWarmupExercise(
+  exercises: RoutineExerciseRead[],
+  targetIndex: number
+): RoutineExerciseRead | null {
+  let nonWarmupCount = 0
+  for (const exercise of exercises) {
+    if (!isWarmupOnlyExercise(exercise)) {
+      if (nonWarmupCount === targetIndex) {
+        return exercise
+      }
+      nonWarmupCount++
+    }
+  }
+  return null
 }

@@ -27,6 +27,7 @@ npm test && npm run lint
 TypeScript 5.x (strict mode enabled): Follow standard conventions
 
 ## Recent Changes
+- 008-selective-push: Added selective push/pull/skip per exercise when syncing with Hevy
 - 007-progression-charts: Added Chart.js progression visualization with GZCLP-aware prediction algorithm
 - 005-t1-t2-progression: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
 - 003-exercise-classification: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1

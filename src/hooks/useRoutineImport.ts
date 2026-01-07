@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import type { Routine } from '@/types/hevy'
+import type { Routine, Workout } from '@/types/hevy'
 import type {
   GZCLPDay,
   AvailableRoutine,
@@ -15,7 +15,12 @@ import type {
   MainLiftWeights,
   MainLiftRole,
 } from '@/types/state'
-import { toAvailableRoutine, extractFromRoutines, detectMainLiftWeights } from '@/lib/routine-importer'
+import {
+  toAvailableRoutine,
+  extractFromRoutines,
+  resolveWeightsFromWorkoutHistory,
+  detectMainLiftWeightsFromHistory,
+} from '@/lib/routine-importer'
 
 export interface UseRoutineImportReturn {
   // Available routines (converted from API)
@@ -28,7 +33,8 @@ export interface UseRoutineImportReturn {
 
   // Extraction
   importResult: ImportResult | null
-  extract: (fullRoutines: Routine[]) => void
+  extract: (fullRoutines: Routine[], fetchWorkouts: () => Promise<Workout[]>) => Promise<void>
+  isExtracting: boolean
 
   // User edits (per-day)
   updateDayExercise: (day: GZCLPDay, position: 'T1' | 'T2', updates: Partial<ImportedExercise>) => void
@@ -55,6 +61,7 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
   const [assignment, setAssignmentState] = useState<RoutineAssignment>(EMPTY_ASSIGNMENT)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [mainLiftWeights, setMainLiftWeights] = useState<MainLiftWeights[]>([])
+  const [isExtracting, setIsExtracting] = useState(false)
 
   // Convert routines to AvailableRoutine summaries
   const availableRoutines = useMemo(() => {
@@ -81,14 +88,25 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
 
   // Extract exercises from assigned routines
   const extract = useCallback(
-    (fullRoutines: Routine[]) => {
-      const routineMap = new Map(fullRoutines.map((r) => [r.id, r]))
-      const result = extractFromRoutines(routineMap, assignment)
-      setImportResult(result)
+    async (fullRoutines: Routine[], fetchWorkouts: () => Promise<Workout[]>) => {
+      setIsExtracting(true)
+      try {
+        const routineMap = new Map(fullRoutines.map((r) => [r.id, r]))
 
-      // Detect main lift weights for T1/T2 verification
-      const detectedWeights = detectMainLiftWeights(routineMap, assignment)
-      setMainLiftWeights(detectedWeights)
+        // Step 1: Extract exercise structure from routine templates
+        const baseResult = extractFromRoutines(routineMap, assignment)
+
+        // Step 2: Fetch workout history and resolve weights
+        const workouts = await fetchWorkouts()
+        const resolvedResult = resolveWeightsFromWorkoutHistory(baseResult, assignment, workouts)
+        setImportResult(resolvedResult)
+
+        // Step 3: Detect main lift weights from workout history
+        const detectedWeights = detectMainLiftWeightsFromHistory(routineMap, assignment, workouts)
+        setMainLiftWeights(detectedWeights)
+      } finally {
+        setIsExtracting(false)
+      }
     },
     [assignment]
   )
@@ -192,6 +210,7 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
     resetAssignment,
     importResult,
     extract,
+    isExtracting,
     updateDayExercise,
     updateDayT3,
     removeDayT3,

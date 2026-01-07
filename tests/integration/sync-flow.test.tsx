@@ -440,12 +440,12 @@ describe('[US2] Sync Flow Integration', () => {
   })
 
   describe('T3 Progression', () => {
-    it('should generate progress for T3 when total reps >= 25', async () => {
+    it('should generate progress for T3 when AMRAP set >= 25', async () => {
       const workout = createWorkout('workout-1', '2024-01-15T10:00:00Z', [
         createWorkoutExercise('hevy-lat', [
-          createSet(10, 40),
-          createSet(9, 40),
-          createSet(8, 40), // Total: 27 reps
+          createSet(15, 40),
+          createSet(15, 40),
+          createSet(25, 40), // AMRAP set: 25 reps (triggers progress)
         ]),
       ])
 
@@ -480,12 +480,12 @@ describe('[US2] Sync Flow Integration', () => {
       })
     })
 
-    it('should generate repeat for T3 when total reps < 25', async () => {
+    it('should generate repeat for T3 when AMRAP set < 25', async () => {
       const workout = createWorkout('workout-1', '2024-01-15T10:00:00Z', [
         createWorkoutExercise('hevy-lat', [
-          createSet(8, 40),
-          createSet(7, 40),
-          createSet(6, 40), // Total: 21 reps
+          createSet(15, 40),
+          createSet(15, 40),
+          createSet(20, 40), // AMRAP set: 20 reps (below threshold)
         ]),
       ])
 

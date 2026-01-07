@@ -20,6 +20,8 @@ import type {
   WeightUnit,
   RoutineAssignment,
   Stage,
+  AcknowledgedDiscrepancy,
+  Tier,
 } from '@/types/state'
 import { recordProgressionHistory } from '@/lib/history-recorder'
 
@@ -69,6 +71,10 @@ export interface UseProgramResult {
   // Progression History (for charts)
   setProgressionHistory: (history: Record<string, ExerciseHistory>) => void
   recordHistoryEntry: (change: PendingChange) => void
+
+  // Discrepancy acknowledgment
+  acknowledgeDiscrepancy: (exerciseId: string, acknowledgedWeight: number, tier: Tier) => void
+  clearAcknowledgedDiscrepancies: () => void
 
   // Full state management
   resetState: () => void
@@ -483,6 +489,53 @@ export function useProgram(): UseProgramResult {
   )
 
   /**
+   * Acknowledge a discrepancy (user clicked "Keep").
+   * Prevents the same discrepancy from being shown again on future syncs.
+   */
+  const acknowledgeDiscrepancy = useCallback(
+    (exerciseId: string, acknowledgedWeight: number, tier: Tier) => {
+      setRawState((prev) => {
+        // Ensure acknowledgedDiscrepancies exists (for pre-migration states)
+        const existing = prev.acknowledgedDiscrepancies ?? []
+
+        // Check if already acknowledged
+        const alreadyAcknowledged = existing.some(
+          (d) =>
+            d.exerciseId === exerciseId &&
+            d.acknowledgedWeight === acknowledgedWeight &&
+            d.tier === tier
+        )
+        if (alreadyAcknowledged) {
+          return prev
+        }
+
+        const newAcknowledgment: AcknowledgedDiscrepancy = {
+          exerciseId,
+          acknowledgedWeight,
+          tier,
+        }
+
+        return {
+          ...prev,
+          acknowledgedDiscrepancies: [...existing, newAcknowledgment],
+        }
+      })
+    },
+    [setRawState]
+  )
+
+  /**
+   * Clear all acknowledged discrepancies.
+   * Useful when user wants to review all discrepancies fresh.
+   */
+  const clearAcknowledgedDiscrepancies = useCallback(() => {
+    setRawState((prev) => ({
+      ...prev,
+      acknowledgedDiscrepancies: [],
+    }))
+  }, [setRawState])
+
+  /**
    * Reset state to initial values.
    */
   const resetState = useCallback(() => {
@@ -524,6 +577,8 @@ export function useProgram(): UseProgramResult {
     setLastSync,
     setProgressionHistory,
     recordHistoryEntry,
+    acknowledgeDiscrepancy,
+    clearAcknowledgedDiscrepancies,
     resetState,
     importState,
   }

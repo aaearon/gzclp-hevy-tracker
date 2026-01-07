@@ -1,7 +1,7 @@
 /**
- * Today's Workout Modal Component
+ * Next Workout Modal Component
  *
- * [GAP-15] Displays a preview of today's workout with:
+ * [GAP-15] Displays a preview of the next workout with:
  * - Header showing day name + date
  * - Collapsible warmup section for T1
  * - T1 exercise with AMRAP indicator
@@ -49,15 +49,23 @@ function roundToNearest(weight: number, increment: number): number {
 
 /**
  * Generate warmup sets for display (T1 only).
- * Protocol: Bar only (20kg) x10, 50% x5, 70% x3, 85% x2
+ *
+ * Light lifts (≤40kg): Bar only x10, 50% x5, 75% x3
+ * Heavy lifts (>40kg): 50% x5, 70% x3, 85% x2
  */
 function generateWarmupSetsForDisplay(workingWeightKg: number): WarmupSet[] {
   const BAR_WEIGHT = WARMUP_CONFIG.minWeight
+  const isHeavy = workingWeightKg > WARMUP_CONFIG.heavyThreshold
+
+  const percentages = isHeavy ? WARMUP_CONFIG.heavyPercentages : WARMUP_CONFIG.lightPercentages
+  const reps = isHeavy ? WARMUP_CONFIG.heavyReps : WARMUP_CONFIG.lightReps
+
   const sets: WarmupSet[] = []
 
-  for (let i = 0; i < WARMUP_CONFIG.percentages.length; i++) {
-    const pct = WARMUP_CONFIG.percentages[i]
+  for (let i = 0; i < percentages.length; i++) {
+    const pct = percentages[i]
     if (pct === undefined) continue
+
     const weight =
       pct === 0 ? BAR_WEIGHT : Math.max(BAR_WEIGHT, roundToNearest(workingWeightKg * pct, 2.5))
 
@@ -67,9 +75,9 @@ function generateWarmupSetsForDisplay(workingWeightKg: number): WarmupSet[] {
       continue
     }
 
-    const reps = WARMUP_CONFIG.reps[i]
-    if (reps !== undefined) {
-      sets.push({ weight, reps })
+    const repCount = reps[i]
+    if (repCount !== undefined) {
+      sets.push({ weight, reps: repCount })
     }
   }
 
@@ -189,7 +197,7 @@ export function TodaysWorkoutModal({
         <div className="sticky top-0 border-b bg-white px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Today&apos;s Workout</h2>
+              <h2 className="text-xl font-bold text-gray-900">Next Workout</h2>
               <p className="text-sm text-gray-500">
                 GZCLP Day {day} - {formatDate(today)}
               </p>

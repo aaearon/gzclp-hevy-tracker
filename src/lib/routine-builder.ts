@@ -19,7 +19,7 @@ import type {
   UserSettings,
 } from '@/types/state'
 import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME, WARMUP_CONFIG } from './constants'
-import { getT1RoleForDay, getT2RoleForDay, getTierForDay } from './role-utils'
+import { getT1RoleForDay, getT2RoleForDay, getTierForDay, getProgressionKey } from './role-utils'
 
 // =============================================================================
 // Constants
@@ -55,16 +55,25 @@ function roundToNearest(weight: number, increment: number): number {
 
 /**
  * Build warmup sets for T1 exercises.
- * Protocol: Bar only (20kg) x10, 50% x5, 70% x3, 85% x2
+ *
+ * Light lifts (≤40kg): Bar only x10, 50% x5, 75% x3
+ * Heavy lifts (>40kg): 50% x5, 70% x3, 85% x2
+ *
  * Smart filtering: skip duplicate weights.
  */
 export function buildWarmupSets(workingWeightKg: number): RoutineSetWrite[] {
   const BAR_WEIGHT = WARMUP_CONFIG.minWeight
+  const isHeavy = workingWeightKg > WARMUP_CONFIG.heavyThreshold
+
+  const percentages = isHeavy ? WARMUP_CONFIG.heavyPercentages : WARMUP_CONFIG.lightPercentages
+  const reps = isHeavy ? WARMUP_CONFIG.heavyReps : WARMUP_CONFIG.lightReps
+
   const sets: RoutineSetWrite[] = []
 
-  for (let i = 0; i < WARMUP_CONFIG.percentages.length; i++) {
-    const pct = WARMUP_CONFIG.percentages[i]
+  for (let i = 0; i < percentages.length; i++) {
+    const pct = percentages[i]
     if (pct === undefined) continue
+
     const weight =
       pct === 0 ? BAR_WEIGHT : Math.max(BAR_WEIGHT, roundToNearest(workingWeightKg * pct, 2.5))
 
@@ -74,9 +83,9 @@ export function buildWarmupSets(workingWeightKg: number): RoutineSetWrite[] {
       continue
     }
 
-    const reps = WARMUP_CONFIG.reps[i]
-    if (reps !== undefined) {
-      sets.push({ type: 'warmup', weight_kg: weight, reps })
+    const repCount = reps[i]
+    if (repCount !== undefined) {
+      sets.push({ type: 'warmup', weight_kg: weight, reps: repCount })
     }
   }
 
@@ -182,10 +191,17 @@ function findExerciseByRole(
 }
 
 /**
- * Get all T3 exercises.
+ * Get T3 exercises scheduled for a specific day.
  */
-function getT3Exercises(exercises: Record<string, ExerciseConfig>): ExerciseConfig[] {
-  return Object.values(exercises).filter((ex) => ex.role === 't3')
+function getT3ExercisesForDay(
+  exercises: Record<string, ExerciseConfig>,
+  t3Schedule: Record<GZCLPDay, string[]>,
+  day: GZCLPDay
+): ExerciseConfig[] {
+  const scheduledIds = t3Schedule[day]
+  return scheduledIds
+    .map((id) => exercises[id])
+    .filter((ex): ex is ExerciseConfig => ex?.role === 't3')
 }
 
 /**
@@ -195,7 +211,8 @@ export function buildDayRoutine(
   day: GZCLPDay,
   exercises: Record<string, ExerciseConfig>,
   progression: Record<string, ProgressionState>,
-  settings: UserSettings
+  settings: UserSettings,
+  t3Schedule?: Record<GZCLPDay, string[]>
 ): { title: string; exercises: RoutineExerciseWrite[] } {
   const routineExercises: RoutineExerciseWrite[] = []
 
@@ -205,7 +222,8 @@ export function buildDayRoutine(
 
   // Add T1 exercise
   const t1Exercise = findExerciseByRole(t1Role, exercises)
-  const t1Progression = t1Exercise ? progression[t1Exercise.id] : undefined
+  const t1ProgressionKey = t1Exercise ? getProgressionKey(t1Exercise.id, t1Exercise.role, 'T1') : null
+  const t1Progression = t1ProgressionKey ? progression[t1ProgressionKey] : undefined
   if (t1Exercise && t1Progression) {
     routineExercises.push(
       buildRoutineExercise(t1Exercise, t1Progression, settings, day)
@@ -214,21 +232,25 @@ export function buildDayRoutine(
 
   // Add T2 exercise
   const t2Exercise = findExerciseByRole(t2Role, exercises)
-  const t2Progression = t2Exercise ? progression[t2Exercise.id] : undefined
+  const t2ProgressionKey = t2Exercise ? getProgressionKey(t2Exercise.id, t2Exercise.role, 'T2') : null
+  const t2Progression = t2ProgressionKey ? progression[t2ProgressionKey] : undefined
   if (t2Exercise && t2Progression) {
     routineExercises.push(
       buildRoutineExercise(t2Exercise, t2Progression, settings, day)
     )
   }
 
-  // Add all T3 exercises
-  const t3Exercises = getT3Exercises(exercises)
-  for (const t3Exercise of t3Exercises) {
-    const t3Progression = progression[t3Exercise.id]
-    if (t3Progression) {
-      routineExercises.push(
-        buildRoutineExercise(t3Exercise, t3Progression, settings, day)
-      )
+  // Add T3 exercises scheduled for this day
+  if (t3Schedule) {
+    const t3Exercises = getT3ExercisesForDay(exercises, t3Schedule, day)
+    for (const t3Exercise of t3Exercises) {
+      const t3ProgressionKey = getProgressionKey(t3Exercise.id, t3Exercise.role, 'T3')
+      const t3Progression = progression[t3ProgressionKey]
+      if (t3Progression) {
+        routineExercises.push(
+          buildRoutineExercise(t3Exercise, t3Progression, settings, day)
+        )
+      }
     }
   }
 
@@ -250,9 +272,10 @@ export function buildRoutinePayload(
   exercises: Record<string, ExerciseConfig>,
   progression: Record<string, ProgressionState>,
   settings: UserSettings,
+  t3Schedule?: Record<GZCLPDay, string[]>,
   folderId?: number
 ): CreateRoutineRequest {
-  const routine = buildDayRoutine(day, exercises, progression, settings)
+  const routine = buildDayRoutine(day, exercises, progression, settings, t3Schedule)
 
   return {
     routine: {
@@ -261,4 +284,60 @@ export function buildRoutinePayload(
       exercises: routine.exercises,
     },
   }
+}
+
+// =============================================================================
+// Selective Routine Building
+// =============================================================================
+
+/**
+ * Weight override for exercises that should keep Hevy's weight.
+ */
+export interface SelectiveWeightOverride {
+  progressionKey: string
+  weightKg: number // Weight in kg (from Hevy)
+}
+
+/**
+ * Build a routine payload with selective weight overrides.
+ * Exercises with overrides use the provided weight instead of local progression.
+ * This is used for skip/pull actions where we want to preserve Hevy's weight.
+ */
+export function buildSelectiveRoutinePayload(
+  day: GZCLPDay,
+  exercises: Record<string, ExerciseConfig>,
+  progression: Record<string, ProgressionState>,
+  settings: UserSettings,
+  overrides: SelectiveWeightOverride[],
+  t3Schedule?: Record<GZCLPDay, string[]>,
+  folderId?: number
+): CreateRoutineRequest {
+  // Build a temporary progression with overridden weights
+  const effectiveProgression: Record<string, ProgressionState> = {}
+
+  // Create override lookup
+  const overrideMap = new Map<string, number>()
+  for (const override of overrides) {
+    overrideMap.set(override.progressionKey, override.weightKg)
+  }
+
+  // Copy progression, applying overrides
+  for (const [key, state] of Object.entries(progression)) {
+    const overrideWeightKg = overrideMap.get(key)
+    if (overrideWeightKg !== undefined) {
+      // Convert kg back to user's unit for the progression state
+      const overrideWeight =
+        settings.weightUnit === 'kg'
+          ? overrideWeightKg
+          : Math.round(overrideWeightKg / LBS_TO_KG * 10) / 10
+      effectiveProgression[key] = {
+        ...state,
+        currentWeight: overrideWeight,
+      }
+    } else {
+      effectiveProgression[key] = state
+    }
+  }
+
+  return buildRoutinePayload(day, exercises, effectiveProgression, settings, t3Schedule, folderId)
 }

@@ -301,15 +301,18 @@ export function calculateT2Progression(
 // =============================================================================
 
 /**
- * Check if T3 workout was successful (total reps >= 25).
+ * Check if T3 workout was successful (AMRAP set >= 25 reps).
+ * Per GZCLP spec, only the final AMRAP set is checked for 25+ reps.
  */
 export function isT3Success(reps: number[]): boolean {
-  const totalReps = reps.reduce((sum, r) => sum + r, 0)
-  return totalReps >= T3_SUCCESS_THRESHOLD
+  if (reps.length === 0) return false
+  const amrapReps = reps[reps.length - 1] ?? 0
+  return amrapReps >= T3_SUCCESS_THRESHOLD
 }
 
 /**
  * Calculate T3 progression based on workout performance.
+ * Per GZCLP spec, progression is triggered when AMRAP (last) set >= 25 reps.
  */
 export function calculateT3Progression(
   current: ProgressionState,
@@ -317,11 +320,9 @@ export function calculateT3Progression(
   muscleGroup: MuscleGroupCategory,
   unit: WeightUnit
 ): ProgressionResult {
-  const totalReps = reps.reduce((sum, r) => sum + r, 0)
-  const success = totalReps >= T3_SUCCESS_THRESHOLD
+  const amrapReps = reps.length > 0 ? (reps[reps.length - 1] ?? 0) : 0
+  const success = isT3Success(reps)
   const increment = getIncrement(muscleGroup, unit)
-  // T3 AMRAP is typically the last set (15+ target)
-  const amrapReps = reps[reps.length - 1] ?? 0
 
   if (success) {
     return {
@@ -329,7 +330,7 @@ export function calculateT3Progression(
       newWeight: current.currentWeight + increment,
       newStage: 0, // T3 only has stage 0
       newScheme: T3_SCHEME.display,
-      reason: `Hit ${String(totalReps)} total reps (${String(T3_SUCCESS_THRESHOLD)}+ required) at ${String(current.currentWeight)}${unit}. Adding ${String(increment)}${unit}.`,
+      reason: `Hit ${String(amrapReps)} reps on AMRAP set (${String(T3_SUCCESS_THRESHOLD)}+ required) at ${String(current.currentWeight)}${unit}. Adding ${String(increment)}${unit}.`,
       success: true,
       amrapReps,
     }
@@ -341,7 +342,7 @@ export function calculateT3Progression(
     newWeight: current.currentWeight,
     newStage: 0,
     newScheme: T3_SCHEME.display,
-    reason: `Hit ${String(totalReps)} total reps (need ${String(T3_SUCCESS_THRESHOLD)}+) at ${String(current.currentWeight)}${unit}. Repeat same weight.`,
+    reason: `Hit ${String(amrapReps)} reps on AMRAP set (need ${String(T3_SUCCESS_THRESHOLD)}+) at ${String(current.currentWeight)}${unit}. Repeat same weight.`,
     success: false,
     amrapReps,
   }

@@ -305,6 +305,21 @@ export interface WorkoutSummaryData {
 }
 
 // =============================================================================
+// Acknowledged Discrepancies
+// =============================================================================
+
+/**
+ * Records a discrepancy the user has chosen to ignore (clicked "Keep").
+ * Persisted to prevent re-showing the same discrepancy on future syncs.
+ */
+export interface AcknowledgedDiscrepancy {
+  exerciseId: string
+  /** The weight from Hevy that was different from stored progression */
+  acknowledgedWeight: number
+  tier: Tier
+}
+
+// =============================================================================
 // Root State
 // =============================================================================
 
@@ -330,6 +345,9 @@ export interface GZCLPState {
 
   /** Progression history for charts (keyed by progressionKey) */
   progressionHistory: Record<string, ExerciseHistory>
+
+  /** Discrepancies user has acknowledged (clicked "Keep") - prevents re-showing */
+  acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
 }
 
 // =============================================================================
@@ -412,6 +430,7 @@ export type ImportWarningType =
   | 'stage_unknown'
   | 'duplicate_routine'
   | 'weight_null'
+  | 'history_missing'
 
 /**
  * Warning generated during routine import.

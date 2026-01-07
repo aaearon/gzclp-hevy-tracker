@@ -1,7 +1,7 @@
 /**
  * CurrentWorkout Component
  *
- * Prominent inline display of today's workout at the top of the Dashboard.
+ * Prominent inline display of the next workout at the top of the Dashboard.
  * Shows T1, T2, and T3 exercises with correct weights.
  *
  * Replaces the separate NextWorkout sidebar and TierSection displays.
@@ -93,7 +93,7 @@ export function CurrentWorkout({
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Today&apos;s Workout</h2>
+          <h2 className="text-xl font-bold text-gray-900">Next Workout</h2>
           <p className="text-sm text-gray-500">GZCLP Day {day}</p>
         </div>
         <div className="flex items-center gap-3">
