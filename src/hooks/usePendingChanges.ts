@@ -2,12 +2,16 @@
  * usePendingChanges Hook
  *
  * Manages pending changes state - apply, reject, and modify operations.
+ * [Task 4.2] Added undo reject functionality
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { GZCLPDay, PendingChange, ProgressionState } from '@/types/state'
 import { applyPendingChange, modifyPendingChangeWeight } from '@/lib/apply-changes'
 import { DAY_CYCLE } from '@/lib/constants'
+
+/** How long to keep rejected change available for undo (ms) */
+const UNDO_TIMEOUT_MS = 5000
 
 export interface UsePendingChangesProps {
   initialChanges: PendingChange[]
@@ -24,17 +28,34 @@ export interface UsePendingChangesProps {
 export interface UsePendingChangesResult {
   pendingChanges: PendingChange[]
 
+  // Undo state [Task 4.2]
+  recentlyRejected: PendingChange | null
+
   // Actions
   applyChange: (change: PendingChange) => void
   rejectChange: (changeId: string) => void
   modifyChange: (changeId: string, newWeight: number) => void
   applyAllChanges: () => void
   clearAllChanges: () => void
+  undoReject: () => void
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
   const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
+
+  // Undo state [Task 4.2]
+  const [recentlyRejected, setRecentlyRejected] = useState<PendingChange | null>(null)
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount [Task 4.2]
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current)
+      }
+    }
+  }, [])
 
   /**
    * Apply a single change to the progression state.
@@ -55,10 +76,27 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
   )
 
   /**
-   * Reject a change - just remove it from pending without applying.
+   * Reject a change - store for potential undo [Task 4.2]
    */
   const rejectChange = useCallback((changeId: string) => {
-    setPendingChanges((prev) => prev.filter((c) => c.id !== changeId))
+    setPendingChanges((prev) => {
+      const change = prev.find((c) => c.id === changeId)
+      if (change) {
+        // Store for undo
+        setRecentlyRejected(change)
+
+        // Clear previous timeout
+        if (undoTimeoutRef.current) {
+          clearTimeout(undoTimeoutRef.current)
+        }
+
+        // Set new timeout to clear after 5 seconds
+        undoTimeoutRef.current = setTimeout(() => {
+          setRecentlyRejected(null)
+        }, UNDO_TIMEOUT_MS)
+      }
+      return prev.filter((c) => c.id !== changeId)
+    })
   }, [])
 
   /**
@@ -97,12 +135,33 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     setPendingChanges([])
   }, [])
 
+  /**
+   * Undo the last reject action [Task 4.2]
+   */
+  const undoReject = useCallback(() => {
+    if (recentlyRejected) {
+      // Restore the rejected change
+      setPendingChanges((prev) => [...prev, recentlyRejected])
+
+      // Clear the undo state
+      setRecentlyRejected(null)
+
+      // Cancel the timeout
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current)
+        undoTimeoutRef.current = null
+      }
+    }
+  }, [recentlyRejected])
+
   return {
     pendingChanges,
+    recentlyRejected,
     applyChange,
     rejectChange,
     modifyChange,
     applyAllChanges,
     clearAllChanges,
+    undoReject,
   }
 }

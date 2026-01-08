@@ -114,10 +114,12 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   // Use pending changes hook
   const {
     pendingChanges,
+    recentlyRejected,
     applyChange,
     rejectChange,
     modifyChange,
     applyAllChanges,
+    undoReject,
   } = usePendingChanges({
     initialChanges: mergedPendingChanges,
     progression,
@@ -261,6 +263,8 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         onReject={rejectChange}
         onModify={modifyChange}
         onClose={() => { setIsReviewModalOpen(false) }}
+        recentlyRejected={recentlyRejected}
+        onUndoReject={undoReject}
       />
 
       {/* Today's Workout Modal [GAP-15] */}

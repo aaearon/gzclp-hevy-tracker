@@ -4,6 +4,7 @@
  * Modal for reviewing and confirming pending progression changes.
  * [US3] User Story 3 - Review and Confirm Progression Changes
  * [T104] Keyboard navigation support
+ * [Task 4.2] Undo reject functionality
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -18,6 +19,9 @@ interface ReviewModalProps {
   onReject: (changeId: string) => void
   onModify: (changeId: string, newWeight: number) => void
   onClose: () => void
+  // Undo props [Task 4.2]
+  recentlyRejected?: PendingChange | null
+  onUndoReject?: () => void
 }
 
 const changeTypeLabels: Record<string, string> = {
@@ -128,6 +132,8 @@ export function ReviewModal({
   onReject,
   onModify,
   onClose,
+  recentlyRejected,
+  onUndoReject,
 }: ReviewModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -243,6 +249,20 @@ export function ReviewModal({
             </>
           )}
         </div>
+
+        {/* Undo Toast [Task 4.2] */}
+        {recentlyRejected && onUndoReject && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-lg bg-gray-800 px-4 py-3 text-white shadow-lg">
+            <span>Rejected {recentlyRejected.exerciseName}</span>
+            <button
+              type="button"
+              onClick={onUndoReject}
+              className="rounded bg-blue-500 px-3 py-1 text-sm hover:bg-blue-600 min-h-[36px]"
+            >
+              Undo
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
