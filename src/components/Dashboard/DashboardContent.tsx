@@ -6,9 +6,10 @@
  *
  * [Task 3.1] Extracted from Dashboard/index.tsx
  * [Task 3.4] Lazy loading for ProgressionChartContainer
+ * [Task 4.3] React 18 optimization with useDeferredValue for chart data
  */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useDeferredValue } from 'react'
 import type { GZCLPState } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import { QuickStats } from './QuickStats'
@@ -34,6 +35,10 @@ export interface DashboardContentProps {
 
 export function DashboardContent({ state, onStartWorkout }: DashboardContentProps) {
   const { exercises, progression, settings, program, t3Schedule, progressionHistory } = state
+
+  // Defer chart data updates to prevent blocking UI [Task 4.3]
+  const deferredProgressionHistory = useDeferredValue(progressionHistory)
+  const deferredProgression = useDeferredValue(progression)
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -78,7 +83,7 @@ export function DashboardContent({ state, onStartWorkout }: DashboardContentProp
           t3Schedule={t3Schedule}
         />
 
-        {/* Progression Charts [Feature 007] - Lazy loaded [Task 3.4], Error boundary [Task 3.5] */}
+        {/* Progression Charts [Feature 007] - Lazy loaded [Task 3.4], Error boundary [Task 3.5], Deferred [Task 4.3] */}
         <CollapsibleSection title="Progression Charts" defaultOpen={false}>
           <ErrorBoundary
             fallback={
@@ -91,8 +96,8 @@ export function DashboardContent({ state, onStartWorkout }: DashboardContentProp
             <Suspense fallback={<ChartSkeleton />}>
               <ProgressionChartContainer
                 exercises={exercises}
-                progression={progression}
-                progressionHistory={progressionHistory}
+                progression={deferredProgression}
+                progressionHistory={deferredProgressionHistory}
                 unit={settings.weightUnit}
                 workoutsPerWeek={program.workoutsPerWeek}
               />
