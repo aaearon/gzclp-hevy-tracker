@@ -41,6 +41,10 @@ export interface ValidatingWeightInputProps {
   disabled?: boolean
   /** T1 weight for T1/T2 relationship warnings (only for T2 inputs) */
   t1Weight?: number
+  /** Minimum weight (default: 0) [Task 4.1] */
+  min?: number
+  /** Maximum weight (default: 500kg / 1100lbs) [Task 4.1] */
+  max?: number
 }
 
 // =============================================================================
@@ -65,21 +69,37 @@ export function ValidatingWeightInput({
   id,
   disabled = false,
   t1Weight,
+  min = 0,
+  max,
 }: ValidatingWeightInputProps) {
   // Track if field has been touched (for showing empty error only after blur)
   const [touched, setTouched] = useState(false)
+
+  // Compute effective max based on unit [Task 4.1]
+  const maxWeight = max ?? (unit === 'kg' ? 500 : 1100)
+  const minWeight = min
 
   // Validate current value
   const validation = value === '' && !touched
     ? { isValid: true, error: null } // Don't show error for empty untouched field
     : validateWeight(value, unit)
 
+  // Additional min/max validation with specific message [Task 4.1]
+  const numValue = parseFloat(value)
+  const isOutOfRange = !isNaN(numValue) && (numValue < minWeight || numValue > maxWeight)
+  const rangeError = isOutOfRange
+    ? `Weight must be between ${minWeight} and ${maxWeight} ${unit}`
+    : null
+
+  // Combine validation error with range error
+  const finalError = validation.error ?? rangeError
+  const isInvalid = !validation.isValid || isOutOfRange
+
   // Check T1/T2 relationship warning (separate from validation errors)
   const t2Warning = getT2Warning(value, t1Weight)
 
-  // Combined error/warning message
-  const message = validation.error ?? t2Warning
-  const hasError = !validation.isValid
+  // Combined error/warning message [Task 4.1]
+  const message = finalError ?? t2Warning
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value)
@@ -93,7 +113,7 @@ export function ValidatingWeightInput({
   const inputId = id ?? `weight-input-${label.replace(/\s+/g, '-').toLowerCase()}`
 
   // Determine input border color
-  const borderClass = hasError
+  const borderClass = isInvalid
     ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
 
@@ -109,16 +129,19 @@ export function ValidatingWeightInput({
         <input
           id={inputId}
           type="number"
+          inputMode="decimal"
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
           disabled={disabled}
           placeholder="0"
+          min={minWeight}
+          max={maxWeight}
           className={`w-24 px-3 py-2 border rounded-md shadow-sm
                      ${borderClass}
                      disabled:bg-gray-100 disabled:cursor-not-allowed
                      min-h-[44px]`}
-          aria-invalid={hasError}
+          aria-invalid={isInvalid}
           aria-describedby={message ? `${inputId}-error` : undefined}
         />
         <span className="text-gray-600">{unit}</span>
@@ -126,8 +149,8 @@ export function ValidatingWeightInput({
       {message && (
         <p
           id={`${inputId}-error`}
-          className={`mt-1 text-sm ${hasError ? 'text-red-600' : 'text-amber-600'}`}
-          role={hasError ? 'alert' : undefined}
+          className={`mt-1 text-sm ${isInvalid ? 'text-red-600' : 'text-amber-600'}`}
+          role={isInvalid ? 'alert' : undefined}
         >
           {message}
         </p>

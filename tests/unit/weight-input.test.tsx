@@ -313,4 +313,98 @@ describe('ValidatingWeightInput', () => {
       expect(input).toHaveClass('border-gray-300')
     })
   })
+
+  // [Task 4.1] Min/max prop tests
+  describe('configurable min/max validation', () => {
+    it('renders with min/max HTML attributes', () => {
+      render(
+        <ValidatingWeightInput
+          label="Custom Range"
+          value="50"
+          onChange={vi.fn()}
+          unit="kg"
+          min={10}
+          max={200}
+        />
+      )
+
+      const input = screen.getByRole('spinbutton')
+      expect(input).toHaveAttribute('min', '10')
+      expect(input).toHaveAttribute('max', '200')
+    })
+
+    it('shows error when value below custom min', () => {
+      render(
+        <ValidatingWeightInput
+          label="Custom Range"
+          value="5"
+          onChange={vi.fn()}
+          unit="kg"
+          min={10}
+          max={200}
+        />
+      )
+
+      expect(screen.getByText('Weight must be between 10 and 200 kg')).toBeInTheDocument()
+    })
+
+    it('shows error when value exceeds custom max', () => {
+      render(
+        <ValidatingWeightInput
+          label="Custom Range"
+          value="250"
+          onChange={vi.fn()}
+          unit="kg"
+          min={10}
+          max={200}
+        />
+      )
+
+      expect(screen.getByText('Weight must be between 10 and 200 kg')).toBeInTheDocument()
+    })
+
+    it('uses default max (500kg) when not specified', () => {
+      render(
+        <ValidatingWeightInput
+          label="Default Max"
+          value="100"
+          onChange={vi.fn()}
+          unit="kg"
+        />
+      )
+
+      const input = screen.getByRole('spinbutton')
+      expect(input).toHaveAttribute('max', '500')
+    })
+
+    it('uses default max (1100lbs) when not specified for lbs', () => {
+      render(
+        <ValidatingWeightInput
+          label="Default Max"
+          value="100"
+          onChange={vi.fn()}
+          unit="lbs"
+        />
+      )
+
+      const input = screen.getByRole('spinbutton')
+      expect(input).toHaveAttribute('max', '1100')
+    })
+
+    it('marks input as aria-invalid when out of range', () => {
+      render(
+        <ValidatingWeightInput
+          label="Custom Range"
+          value="5"
+          onChange={vi.fn()}
+          unit="kg"
+          min={10}
+          max={200}
+        />
+      )
+
+      const input = screen.getByRole('spinbutton')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+  })
 })
