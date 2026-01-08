@@ -1,14 +1,15 @@
 /**
  * useProgram Hook
  *
- * Manages the GZCLP program configuration stored in localStorage.
+ * Manages the GZCLP program configuration using split localStorage storage.
+ * Uses three separate storage hooks for config, progression, and history.
  */
 
 import { useCallback, useMemo } from 'react'
-import { useLocalStorage } from './useLocalStorage'
-import { createInitialState, isSetupRequired } from '@/lib/state-factory'
-import { migrateState, needsMigration } from '@/lib/migrations'
-import { STORAGE_KEY } from '@/lib/constants'
+import { useConfigStorage } from './useConfigStorage'
+import { useProgressionStorage } from './useProgressionStorage'
+import { useHistoryStorage } from './useHistoryStorage'
+import { isSetupRequired } from '@/lib/state-factory'
 import { generateId } from '@/utils/id'
 import type {
   GZCLPState,
@@ -20,10 +21,8 @@ import type {
   WeightUnit,
   RoutineAssignment,
   Stage,
-  AcknowledgedDiscrepancy,
   Tier,
 } from '@/types/state'
-import { recordProgressionHistory } from '@/lib/history-recorder'
 
 export interface UseProgramResult {
   state: GZCLPState
@@ -82,475 +81,341 @@ export interface UseProgramResult {
 }
 
 export function useProgram(): UseProgramResult {
-  const [rawState, setRawState, removeState] = useLocalStorage<GZCLPState>(
-    STORAGE_KEY,
-    createInitialState()
-  )
+  // Use split storage hooks
+  const {
+    config,
+    setApiKey: setConfigApiKey,
+    setWeightUnit: setConfigWeightUnit,
+    addExercise: addConfigExercise,
+    updateExercise: updateConfigExercise,
+    removeExercise: removeConfigExercise,
+    setCurrentDay: setConfigCurrentDay,
+    setHevyRoutineIds: setConfigHevyRoutineIds,
+    setProgramCreatedAt: setConfigProgramCreatedAt,
+    setWorkoutsPerWeek: setConfigWorkoutsPerWeek,
+    setT3Schedule: setConfigT3Schedule,
+    resetConfig,
+    importConfig,
+  } = useConfigStorage()
 
-  // Apply migrations if needed
+  const {
+    store: progressionStore,
+    setProgression,
+    updateProgression: updateProgressionStore,
+    setProgressionByKey: setProgressionByKeyStore,
+    removeProgression,
+    setLastSync: setProgressionLastSync,
+    setTotalWorkouts: setProgressionTotalWorkouts,
+    setMostRecentWorkoutDate: setProgressionMostRecentDate,
+    acknowledgeDiscrepancy: acknowledgeProgressionDiscrepancy,
+    clearAcknowledgedDiscrepancies: clearProgressionDiscrepancies,
+    resetProgression,
+    importProgression,
+  } = useProgressionStorage()
+
+  const {
+    history,
+    setProgressionHistory: setHistoryProgressionHistory,
+    recordHistoryEntry: recordHistoryEntryStorage,
+    resetHistory,
+    importHistory,
+  } = useHistoryStorage()
+
+  // Compose the full GZCLPState from split storage
   const state = useMemo((): GZCLPState => {
-    if (needsMigration(rawState)) {
-      const migrated = migrateState(rawState)
-      // Note: We don't save here to avoid infinite loops
-      // The next write will persist the migrated state
-      return migrated
+    return {
+      version: config.version,
+      apiKey: config.apiKey,
+      program: config.program,
+      exercises: config.exercises,
+      settings: config.settings,
+      t3Schedule: config.t3Schedule,
+      progression: progressionStore.progression,
+      pendingChanges: progressionStore.pendingChanges,
+      lastSync: progressionStore.lastSync,
+      totalWorkouts: progressionStore.totalWorkouts,
+      mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
+      acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
+      progressionHistory: history.progressionHistory,
     }
-    return rawState
-  }, [rawState])
+  }, [config, progressionStore, history])
 
   const setupRequired = useMemo(() => isSetupRequired(state), [state])
 
-  /**
-   * Set the Hevy API key.
-   */
+  // ==========================================================================
+  // API Key
+  // ==========================================================================
+
   const setApiKey = useCallback(
     (apiKey: string) => {
-      setRawState((prev) => ({
-        ...prev,
-        apiKey,
-      }))
+      setConfigApiKey(apiKey)
     },
-    [setRawState]
+    [setConfigApiKey]
   )
 
-  /**
-   * Set the weight unit preference.
-   */
+  // ==========================================================================
+  // Settings
+  // ==========================================================================
+
   const setWeightUnit = useCallback(
     (unit: WeightUnit) => {
-      setRawState((prev) => ({
-        ...prev,
-        settings: {
-          ...prev.settings,
-          weightUnit: unit,
-          increments:
-            unit === 'kg' ? { upper: 2.5, lower: 5 } : { upper: 5, lower: 10 },
-        },
-      }))
+      setConfigWeightUnit(unit)
     },
-    [setRawState]
+    [setConfigWeightUnit]
   )
 
-  /**
-   * Add a new exercise configuration.
-   */
-  const addExercise = useCallback(
-    (config: Omit<ExerciseConfig, 'id'>): string => {
-      const id = generateId()
-      const exerciseConfig: ExerciseConfig = { ...config, id }
+  // ==========================================================================
+  // Exercises
+  // ==========================================================================
 
-      setRawState((prev) => ({
-        ...prev,
-        exercises: {
-          ...prev.exercises,
-          [id]: exerciseConfig,
+  const addExercise = useCallback(
+    (exerciseConfig: Omit<ExerciseConfig, 'id'>): string => {
+      const id = generateId()
+      const fullConfig: ExerciseConfig = { ...exerciseConfig, id }
+
+      // Add exercise to config storage
+      addConfigExercise(fullConfig)
+
+      // Add initial progression entry to progression storage
+      setProgression({
+        ...progressionStore.progression,
+        [id]: {
+          exerciseId: id,
+          currentWeight: 0,
+          stage: 0,
+          baseWeight: 0,
+          lastWorkoutId: null,
+          lastWorkoutDate: null,
+          amrapRecord: 0,
         },
-        progression: {
-          ...prev.progression,
-          [id]: {
-            exerciseId: id,
-            currentWeight: 0,
-            stage: 0,
-            baseWeight: 0,
-            lastWorkoutId: null,
-            lastWorkoutDate: null,
-            amrapRecord: 0,
-          },
-        },
-      }))
+      })
 
       return id
     },
-    [setRawState]
+    [addConfigExercise, setProgression, progressionStore.progression]
   )
 
-  /**
-   * Update an existing exercise configuration.
-   */
   const updateExercise = useCallback(
     (id: string, updates: Partial<ExerciseConfig>) => {
-      setRawState((prev) => {
-        const existing = prev.exercises[id]
-        if (!existing) return prev
-
-        return {
-          ...prev,
-          exercises: {
-            ...prev.exercises,
-            [id]: { ...existing, ...updates },
-          },
-        }
-      })
+      updateConfigExercise(id, updates)
     },
-    [setRawState]
+    [updateConfigExercise]
   )
 
-  /**
-   * Remove an exercise configuration.
-   */
   const removeExercise = useCallback(
     (id: string) => {
-      setRawState((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: removedExercise, ...remainingExercises } = prev.exercises
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [id]: removedProgression, ...remainingProgression } = prev.progression
-
-        return {
-          ...prev,
-          exercises: remainingExercises,
-          progression: remainingProgression,
-          pendingChanges: prev.pendingChanges.filter((c) => c.exerciseId !== id),
-        }
-      })
+      // Remove from config
+      removeConfigExercise(id)
+      // Remove from progression
+      removeProgression(id)
     },
-    [setRawState]
+    [removeConfigExercise, removeProgression]
   )
 
-  /**
-   * Set the initial weight for an exercise, optionally with a stage.
-   */
+  // ==========================================================================
+  // Progression
+  // ==========================================================================
+
   const setInitialWeight = useCallback(
     (exerciseId: string, weight: number, stage: Stage = 0) => {
-      setRawState((prev) => {
-        const existing = prev.progression[exerciseId]
-        if (!existing) return prev
+      const existing = progressionStore.progression[exerciseId]
+      if (!existing) return
 
-        return {
-          ...prev,
-          progression: {
-            ...prev.progression,
-            [exerciseId]: {
-              ...existing,
-              currentWeight: weight,
-              baseWeight: weight,
-              stage,
-            },
-          },
-        }
+      setProgression({
+        ...progressionStore.progression,
+        [exerciseId]: {
+          ...existing,
+          currentWeight: weight,
+          baseWeight: weight,
+          stage,
+        },
       })
     },
-    [setRawState]
+    [progressionStore.progression, setProgression]
   )
 
-  /**
-   * Set progression by an arbitrary key (for role-tier keys like "squat-T1").
-   * Creates a new progression entry if it doesn't exist.
-   */
   const setProgressionByKey = useCallback(
     (key: string, exerciseId: string, weight: number, stage: Stage = 0) => {
-      setRawState((prev) => ({
-        ...prev,
-        progression: {
-          ...prev.progression,
-          [key]: {
-            exerciseId,
-            currentWeight: weight,
-            baseWeight: weight,
-            stage,
-            lastWorkoutId: null,
-            lastWorkoutDate: null,
-            amrapRecord: 0,
-          },
-        },
-      }))
+      setProgressionByKeyStore(key, exerciseId, weight, stage)
     },
-    [setRawState]
+    [setProgressionByKeyStore]
   )
 
-  /**
-   * Update progression state for an exercise.
-   */
   const updateProgression = useCallback(
     (exerciseId: string, updates: Partial<ProgressionState>) => {
-      setRawState((prev) => {
-        const existing = prev.progression[exerciseId]
-        if (!existing) return prev
-
-        return {
-          ...prev,
-          progression: {
-            ...prev.progression,
-            [exerciseId]: { ...existing, ...updates },
-          },
-        }
-      })
+      updateProgressionStore(exerciseId, updates)
     },
-    [setRawState]
+    [updateProgressionStore]
   )
 
-  /**
-   * Update multiple progression states at once.
-   */
   const updateProgressionBatch = useCallback(
     (progressionUpdates: Record<string, ProgressionState>) => {
-      setRawState((prev) => ({
-        ...prev,
-        progression: {
-          ...prev.progression,
-          ...progressionUpdates,
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the Hevy routine ID for a specific day.
-   */
-  const setHevyRoutineId = useCallback(
-    (day: 'A1' | 'B1' | 'A2' | 'B2', routineId: string) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          hevyRoutineIds: {
-            ...prev.program.hevyRoutineIds,
-            [day]: routineId,
-          },
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set multiple Hevy routine IDs at once.
-   */
-  const setHevyRoutineIds = useCallback(
-    (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          hevyRoutineIds: {
-            ...prev.program.hevyRoutineIds,
-            ...(ids.A1 !== undefined && { A1: ids.A1 }),
-            ...(ids.B1 !== undefined && { B1: ids.B1 }),
-            ...(ids.A2 !== undefined && { A2: ids.A2 }),
-            ...(ids.B2 !== undefined && { B2: ids.B2 }),
-          },
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set routine IDs from import assignment.
-   */
-  const setRoutineIds = useCallback(
-    (assignment: RoutineAssignment) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          hevyRoutineIds: {
-            A1: assignment.A1,
-            B1: assignment.B1,
-            A2: assignment.A2,
-            B2: assignment.B2,
-          },
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the current day in the GZCLP rotation.
-   */
-  const setCurrentDay = useCallback(
-    (day: GZCLPDay) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          currentDay: day,
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the program creation date (for weeks calculation).
-   */
-  const setProgramCreatedAt = useCallback(
-    (createdAt: string) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          createdAt,
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the number of workouts per week.
-   */
-  const setWorkoutsPerWeek = useCallback(
-    (workoutsPerWeek: number) => {
-      setRawState((prev) => ({
-        ...prev,
-        program: {
-          ...prev.program,
-          workoutsPerWeek,
-        },
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the T3 schedule mapping days to exercise IDs.
-   */
-  const setT3Schedule = useCallback(
-    (schedule: Record<GZCLPDay, string[]>) => {
-      setRawState((prev) => ({
-        ...prev,
-        t3Schedule: schedule,
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the total workout count.
-   */
-  const setTotalWorkouts = useCallback(
-    (count: number) => {
-      setRawState((prev) => ({
-        ...prev,
-        totalWorkouts: count,
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the most recent workout date.
-   */
-  const setMostRecentWorkoutDate = useCallback(
-    (date: string | null) => {
-      setRawState((prev) => ({
-        ...prev,
-        mostRecentWorkoutDate: date,
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the last sync timestamp.
-   */
-  const setLastSync = useCallback(
-    (timestamp: string) => {
-      setRawState((prev) => ({
-        ...prev,
-        lastSync: timestamp,
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Set the entire progression history (for bulk updates).
-   */
-  const setProgressionHistory = useCallback(
-    (history: Record<string, ExerciseHistory>) => {
-      setRawState((prev) => ({
-        ...prev,
-        progressionHistory: history,
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Record a single pending change to progression history.
-   * Used when applying changes to track history for charts.
-   */
-  const recordHistoryEntry = useCallback(
-    (change: PendingChange) => {
-      setRawState((prev) => ({
-        ...prev,
-        progressionHistory: recordProgressionHistory(
-          prev.progressionHistory,
-          change,
-          prev.exercises
-        ),
-      }))
-    },
-    [setRawState]
-  )
-
-  /**
-   * Acknowledge a discrepancy (user clicked "Keep").
-   * Prevents the same discrepancy from being shown again on future syncs.
-   */
-  const acknowledgeDiscrepancy = useCallback(
-    (exerciseId: string, acknowledgedWeight: number, tier: Tier) => {
-      setRawState((prev) => {
-        // Ensure acknowledgedDiscrepancies exists (for pre-migration states)
-        const existing = prev.acknowledgedDiscrepancies ?? []
-
-        // Check if already acknowledged
-        const alreadyAcknowledged = existing.some(
-          (d) =>
-            d.exerciseId === exerciseId &&
-            d.acknowledgedWeight === acknowledgedWeight &&
-            d.tier === tier
-        )
-        if (alreadyAcknowledged) {
-          return prev
-        }
-
-        const newAcknowledgment: AcknowledgedDiscrepancy = {
-          exerciseId,
-          acknowledgedWeight,
-          tier,
-        }
-
-        return {
-          ...prev,
-          acknowledgedDiscrepancies: [...existing, newAcknowledgment],
-        }
+      setProgression({
+        ...progressionStore.progression,
+        ...progressionUpdates,
       })
     },
-    [setRawState]
+    [progressionStore.progression, setProgression]
   )
 
-  /**
-   * Clear all acknowledged discrepancies.
-   * Useful when user wants to review all discrepancies fresh.
-   */
+  // ==========================================================================
+  // Program
+  // ==========================================================================
+
+  const setHevyRoutineId = useCallback(
+    (day: 'A1' | 'B1' | 'A2' | 'B2', routineId: string) => {
+      setConfigHevyRoutineIds({ [day]: routineId })
+    },
+    [setConfigHevyRoutineIds]
+  )
+
+  const setHevyRoutineIds = useCallback(
+    (ids: { A1?: string; B1?: string; A2?: string; B2?: string }) => {
+      setConfigHevyRoutineIds(ids)
+    },
+    [setConfigHevyRoutineIds]
+  )
+
+  const setRoutineIds = useCallback(
+    (assignment: RoutineAssignment) => {
+      setConfigHevyRoutineIds({
+        A1: assignment.A1,
+        B1: assignment.B1,
+        A2: assignment.A2,
+        B2: assignment.B2,
+      })
+    },
+    [setConfigHevyRoutineIds]
+  )
+
+  const setCurrentDay = useCallback(
+    (day: GZCLPDay) => {
+      setConfigCurrentDay(day)
+    },
+    [setConfigCurrentDay]
+  )
+
+  const setProgramCreatedAt = useCallback(
+    (createdAt: string) => {
+      setConfigProgramCreatedAt(createdAt)
+    },
+    [setConfigProgramCreatedAt]
+  )
+
+  const setWorkoutsPerWeek = useCallback(
+    (workoutsPerWeek: number) => {
+      setConfigWorkoutsPerWeek(workoutsPerWeek)
+    },
+    [setConfigWorkoutsPerWeek]
+  )
+
+  const setT3Schedule = useCallback(
+    (schedule: Record<GZCLPDay, string[]>) => {
+      setConfigT3Schedule(schedule)
+    },
+    [setConfigT3Schedule]
+  )
+
+  // ==========================================================================
+  // Workout Stats
+  // ==========================================================================
+
+  const setTotalWorkouts = useCallback(
+    (count: number) => {
+      setProgressionTotalWorkouts(count)
+    },
+    [setProgressionTotalWorkouts]
+  )
+
+  const setMostRecentWorkoutDate = useCallback(
+    (date: string | null) => {
+      setProgressionMostRecentDate(date)
+    },
+    [setProgressionMostRecentDate]
+  )
+
+  // ==========================================================================
+  // Sync
+  // ==========================================================================
+
+  const setLastSync = useCallback(
+    (timestamp: string) => {
+      setProgressionLastSync(timestamp)
+    },
+    [setProgressionLastSync]
+  )
+
+  // ==========================================================================
+  // Progression History
+  // ==========================================================================
+
+  const setProgressionHistory = useCallback(
+    (historyData: Record<string, ExerciseHistory>) => {
+      setHistoryProgressionHistory(historyData)
+    },
+    [setHistoryProgressionHistory]
+  )
+
+  const recordHistoryEntry = useCallback(
+    (change: PendingChange) => {
+      recordHistoryEntryStorage(change, config.exercises)
+    },
+    [recordHistoryEntryStorage, config.exercises]
+  )
+
+  // ==========================================================================
+  // Discrepancy Acknowledgment
+  // ==========================================================================
+
+  const acknowledgeDiscrepancy = useCallback(
+    (exerciseId: string, acknowledgedWeight: number, tier: Tier) => {
+      acknowledgeProgressionDiscrepancy(exerciseId, acknowledgedWeight, tier)
+    },
+    [acknowledgeProgressionDiscrepancy]
+  )
+
   const clearAcknowledgedDiscrepancies = useCallback(() => {
-    setRawState((prev) => ({
-      ...prev,
-      acknowledgedDiscrepancies: [],
-    }))
-  }, [setRawState])
+    clearProgressionDiscrepancies()
+  }, [clearProgressionDiscrepancies])
 
-  /**
-   * Reset state to initial values.
-   */
+  // ==========================================================================
+  // Full State Management
+  // ==========================================================================
+
   const resetState = useCallback(() => {
-    removeState()
-  }, [removeState])
+    resetConfig()
+    resetProgression()
+    resetHistory()
+  }, [resetConfig, resetProgression, resetHistory])
 
-  /**
-   * Import a complete state object.
-   */
   const importState = useCallback(
     (newState: GZCLPState) => {
-      const migrated = migrateState(newState)
-      setRawState(migrated)
+      // Import into config storage
+      importConfig({
+        version: newState.version,
+        apiKey: newState.apiKey,
+        program: newState.program,
+        settings: newState.settings,
+        exercises: newState.exercises,
+        t3Schedule: newState.t3Schedule,
+      })
+
+      // Import into progression storage
+      importProgression({
+        progression: newState.progression,
+        pendingChanges: newState.pendingChanges,
+        lastSync: newState.lastSync,
+        totalWorkouts: newState.totalWorkouts,
+        mostRecentWorkoutDate: newState.mostRecentWorkoutDate,
+        acknowledgedDiscrepancies: newState.acknowledgedDiscrepancies,
+      })
+
+      // Import into history storage
+      importHistory({
+        progressionHistory: newState.progressionHistory,
+      })
     },
-    [setRawState]
+    [importConfig, importProgression, importHistory]
   )
 
   return {

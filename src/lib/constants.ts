@@ -167,10 +167,21 @@ export const T3_SUCCESS_THRESHOLD = 25 // Total reps needed to progress
 export const CURRENT_STATE_VERSION = '2.2.0'
 
 // =============================================================================
-// localStorage Key
+// localStorage Keys
 // =============================================================================
 
+/** Legacy monolithic storage key (for reference during migration) */
 export const STORAGE_KEY = 'gzclp_state'
+
+/** Split storage keys for optimized localStorage management */
+export const STORAGE_KEYS = {
+  /** Config: program, settings, exercises, apiKey, t3Schedule */
+  CONFIG: 'gzclp_config',
+  /** Progression: progression states, pendingChanges, sync metadata */
+  PROGRESSION: 'gzclp_progression',
+  /** History: progressionHistory (unbounded, largest data) */
+  HISTORY: 'gzclp_history',
+} as const
 
 // =============================================================================
 // Initial T3 Schedule

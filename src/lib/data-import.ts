@@ -6,7 +6,6 @@
 
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION } from './constants'
-import { migrateState } from './migrations'
 
 /**
  * Maximum import file size in bytes (5MB).
@@ -134,10 +133,15 @@ export function importData(data: string): GZCLPState {
     )
   }
 
-  // Apply migrations if needed
-  const migratedState = migrateState(stateData)
+  // Ensure required fields have defaults
+  const state = {
+    ...stateData,
+    progressionHistory: stateData.progressionHistory ?? {},
+    acknowledgedDiscrepancies: stateData.acknowledgedDiscrepancies ?? [],
+    version: CURRENT_STATE_VERSION,
+  } as GZCLPState
 
-  return migratedState
+  return state
 }
 
 /**
