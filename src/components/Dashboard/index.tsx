@@ -14,17 +14,9 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useProgram } from '@/hooks/useProgram'
 import { useSyncFlow } from '@/hooks/useSyncFlow'
 import { usePendingChanges } from '@/hooks/usePendingChanges'
+import { usePushDialog } from '@/hooks/usePushDialog'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
-import { syncGZCLPRoutines } from '@/lib/routine-manager'
-import {
-  fetchCurrentHevyState,
-  buildSelectablePushPreview,
-  updatePreviewAction,
-  type SelectablePushPreview,
-  type SyncAction,
-  type HevyRoutineState,
-} from '@/lib/push-preview'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -52,18 +44,8 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
   const acknowledgedDiscrepancies = state.acknowledgedDiscrepancies ?? []
 
-  // Local state for modals and updates
+  // Local state for modals
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
-  const [isUpdatingHevy, setIsUpdatingHevy] = useState(false)
-  const [updateError, setUpdateError] = useState<string | null>(null)
-  const [updateSuccess, setUpdateSuccess] = useState(false)
-
-  // Push confirmation dialog state
-  const [isPushDialogOpen, setIsPushDialogOpen] = useState(false)
-  const [pushPreviewLoading, setPushPreviewLoading] = useState(false)
-  const [pushPreviewError, setPushPreviewError] = useState<string | null>(null)
-  const [pushPreview, setPushPreview] = useState<SelectablePushPreview | null>(null)
-  const [hevyState, setHevyState] = useState<Record<GZCLPDay, HevyRoutineState> | null>(null)
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
@@ -151,6 +133,31 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     return createHevyClient(apiKey)
   }, [apiKey])
 
+  // Use push dialog hook for push confirmation dialog [Task 3.3]
+  const {
+    isOpen: isPushDialogOpen,
+    isLoading: pushPreviewLoading,
+    previewError: pushPreviewError,
+    preview: pushPreview,
+    isUpdating: isUpdatingHevy,
+    updateError,
+    updateSuccess,
+    open: handleOpenPushDialog,
+    close: handleClosePushDialog,
+    confirm: handleConfirmPush,
+    changeAction: handleActionChange,
+    dismissUpdateStatus: handleDismissUpdateStatus,
+  } = usePushDialog({
+    hevyClient,
+    exercises,
+    progression,
+    settings,
+    hevyRoutineIds: program.hevyRoutineIds,
+    t3Schedule,
+    onProgressionUpdate: handleProgressionUpdate,
+    onRoutineIdsUpdate: setHevyRoutineIds,
+  })
+
   // Handle discrepancy resolution - use actual weight
   const handleUseActualWeight = useCallback(
     (exerciseId: string, actualWeight: number, tier: import('@/types/state').Tier) => {
@@ -185,57 +192,6 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     }
   }, [discrepancies, acknowledgeDiscrepancy])
 
-  // Handle opening push confirmation dialog
-  const handleOpenPushDialog = useCallback(async () => {
-    if (!hevyClient) {
-      setUpdateError('Not connected to Hevy API')
-      return
-    }
-
-    setIsPushDialogOpen(true)
-    setPushPreviewLoading(true)
-    setPushPreviewError(null)
-    setPushPreview(null)
-    setHevyState(null)
-
-    try {
-      const fetchedHevyState = await fetchCurrentHevyState(hevyClient, program.hevyRoutineIds)
-      setHevyState(fetchedHevyState)
-      const preview = buildSelectablePushPreview(
-        fetchedHevyState,
-        exercises,
-        progression,
-        t3Schedule,
-        settings.weightUnit
-      )
-      setPushPreview(preview)
-    } catch (error) {
-      if (error instanceof Error) {
-        setPushPreviewError(error.message)
-      } else {
-        setPushPreviewError('Failed to fetch current routines from Hevy')
-      }
-    } finally {
-      setPushPreviewLoading(false)
-    }
-  }, [hevyClient, program.hevyRoutineIds, exercises, progression, t3Schedule, settings.weightUnit])
-
-  // Handle closing push dialog
-  const handleClosePushDialog = useCallback(() => {
-    setIsPushDialogOpen(false)
-    setPushPreview(null)
-    setPushPreviewError(null)
-    setHevyState(null)
-  }, [])
-
-  // Handle action change in push dialog
-  const handleActionChange = useCallback((progressionKey: string, action: SyncAction) => {
-    setPushPreview((prev) => {
-      if (!prev) return null
-      return updatePreviewAction(prev, progressionKey, action)
-    })
-  }, [])
-
   // Filter out acknowledged discrepancies
   const unresolvedDiscrepancies = useMemo(() => {
     return discrepancies.filter((d) => {
@@ -249,88 +205,8 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     })
   }, [discrepancies, acknowledgedDiscrepancies])
 
-  // Handle confirming push with selective sync
-  const handleConfirmPush = useCallback(async () => {
-    if (!hevyClient || !pushPreview || !hevyState) {
-      setUpdateError('Missing data for sync')
-      handleClosePushDialog()
-      return
-    }
-
-    if (pushPreview.pushCount === 0 && pushPreview.pullCount === 0) {
-      handleClosePushDialog()
-      return
-    }
-
-    handleClosePushDialog()
-    setIsUpdatingHevy(true)
-    setUpdateError(null)
-    setUpdateSuccess(false)
-
-    try {
-      const { routineIds, pullUpdates } = await syncGZCLPRoutines(
-        hevyClient,
-        exercises,
-        progression,
-        settings,
-        pushPreview,
-        hevyState,
-        program.hevyRoutineIds,
-        t3Schedule
-      )
-
-      if (pullUpdates.length > 0) {
-        const updatedProgression = { ...progression }
-        for (const { progressionKey, weight } of pullUpdates) {
-          if (updatedProgression[progressionKey]) {
-            updatedProgression[progressionKey] = {
-              ...updatedProgression[progressionKey],
-              currentWeight: weight,
-              baseWeight: weight,
-            }
-          }
-        }
-        updateProgressionBatch(updatedProgression)
-      }
-
-      const updates: { A1?: string; B1?: string; A2?: string; B2?: string } = {}
-      if (routineIds.A1) updates.A1 = routineIds.A1
-      if (routineIds.B1) updates.B1 = routineIds.B1
-      if (routineIds.A2) updates.A2 = routineIds.A2
-      if (routineIds.B2) updates.B2 = routineIds.B2
-      setHevyRoutineIds(updates)
-      setUpdateSuccess(true)
-    } catch (error) {
-      if (error instanceof Error) {
-        setUpdateError(error.message)
-      } else {
-        setUpdateError('Failed to sync with Hevy')
-      }
-    } finally {
-      setIsUpdatingHevy(false)
-    }
-  }, [
-    hevyClient,
-    pushPreview,
-    hevyState,
-    exercises,
-    progression,
-    settings,
-    program.hevyRoutineIds,
-    t3Schedule,
-    handleClosePushDialog,
-    updateProgressionBatch,
-    setHevyRoutineIds,
-  ])
-
   // Disable sync/update when offline
   const isOffline = !isOnline || !isHevyReachable
-
-  // Callbacks for header
-  const handleDismissUpdateStatus = useCallback(() => {
-    setUpdateError(null)
-    setUpdateSuccess(false)
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
