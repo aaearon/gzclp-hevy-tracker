@@ -17,6 +17,8 @@ import { MainLiftCard } from './MainLiftCard'
 import { T3Overview } from './T3Overview'
 import { CollapsibleSection } from '@/components/common/CollapsibleSection'
 import { ChartSkeleton } from '@/components/common/ChartSkeleton'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ErrorFallback } from '@/components/common/ErrorFallback'
 
 // Lazy load chart component [Task 3.4]
 const ProgressionChartContainer = lazy(() =>
@@ -76,17 +78,26 @@ export function DashboardContent({ state, onStartWorkout }: DashboardContentProp
           t3Schedule={t3Schedule}
         />
 
-        {/* Progression Charts [Feature 007] - Lazy loaded [Task 3.4] */}
+        {/* Progression Charts [Feature 007] - Lazy loaded [Task 3.4], Error boundary [Task 3.5] */}
         <CollapsibleSection title="Progression Charts" defaultOpen={false}>
-          <Suspense fallback={<ChartSkeleton />}>
-            <ProgressionChartContainer
-              exercises={exercises}
-              progression={progression}
-              progressionHistory={progressionHistory}
-              unit={settings.weightUnit}
-              workoutsPerWeek={program.workoutsPerWeek}
-            />
-          </Suspense>
+          <ErrorBoundary
+            fallback={
+              <ErrorFallback
+                title="Chart Error"
+                message="Failed to load progression charts."
+              />
+            }
+          >
+            <Suspense fallback={<ChartSkeleton />}>
+              <ProgressionChartContainer
+                exercises={exercises}
+                progression={progression}
+                progressionHistory={progressionHistory}
+                unit={settings.weightUnit}
+                workoutsPerWeek={program.workoutsPerWeek}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </CollapsibleSection>
       </div>
     </main>
