@@ -12,6 +12,26 @@ import { extractRepsFromSets, extractWorkingWeight } from './workout-analysis'
 import { calculateProgression } from './progression'
 
 /**
+ * Format a workout date for display in progression reasons.
+ * Returns format like "Jan 5" or "Jan 5, 2025" if different year.
+ */
+function formatWorkoutDateForReason(isoDate: string): string {
+  try {
+    const date = new Date(isoDate)
+    const now = new Date()
+    const sameYear = date.getFullYear() === now.getFullYear()
+
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      ...(sameYear ? {} : { year: 'numeric' }),
+    })
+  } catch {
+    return ''
+  }
+}
+
+/**
  * Find the most recent workout containing a specific exercise for a given routine.
  *
  * @param workouts - Array of workouts to search through
@@ -102,13 +122,19 @@ export function calculateImportProgression(
     unit
   )
 
+  // Format the workout date for inclusion in reason
+  const dateStr = formatWorkoutDateForReason(performance.workoutDate)
+  const reasonWithDate = dateStr
+    ? `${result.reason} (from ${dateStr})`
+    : result.reason
+
   // Map ProgressionResult to ProgressionSuggestion
   const suggestion: ProgressionSuggestion = {
     type: result.type,
     suggestedWeight: result.newWeight,
     suggestedStage: result.newStage,
     newScheme: result.newScheme,
-    reason: result.reason,
+    reason: reasonWithDate,
     success: result.success,
   }
 
