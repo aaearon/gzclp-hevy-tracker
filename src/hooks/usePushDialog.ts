@@ -36,6 +36,7 @@ export interface UsePushDialogOptions {
   t3Schedule: Record<GZCLPDay, string[]>
   onProgressionUpdate: (progression: Record<string, ProgressionState>) => void
   onRoutineIdsUpdate: (ids: Partial<Record<GZCLPDay, string>>) => void
+  onNeedsPushUpdate: (needsPush: boolean) => void
 }
 
 export interface UsePushDialogReturn {
@@ -67,6 +68,7 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
     progression,
     settings,
     hevyRoutineIds,
+    onNeedsPushUpdate,
     t3Schedule,
     onProgressionUpdate,
     onRoutineIdsUpdate,
@@ -188,6 +190,9 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
       if (routineIds.B2) updates.B2 = routineIds.B2
       onRoutineIdsUpdate(updates)
 
+      // Clear the needs push flag since we just pushed successfully
+      onNeedsPushUpdate(false)
+
       setUpdateSuccess(true)
     } catch (error) {
       if (error instanceof Error) {
@@ -210,6 +215,7 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
     close,
     onProgressionUpdate,
     onRoutineIdsUpdate,
+    onNeedsPushUpdate,
   ])
 
   // Dismiss update status

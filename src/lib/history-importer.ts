@@ -123,10 +123,7 @@ export async function importProgressionHistory(
         stage: 0, // Unknown historical stage
         tier,
         success: true, // Assume success for historical data
-      }
-
-      if (isDeload) {
-        entry.changeType = 'deload'
+        changeType: isDeload ? 'deload' : 'progress',
       }
 
       // Add to history

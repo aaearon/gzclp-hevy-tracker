@@ -13,10 +13,11 @@ import type {
   UserSettings,
 } from '@/types/state'
 import type { HevyClient } from './hevy-client'
-import type { SelectablePushPreview, HevyRoutineState } from './push-preview'
+import type { SelectablePushPreview, HevyRoutineState, SelectableDayDiff } from './push-preview'
 import type { SelectiveWeightOverride } from './routine-builder'
 import { buildRoutinePayload, buildDayRoutine, buildSelectiveRoutinePayload } from './routine-builder'
 import { GZCLP_DAYS } from './constants'
+import { generateRoutineNotes, type RoutineUpdateInfo } from './routine-notes'
 
 // =============================================================================
 // Constants
@@ -84,7 +85,8 @@ export async function createGZCLPRoutine(
   progression: Record<string, ProgressionState>,
   settings: UserSettings,
   t3Schedule?: Record<GZCLPDay, string[]>,
-  folderId?: number
+  folderId?: number,
+  notes?: string
 ): Promise<Routine> {
   const payload = buildRoutinePayload(
     day,
@@ -92,7 +94,8 @@ export async function createGZCLPRoutine(
     progression,
     settings,
     t3Schedule,
-    folderId
+    folderId,
+    notes
   )
 
   return client.createRoutine(payload)
@@ -113,7 +116,8 @@ export async function updateGZCLPRoutine(
   exercises: Record<string, ExerciseConfig>,
   progression: Record<string, ProgressionState>,
   settings: UserSettings,
-  t3Schedule?: Record<GZCLPDay, string[]>
+  t3Schedule?: Record<GZCLPDay, string[]>,
+  notes?: string
 ): Promise<Routine> {
   // Fetch existing routine to preserve its original title
   const existingRoutine = await client.getRoutine(routineId)
@@ -122,6 +126,7 @@ export async function updateGZCLPRoutine(
   const updatePayload: UpdateRoutineRequest = {
     routine: {
       title: existingRoutine.title, // Preserve original name
+      notes: notes ?? null,
       exercises: routine.exercises,
     },
   }
@@ -224,6 +229,25 @@ export interface PullUpdate {
 }
 
 /**
+ * Build routine notes from the day's push actions.
+ */
+function buildDayNotes(
+  dayPreview: SelectableDayDiff,
+  weightUnit: 'kg' | 'lbs'
+): string {
+  // Only include exercises that are being pushed
+  const updates: RoutineUpdateInfo[] = dayPreview.exercises
+    .filter(ex => ex.action === 'push')
+    .map(ex => ({
+      exerciseName: ex.name,
+      oldWeight: ex.oldWeight,
+      newWeight: ex.newWeight,
+    }))
+
+  return generateRoutineNotes(updates, weightUnit)
+}
+
+/**
  * Sync GZCLP routines with selective push/pull/skip per exercise.
  *
  * - Push: Updates Hevy with local weight
@@ -297,6 +321,9 @@ export async function syncGZCLPRoutines(
     // Check if this day has any pushes
     const dayHasPushes = dayPreview.exercises.some(ex => ex.action === 'push')
 
+    // Generate notes describing what was updated
+    const notes = buildDayNotes(dayPreview, settings.weightUnit)
+
     if (!existingId) {
       // Create new routine (always needed if routine doesn't exist)
       const payload = buildSelectiveRoutinePayload(
@@ -306,7 +333,8 @@ export async function syncGZCLPRoutines(
         settings,
         overrides,
         t3Schedule,
-        folderId
+        folderId,
+        notes || undefined
       )
       const created = await client.createRoutine(payload)
       result[day] = created.id
@@ -322,12 +350,15 @@ export async function syncGZCLPRoutines(
         progression,
         settings,
         overrides,
-        t3Schedule
+        t3Schedule,
+        undefined, // No folder ID for updates
+        notes || undefined
       )
 
       const updatePayload: UpdateRoutineRequest = {
         routine: {
           title: existingRoutine.title,
+          notes: notes || null,
           exercises: payload.routine.exercises,
         },
       }

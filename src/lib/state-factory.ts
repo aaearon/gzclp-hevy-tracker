@@ -75,6 +75,7 @@ export function createInitialProgressionStore(): ProgressionStore {
     totalWorkouts: 0,
     mostRecentWorkoutDate: null,
     acknowledgedDiscrepancies: [],
+    needsPush: false,
   }
 }
 
@@ -116,6 +117,7 @@ export function createInitialState(unit: WeightUnit = 'kg'): GZCLPState {
     mostRecentWorkoutDate: null,
     progressionHistory: {},
     acknowledgedDiscrepancies: [],
+    needsPush: false,
   }
 }
 

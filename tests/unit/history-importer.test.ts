@@ -186,7 +186,7 @@ describe('History Importer', () => {
       const result = await importProgressionHistory(mockClient, mockExercises, mockRoutineIds)
 
       expect(result.history['squat-T1'].entries).toHaveLength(2)
-      expect(result.history['squat-T1'].entries[0].changeType).toBeUndefined() // First entry has no prior
+      expect(result.history['squat-T1'].entries[0].changeType).toBe('progress') // First entry defaults to progress
       expect(result.history['squat-T1'].entries[1].changeType).toBe('deload')
     })
 

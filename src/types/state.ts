@@ -161,27 +161,7 @@ export interface ExerciseHistory {
 }
 
 /**
- * Predicted future data point for progression visualization.
- */
-export interface PredictionDataPoint {
-  /** Estimated date (ISO string) */
-  date: string
-  /** Predicted workout number (from current) */
-  workoutNumber: number
-  /** Predicted weight in kg */
-  weight: number
-  /** Predicted stage */
-  stage: Stage
-  /** Confidence level (0-1) */
-  confidence: number
-  /** Whether this predicts a deload */
-  isDeload: boolean
-  /** Whether this predicts a stage change */
-  isStageChange: boolean
-}
-
-/**
- * Chart data point for visualization (unified format for actual + predicted).
+ * Chart data point for visualization.
  */
 export interface ChartDataPoint {
   /** X-axis value: workout index or week number */
@@ -348,6 +328,9 @@ export interface GZCLPState {
 
   /** Discrepancies user has acknowledged (clicked "Keep") - prevents re-showing */
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
+
+  /** Whether local progression differs from Hevy and needs to be pushed */
+  needsPush: boolean
 }
 
 // =============================================================================

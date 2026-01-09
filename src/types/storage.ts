@@ -67,6 +67,8 @@ export interface ProgressionStore {
   mostRecentWorkoutDate: string | null
   /** Discrepancies the user has acknowledged */
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
+  /** Whether local progression differs from Hevy and needs to be pushed */
+  needsPush: boolean
 }
 
 // =============================================================================
@@ -114,7 +116,9 @@ export function isProgressionStore(obj: unknown): obj is ProgressionStore {
     Array.isArray(store.pendingChanges) &&
     (store.lastSync === null || typeof store.lastSync === 'string') &&
     typeof store.totalWorkouts === 'number' &&
-    Array.isArray(store.acknowledgedDiscrepancies)
+    Array.isArray(store.acknowledgedDiscrepancies) &&
+    // needsPush is optional for backwards compatibility (defaults to false)
+    (store.needsPush === undefined || typeof store.needsPush === 'boolean')
   )
 }
 

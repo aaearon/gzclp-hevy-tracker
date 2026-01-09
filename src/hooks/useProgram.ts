@@ -66,6 +66,7 @@ export interface UseProgramResult {
 
   // Sync
   setLastSync: (timestamp: string) => void
+  setNeedsPush: (needsPush: boolean) => void
 
   // Progression History (for charts)
   setProgressionHistory: (history: Record<string, ExerciseHistory>) => void
@@ -107,6 +108,7 @@ export function useProgram(): UseProgramResult {
     setLastSync: setProgressionLastSync,
     setTotalWorkouts: setProgressionTotalWorkouts,
     setMostRecentWorkoutDate: setProgressionMostRecentDate,
+    setNeedsPush: setProgressionNeedsPush,
     acknowledgeDiscrepancy: acknowledgeProgressionDiscrepancy,
     clearAcknowledgedDiscrepancies: clearProgressionDiscrepancies,
     resetProgression,
@@ -136,6 +138,7 @@ export function useProgram(): UseProgramResult {
       totalWorkouts: progressionStore.totalWorkouts,
       mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
       acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
+      needsPush: progressionStore.needsPush,
       progressionHistory: history.progressionHistory,
     }
   }, [config, progressionStore, history])
@@ -345,6 +348,13 @@ export function useProgram(): UseProgramResult {
     [setProgressionLastSync]
   )
 
+  const setNeedsPush = useCallback(
+    (needsPush: boolean) => {
+      setProgressionNeedsPush(needsPush)
+    },
+    [setProgressionNeedsPush]
+  )
+
   // ==========================================================================
   // Progression History
   // ==========================================================================
@@ -440,6 +450,7 @@ export function useProgram(): UseProgramResult {
     setTotalWorkouts,
     setMostRecentWorkoutDate,
     setLastSync,
+    setNeedsPush,
     setProgressionHistory,
     recordHistoryEntry,
     acknowledgeDiscrepancy,

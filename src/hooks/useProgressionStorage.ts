@@ -29,6 +29,7 @@ function createDefaultProgressionStore(): ProgressionStore {
     totalWorkouts: 0,
     mostRecentWorkoutDate: null,
     acknowledgedDiscrepancies: [],
+    needsPush: false,
   }
 }
 
@@ -61,6 +62,7 @@ export interface UseProgressionStorageResult {
   setLastSync: (timestamp: string | null) => void
   setTotalWorkouts: (count: number) => void
   setMostRecentWorkoutDate: (date: string | null) => void
+  setNeedsPush: (needsPush: boolean) => void
 
   // Discrepancy Acknowledgment
   acknowledgeDiscrepancy: (exerciseId: string, weight: number, tier: Tier) => void
@@ -89,6 +91,7 @@ export function useProgressionStorage(): UseProgressionStorageResult {
       ...rawStore,
       pendingChanges: rawStore.pendingChanges ?? [],
       acknowledgedDiscrepancies: rawStore.acknowledgedDiscrepancies ?? [],
+      needsPush: rawStore.needsPush ?? false,
     }
   }, [rawStore])
 
@@ -207,6 +210,13 @@ export function useProgressionStorage(): UseProgressionStorageResult {
     [setRawStore]
   )
 
+  const setNeedsPush = useCallback(
+    (needsPush: boolean) => {
+      setRawStore((prev) => ({ ...prev, needsPush }))
+    },
+    [setRawStore]
+  )
+
   // Discrepancy Acknowledgment
   const acknowledgeDiscrepancy = useCallback(
     (exerciseId: string, weight: number, tier: Tier) => {
@@ -263,6 +273,7 @@ export function useProgressionStorage(): UseProgressionStorageResult {
     setLastSync,
     setTotalWorkouts,
     setMostRecentWorkoutDate,
+    setNeedsPush,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
     resetProgression,

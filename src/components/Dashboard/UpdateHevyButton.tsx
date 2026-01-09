@@ -2,15 +2,18 @@
  * UpdateHevyButton Component
  *
  * Button to push current progression state to Hevy routines.
+ * Shows a dot indicator when local progression differs from Hevy.
  */
 
 interface UpdateHevyButtonProps {
   onClick: () => void | Promise<void>
   isUpdating: boolean
   disabled?: boolean
+  /** Whether there are unpushed progression changes */
+  needsPush?: boolean
 }
 
-export function UpdateHevyButton({ onClick, isUpdating, disabled = false }: UpdateHevyButtonProps) {
+export function UpdateHevyButton({ onClick, isUpdating, disabled = false, needsPush = false }: UpdateHevyButtonProps) {
   const handleClick = () => {
     void onClick()
   }
@@ -21,7 +24,7 @@ export function UpdateHevyButton({ onClick, isUpdating, disabled = false }: Upda
       onClick={handleClick}
       disabled={isUpdating || disabled}
       className={`
-        inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium
+        relative inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium
         ${
           isUpdating || disabled
             ? 'cursor-not-allowed bg-gray-100 text-gray-400'
@@ -29,6 +32,16 @@ export function UpdateHevyButton({ onClick, isUpdating, disabled = false }: Upda
         }
       `}
     >
+      {/* Badge indicator for pending push */}
+      {needsPush && !isUpdating && !disabled && (
+        <span
+          className="absolute -right-1 -top-1 flex h-3 w-3"
+          aria-label="Changes need to be pushed to Hevy"
+        >
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+        </span>
+      )}
       {isUpdating ? (
         <>
           <svg

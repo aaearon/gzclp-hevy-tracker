@@ -1,14 +1,13 @@
 /**
  * useChartData Hook
  *
- * Transforms progression history and predictions into chart-ready data format.
+ * Transforms progression history into chart-ready data format.
  * Supports both workout-by-workout and week-by-week aggregation.
  */
 
 import { useMemo } from 'react'
 import type {
   ExerciseHistory,
-  PredictionDataPoint,
   ChartDataPoint,
   ChartGranularity,
 } from '@/types/state'
@@ -16,8 +15,6 @@ import type {
 export interface UseChartDataProps {
   /** Historical workout data */
   history: ExerciseHistory | undefined
-  /** Predicted future data */
-  predictions: PredictionDataPoint[]
   /** Time granularity: 'workout' or 'week' */
   granularity: ChartGranularity
   /** Workouts per week (for week calculation) */
@@ -25,10 +22,8 @@ export interface UseChartDataProps {
 }
 
 export interface UseChartDataResult {
-  /** Combined chart data (historical + predicted) */
+  /** Chart data points */
   chartData: ChartDataPoint[]
-  /** Index where predictions start (for styling transition) */
-  predictionStartIndex: number
   /** Min/max values for axis scaling */
   yMin: number
   yMax: number
@@ -91,7 +86,7 @@ function aggregateByWeek(
       x: weekNum,
       y: Math.round(avgWeight * 10) / 10, // Round to 1 decimal
       date: lastPoint.date,
-      isHistorical: lastPoint.isHistorical,
+      isHistorical: true,
       stage: lastPoint.stage,
     }
     if (event) point.event = event
@@ -103,10 +98,10 @@ function aggregateByWeek(
 }
 
 /**
- * Hook to transform history + predictions into chart data.
+ * Hook to transform history into chart data.
  */
 export function useChartData(props: UseChartDataProps): UseChartDataResult {
-  const { history, predictions, granularity, workoutsPerWeek } = props
+  const { history, granularity, workoutsPerWeek } = props
 
   const result = useMemo(() => {
     const chartData: ChartDataPoint[] = []
@@ -139,42 +134,11 @@ export function useChartData(props: UseChartDataProps): UseChartDataResult {
       chartData.push(point)
     }
 
-    const historicalCount = chartData.length
-
-    // Add predictions
-    for (const pred of predictions) {
-      let event: 'deload' | 'stage_change' | 'pr' | undefined
-      if (pred.isDeload) {
-        event = 'deload'
-      } else if (pred.isStageChange) {
-        event = 'stage_change'
-      }
-
-      const point: ChartDataPoint = {
-        x: historicalCount + pred.workoutNumber, // Continue from historical
-        y: pred.weight,
-        date: pred.date,
-        isHistorical: false,
-        stage: pred.stage,
-      }
-      if (event) point.event = event
-
-      chartData.push(point)
-    }
-
     // Apply week aggregation if needed
     let finalData = chartData
-    let predictionStartIndex = historicalCount
 
     if (granularity === 'week' && chartData.length > 0) {
       finalData = aggregateByWeek(chartData, workoutsPerWeek)
-
-      // Find where predictions start in aggregated data
-      const historicalWeeks = getWeekNumber(historicalCount - 1, workoutsPerWeek)
-      predictionStartIndex = finalData.findIndex((p) => p.x > historicalWeeks)
-      if (predictionStartIndex === -1) {
-        predictionStartIndex = finalData.length
-      }
     }
 
     // Calculate Y-axis bounds (with padding)
@@ -184,12 +148,11 @@ export function useChartData(props: UseChartDataProps): UseChartDataResult {
 
     return {
       chartData: finalData,
-      predictionStartIndex,
       yMin: Math.floor(yMin / 5) * 5, // Round to nearest 5
       yMax: Math.ceil(yMax / 5) * 5,
       xAxisLabel: granularity === 'week' ? 'Week' : 'Workout',
     }
-  }, [history, predictions, granularity, workoutsPerWeek])
+  }, [history, granularity, workoutsPerWeek])
 
   return result
 }

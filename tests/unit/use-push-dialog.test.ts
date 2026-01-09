@@ -107,6 +107,7 @@ describe('usePushDialog', () => {
     t3Schedule: mockT3Schedule,
     onProgressionUpdate: vi.fn(),
     onRoutineIdsUpdate: vi.fn(),
+    onNeedsPushUpdate: vi.fn(),
   }
 
   beforeEach(() => {

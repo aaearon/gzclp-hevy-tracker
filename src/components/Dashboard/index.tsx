@@ -17,6 +17,7 @@ import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { usePushDialog } from '@/hooks/usePushDialog'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
+import { importProgressionHistory } from '@/lib/history-importer'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -35,12 +36,14 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     state,
     updateProgressionBatch,
     setLastSync,
+    setNeedsPush,
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
+    setProgressionHistory,
     acknowledgeDiscrepancy,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, progressionHistory } = state
   // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
   const acknowledgedDiscrepancies = state.acknowledgedDiscrepancies ?? []
 
@@ -86,8 +89,10 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   const handleProgressionUpdate = useCallback(
     (newProgression: Record<string, ProgressionState>) => {
       updateProgressionBatch(newProgression)
+      // Mark that local state now differs from Hevy and needs to be pushed
+      setNeedsPush(true)
     },
-    [updateProgressionBatch]
+    [updateProgressionBatch, setNeedsPush]
   )
 
   // Handle day advancement after applying all changes
@@ -135,6 +140,37 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     return createHevyClient(apiKey)
   }, [apiKey])
 
+  // Auto-import progression history if empty (for users who set up before this feature)
+  const hasImportedHistory = useRef(false)
+  useEffect(() => {
+    // Only run once, when history is empty and we have all required data
+    if (hasImportedHistory.current) return
+    if (!apiKey || !hevyClient) return
+    if (Object.keys(exercises).length === 0) return
+    if (Object.keys(progressionHistory).length > 0) return // Already has history
+
+    const routineIdsConfigured = Object.values(program.hevyRoutineIds).some((id) => id !== null)
+    if (!routineIdsConfigured) return
+
+    hasImportedHistory.current = true
+
+    // Import historical data in background
+    void (async () => {
+      try {
+        const result = await importProgressionHistory(
+          hevyClient,
+          exercises,
+          program.hevyRoutineIds
+        )
+        if (result.entryCount > 0) {
+          setProgressionHistory(result.history)
+        }
+      } catch {
+        // Silently fail - charts will just be empty
+      }
+    })()
+  }, [apiKey, hevyClient, exercises, progressionHistory, program.hevyRoutineIds, setProgressionHistory])
+
   // Use push dialog hook for push confirmation dialog [Task 3.3]
   const {
     isOpen: isPushDialogOpen,
@@ -158,6 +194,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     t3Schedule,
     onProgressionUpdate: handleProgressionUpdate,
     onRoutineIdsUpdate: setHevyRoutineIds,
+    onNeedsPushUpdate: setNeedsPush,
   })
 
   // Handle discrepancy resolution - use actual weight
@@ -228,6 +265,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         isUpdating={isUpdatingHevy}
         isOffline={isOffline}
         hasApiKey={!!apiKey}
+        needsPush={state.needsPush}
         onSync={() => { void handleSync() }}
         onOpenPushDialog={() => { void handleOpenPushDialog() }}
         onOpenReviewModal={() => { setIsReviewModalOpen(true) }}

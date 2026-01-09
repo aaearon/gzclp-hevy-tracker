@@ -1,7 +1,7 @@
 /**
  * ProgressionChart Component
  *
- * Chart.js Line chart showing progression history and predictions.
+ * Chart.js Line chart showing progression history.
  */
 
 import {
@@ -32,7 +32,6 @@ ChartJS.register(
 
 interface ProgressionChartProps {
   data: ChartDataPoint[]
-  predictionStartIndex: number
   yMin: number
   yMax: number
   xAxisLabel: string
@@ -56,7 +55,6 @@ const EVENT_COLORS = {
 
 export function ProgressionChart({
   data,
-  predictionStartIndex,
   yMin,
   yMax,
   xAxisLabel,
@@ -88,29 +86,9 @@ export function ProgressionChart({
           }
           return colors.line
         },
-        pointBorderColor: (ctx: { dataIndex: number }) => {
-          const point = data[ctx.dataIndex]
-          return point?.isHistorical ? colors.line : 'transparent'
-        },
+        pointBorderColor: colors.line,
         pointBorderWidth: 2,
         borderWidth: 2,
-        // Dashed line for predictions using segment styling
-        segment: {
-          borderDash: (ctx: { p0DataIndex: number; p1DataIndex: number }) => {
-            // Dash after prediction start
-            if (ctx.p0DataIndex >= predictionStartIndex - 1) {
-              return [6, 4]
-            }
-            return undefined
-          },
-          borderColor: (ctx: { p0DataIndex: number }) => {
-            // Lighter color for predictions
-            if (ctx.p0DataIndex >= predictionStartIndex - 1) {
-              return `${colors.line}80` // 50% opacity
-            }
-            return colors.line
-          },
-        },
       },
     ],
   }
@@ -141,10 +119,6 @@ export function ProgressionChart({
               label += ' (Deload)'
             } else if (point?.event === 'stage_change') {
               label += ' (Stage Change)'
-            }
-
-            if (!point?.isHistorical) {
-              label += ' [Predicted]'
             }
 
             return label

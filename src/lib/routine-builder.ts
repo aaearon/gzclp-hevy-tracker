@@ -273,7 +273,8 @@ export function buildRoutinePayload(
   progression: Record<string, ProgressionState>,
   settings: UserSettings,
   t3Schedule?: Record<GZCLPDay, string[]>,
-  folderId?: number
+  folderId?: number,
+  notes?: string
 ): CreateRoutineRequest {
   const routine = buildDayRoutine(day, exercises, progression, settings, t3Schedule)
 
@@ -281,6 +282,7 @@ export function buildRoutinePayload(
     routine: {
       title: routine.title,
       folder_id: folderId ?? null,
+      notes: notes ?? null,
       exercises: routine.exercises,
     },
   }
@@ -310,7 +312,8 @@ export function buildSelectiveRoutinePayload(
   settings: UserSettings,
   overrides: SelectiveWeightOverride[],
   t3Schedule?: Record<GZCLPDay, string[]>,
-  folderId?: number
+  folderId?: number,
+  notes?: string
 ): CreateRoutineRequest {
   // Build a temporary progression with overridden weights
   const effectiveProgression: Record<string, ProgressionState> = {}
@@ -339,5 +342,5 @@ export function buildSelectiveRoutinePayload(
     }
   }
 
-  return buildRoutinePayload(day, exercises, effectiveProgression, settings, t3Schedule, folderId)
+  return buildRoutinePayload(day, exercises, effectiveProgression, settings, t3Schedule, folderId, notes)
 }
