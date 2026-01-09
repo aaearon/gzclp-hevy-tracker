@@ -32,3 +32,8 @@ coverage/
 
 # Misc
 *.tmp
+
+# AI Session Files
+task_plan.md
+findings.md
+progress.md
