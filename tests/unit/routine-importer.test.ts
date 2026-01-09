@@ -696,7 +696,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
       ])
 
       // Resolve weights from workout history
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout], 'kg')
 
       // Should use workout weight, not template weight
       expect(result.byDay.A1.t1?.detectedWeight).toBe(workoutWeight)
@@ -711,7 +711,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
       const baseResult = extractFromRoutines(routines, assignment)
 
       // Resolve with empty workout array - no history
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [], 'kg')
 
       // Should have history_missing warning
       const historyWarnings = result.warnings.filter((w) => w.type === 'history_missing')
@@ -753,7 +753,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
       const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [
         olderWorkout,
         newerWorkout,
-      ])
+      ], 'kg')
 
       // Should use weight from newer workout
       expect(result.byDay.A1.t1?.detectedWeight).toBe(80)
@@ -773,7 +773,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         // No bench press in workout
       ])
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout], 'kg')
 
       // T1 should have weight from workout
       expect(result.byDay.A1.t1?.detectedWeight).toBe(100)
@@ -793,7 +793,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         createWorkoutExercise('template-squat', 'Squat', 75),
       ])
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout], 'kg')
 
       // Structure should be preserved, only weight changed
       expect(result.byDay.A1.t1?.name).toBe(originalT1.name)
@@ -819,7 +819,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         createWorkoutExercise('template-squat', 'Squat', 55),
       ])
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a2Workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a2Workout], 'kg')
 
       // A1 should have warning (no matching workout)
       const a1Warnings = result.warnings.filter(
@@ -875,7 +875,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         '2025-01-05T10:00:00Z'
       )
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout], 'kg')
 
       // Both days should have the LATEST weight (14kg from Jan 5)
       const a1T3 = result.byDay.A1.t3s.find((t) => t.name === 'Hammer Curl')
@@ -921,7 +921,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         '2025-01-03T10:00:00Z'
       )
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, a2Workout], 'kg')
 
       // Each T3 keeps its own weight
       expect(result.byDay.A1.t3s[0]?.detectedWeight).toBe(30)
@@ -947,7 +947,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         '2025-01-10T10:00:00Z'
       )
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [workout], 'kg')
 
       expect(result.byDay.A1.t3s[0]?.detectedWeight).toBe(15)
     })
@@ -988,7 +988,7 @@ describe('resolveWeightsFromWorkoutHistory', () => {
         '2025-01-10T10:00:00Z'
       )
 
-      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, b1Workout])
+      const result = resolveWeightsFromWorkoutHistory(baseResult, assignment, [a1Workout, b1Workout], 'kg')
 
       // Both should use B1's weight (16kg) since it's more recent
       const a1T3 = result.byDay.A1.t3s.find((t) => t.name === 'Hammer Curl')

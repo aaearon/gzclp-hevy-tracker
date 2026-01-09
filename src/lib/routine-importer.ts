@@ -19,12 +19,16 @@ import type {
   MainLiftWeights,
   DetectedWeight,
   MainLiftRole,
+  WeightUnit,
+  MuscleGroupCategory,
 } from '@/types/state'
+// ImportAnalysis type is used via ImportedExercise.analysis property
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import { getT1RoleForDay, getT2RoleForDay, T1_MAPPING, T2_MAPPING } from './role-utils'
 import { WEIGHT_ROUNDING } from './constants'
 import { detectStage, extractWeight } from './stage-detector'
 import { extractWorkingWeight } from './workout-analysis'
+import { analyzeExerciseForImport } from './import-analysis'
 
 // =============================================================================
 // Constants
@@ -557,20 +561,33 @@ function findMostRecentWorkout(workouts: Workout[], routineId: string): Workout 
 }
 
 /**
+ * Get muscle group category based on exercise role.
+ * Squat and deadlift are lower body; everything else is upper.
+ */
+function getMuscleGroupForRole(role: ExerciseRole | undefined): MuscleGroupCategory {
+  if (!role) return 'upper'
+  if (role === 'squat' || role === 'deadlift') return 'lower'
+  return 'upper'
+}
+
+/**
  * Resolve weights from workout history instead of routine templates.
  *
  * This function takes the base import result (which has exercise structure from
  * routine templates) and updates the weights using actual workout history data.
+ * Also runs progression analysis and attaches results to each ImportedExercise.
  *
  * @param baseResult - ImportResult from extractFromRoutines() with template-based weights
  * @param assignment - RoutineAssignment mapping days to routine IDs
  * @param workouts - All workouts from HevyClient.getAllWorkouts()
- * @returns Updated ImportResult with weights from workout history
+ * @param unit - Weight unit for progression calculation
+ * @returns Updated ImportResult with weights from workout history and analysis
  */
 export function resolveWeightsFromWorkoutHistory(
   baseResult: ImportResult,
   assignment: RoutineAssignment,
-  workouts: Workout[]
+  workouts: Workout[],
+  unit: WeightUnit
 ): ImportResult {
   const warnings: ImportWarning[] = [...baseResult.warnings]
   const updatedByDay: Record<GZCLPDay, DayImportData> = {
@@ -627,28 +644,57 @@ export function resolveWeightsFromWorkoutHistory(
       exerciseWeights.set(exercise.exercise_template_id, weight)
     }
 
-    // Update T1, T2, T3 weights from workout data
+    // Update T1, T2, T3 weights from workout data and run progression analysis
     const dayData = updatedByDay[day]
 
     if (dayData.t1) {
       const workoutWeight = exerciseWeights.get(dayData.t1.templateId)
+      const muscleGroup = getMuscleGroupForRole(dayData.t1.role)
+
+      // Run progression analysis
+      const analysis = analyzeExerciseForImport(
+        workouts,
+        routineId,
+        dayData.t1.templateId,
+        dayData.t1.detectedStage,
+        'T1',
+        muscleGroup,
+        unit
+      )
+
       updatedByDay[day] = {
         ...dayData,
         t1: {
           ...dayData.t1,
           detectedWeight: workoutWeight ?? 0,
+          analysis,
         },
       }
     }
 
     if (dayData.t2) {
+      const t2Exercise = dayData.t2
       const currentDayData = updatedByDay[day]
-      const workoutWeight = exerciseWeights.get(currentDayData.t2!.templateId)
+      const workoutWeight = exerciseWeights.get(t2Exercise.templateId)
+      const muscleGroup = getMuscleGroupForRole(t2Exercise.role)
+
+      // Run progression analysis
+      const analysis = analyzeExerciseForImport(
+        workouts,
+        routineId,
+        t2Exercise.templateId,
+        t2Exercise.detectedStage,
+        'T2',
+        muscleGroup,
+        unit
+      )
+
       updatedByDay[day] = {
         ...currentDayData,
         t2: {
-          ...currentDayData.t2!,
+          ...t2Exercise,
           detectedWeight: workoutWeight ?? 0,
+          analysis,
         },
       }
     }
@@ -657,10 +703,26 @@ export function resolveWeightsFromWorkoutHistory(
       const currentDayData = updatedByDay[day]
       updatedByDay[day] = {
         ...currentDayData,
-        t3s: currentDayData.t3s.map((t3) => ({
-          ...t3,
-          detectedWeight: exerciseWeights.get(t3.templateId) ?? 0,
-        })),
+        t3s: currentDayData.t3s.map((t3) => {
+          const muscleGroup = getMuscleGroupForRole(t3.role)
+
+          // Run progression analysis
+          const analysis = analyzeExerciseForImport(
+            workouts,
+            routineId,
+            t3.templateId,
+            t3.detectedStage,
+            'T3',
+            muscleGroup,
+            unit
+          )
+
+          return {
+            ...t3,
+            detectedWeight: exerciseWeights.get(t3.templateId) ?? 0,
+            analysis,
+          }
+        }),
       }
     }
   }

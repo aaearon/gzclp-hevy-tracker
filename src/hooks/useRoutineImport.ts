@@ -14,6 +14,7 @@ import type {
   ImportResult,
   MainLiftWeights,
   MainLiftRole,
+  WeightUnit,
 } from '@/types/state'
 import {
   toAvailableRoutine,
@@ -33,7 +34,11 @@ export interface UseRoutineImportReturn {
 
   // Extraction
   importResult: ImportResult | null
-  extract: (fullRoutines: Routine[], fetchWorkouts: () => Promise<Workout[]>) => Promise<void>
+  extract: (
+    fullRoutines: Routine[],
+    fetchWorkouts: () => Promise<Workout[]>,
+    unit: WeightUnit
+  ) => Promise<void>
   isExtracting: boolean
 
   // User edits (per-day)
@@ -88,7 +93,7 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
 
   // Extract exercises from assigned routines
   const extract = useCallback(
-    async (fullRoutines: Routine[], fetchWorkouts: () => Promise<Workout[]>) => {
+    async (fullRoutines: Routine[], fetchWorkouts: () => Promise<Workout[]>, unit: WeightUnit) => {
       setIsExtracting(true)
       try {
         const routineMap = new Map(fullRoutines.map((r) => [r.id, r]))
@@ -96,9 +101,9 @@ export function useRoutineImport(routines: Routine[]): UseRoutineImportReturn {
         // Step 1: Extract exercise structure from routine templates
         const baseResult = extractFromRoutines(routineMap, assignment)
 
-        // Step 2: Fetch workout history and resolve weights
+        // Step 2: Fetch workout history and resolve weights (with progression analysis)
         const workouts = await fetchWorkouts()
-        const resolvedResult = resolveWeightsFromWorkoutHistory(baseResult, assignment, workouts)
+        const resolvedResult = resolveWeightsFromWorkoutHistory(baseResult, assignment, workouts, unit)
         setImportResult(resolvedResult)
 
         // Step 3: Detect main lift weights from workout history

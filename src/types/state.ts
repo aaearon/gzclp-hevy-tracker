@@ -409,6 +409,9 @@ export interface ImportedExercise {
   /** User overrides set during review */
   userWeight?: number
   userStage?: Stage
+
+  /** Progression analysis from workout history (populated during import) */
+  analysis?: import('./import').ImportAnalysis
 }
 
 /**

@@ -19,6 +19,7 @@ import type {
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { DayTabBar } from './DayTabBar'
 import { DayReviewPanel } from './DayReviewPanel'
+import { ImportExplanationBanner } from './ImportExplanationBanner'
 
 const GZCLP_DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 
@@ -75,6 +76,16 @@ export function ImportReviewStep({
     return GZCLP_DAYS.filter((day) => {
       const dayData = byDay[day]
       return dayData.t1 !== null && dayData.t2 !== null
+    })
+  }, [byDay])
+
+  // Build routine summary for explanation banner
+  const routineSummary = useMemo(() => {
+    return GZCLP_DAYS.map((day) => {
+      const dayData = byDay[day]
+      // Get workout date from T1 analysis if available
+      const workoutDate = dayData.t1?.analysis?.performance?.workoutDate ?? null
+      return { day, workoutDate }
     })
   }, [byDay])
 
@@ -194,6 +205,9 @@ export function ImportReviewStep({
           </div>
         </div>
       )}
+
+      {/* Explanation Banner */}
+      <ImportExplanationBanner routineSummary={routineSummary} />
 
       {/* Day Tab Bar */}
       <DayTabBar

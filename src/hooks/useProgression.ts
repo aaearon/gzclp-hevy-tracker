@@ -132,11 +132,25 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         return matchedDay !== null
       })
 
+      // Build set of already-processed workout IDs from progression state
+      // This prevents false discrepancies for workouts analyzed during import
+      const processedWorkoutIds = new Set<string>()
+      for (const prog of Object.values(progression)) {
+        if (prog.lastWorkoutId) {
+          processedWorkoutIds.add(prog.lastWorkoutId)
+        }
+      }
+
+      // Filter out already-processed workouts
+      const unprocessedWorkouts = relevantWorkouts.filter(
+        (workout) => !processedWorkoutIds.has(workout.id)
+      )
+
       // Analyze each workout with its matched day for accurate tier derivation
       const allAnalysisResults: WorkoutAnalysisResult[] = []
       const allDiscrepancies: DiscrepancyInfo[] = []
 
-      for (const workout of relevantWorkouts) {
+      for (const workout of unprocessedWorkouts) {
         const matchedDay = findDayByRoutineId(workout.routine_id, hevyRoutineIds)
         const results = analyzeWorkout(workout, exercises, progression, matchedDay ?? undefined)
         allAnalysisResults.push(...results)

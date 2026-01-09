@@ -2,13 +2,16 @@
  * DayReviewPanel Component
  *
  * Displays T1/T2/T3 exercises for a single day during import review.
+ * Uses ExerciseAnalysisCard when analysis data is available.
  * Allows weight editing for T1/T2 and removal of T3 exercises.
  *
  * @see docs/006-per-day-t3-and-import-ux.md - Phase 6
+ * @see docs/009-intelligent-import-progression.md
  */
 
 import { useCallback } from 'react'
-import type { DayImportData, ImportedExercise, WeightUnit } from '@/types/state'
+import type { DayImportData, ImportedExercise, WeightUnit, Stage } from '@/types/state'
+import { ExerciseAnalysisCard } from './ExerciseAnalysisCard'
 
 export interface DayReviewPanelProps {
   /** Import data for this day */
@@ -21,6 +24,8 @@ export interface DayReviewPanelProps {
   onT3Remove: (index: number) => void
   /** Callback when T3 weight is updated */
   onT3WeightUpdate?: (templateId: string, weight: number) => void
+  /** Callback when T3 stage is updated */
+  onT3StageUpdate?: (templateId: string, stage: Stage) => void
   /** Weight unit for display */
   unit: WeightUnit
 }
@@ -88,7 +93,7 @@ function TierCard({ tier, exercise, onWeightChange, unit }: TierCardProps) {
 interface T3ListItemProps {
   exercise: ImportedExercise
   onRemove: () => void
-  onWeightChange?: (weight: number) => void
+  onWeightChange?: ((weight: number) => void) | undefined
   unit: WeightUnit
 }
 
@@ -158,8 +163,10 @@ export function DayReviewPanel({
   onT2Update,
   onT3Remove,
   onT3WeightUpdate,
+  onT3StageUpdate,
   unit,
 }: DayReviewPanelProps) {
+  // T1 handlers
   const handleT1WeightChange = useCallback(
     (weight: number) => {
       onT1Update({ userWeight: weight })
@@ -167,6 +174,14 @@ export function DayReviewPanel({
     [onT1Update]
   )
 
+  const handleT1StageChange = useCallback(
+    (stage: Stage) => {
+      onT1Update({ userStage: stage })
+    },
+    [onT1Update]
+  )
+
+  // T2 handlers
   const handleT2WeightChange = useCallback(
     (weight: number) => {
       onT2Update({ userWeight: weight })
@@ -174,18 +189,39 @@ export function DayReviewPanel({
     [onT2Update]
   )
 
+  const handleT2StageChange = useCallback(
+    (stage: Stage) => {
+      onT2Update({ userStage: stage })
+    },
+    [onT2Update]
+  )
+
+  // Check if exercises have analysis data to determine which component to use
+  const t1HasAnalysis = dayData.t1?.analysis !== undefined
+  const t2HasAnalysis = dayData.t2?.analysis !== undefined
+
   return (
     <div className="space-y-6">
       {/* T1 Section */}
       <section>
         <h3 className="mb-3 text-lg font-medium text-gray-900">T1 - Main Lift</h3>
         {dayData.t1 ? (
-          <TierCard
-            tier="T1"
-            exercise={dayData.t1}
-            onWeightChange={handleT1WeightChange}
-            unit={unit}
-          />
+          t1HasAnalysis ? (
+            <ExerciseAnalysisCard
+              exercise={dayData.t1}
+              tier="T1"
+              onWeightChange={handleT1WeightChange}
+              onStageChange={handleT1StageChange}
+              unit={unit}
+            />
+          ) : (
+            <TierCard
+              tier="T1"
+              exercise={dayData.t1}
+              onWeightChange={handleT1WeightChange}
+              unit={unit}
+            />
+          )
         ) : (
           <EmptyState text="No T1 exercise assigned" />
         )}
@@ -195,12 +231,22 @@ export function DayReviewPanel({
       <section>
         <h3 className="mb-3 text-lg font-medium text-gray-900">T2 - Secondary Lift</h3>
         {dayData.t2 ? (
-          <TierCard
-            tier="T2"
-            exercise={dayData.t2}
-            onWeightChange={handleT2WeightChange}
-            unit={unit}
-          />
+          t2HasAnalysis ? (
+            <ExerciseAnalysisCard
+              exercise={dayData.t2}
+              tier="T2"
+              onWeightChange={handleT2WeightChange}
+              onStageChange={handleT2StageChange}
+              unit={unit}
+            />
+          ) : (
+            <TierCard
+              tier="T2"
+              exercise={dayData.t2}
+              onWeightChange={handleT2WeightChange}
+              unit={unit}
+            />
+          )
         ) : (
           <EmptyState text="No T2 exercise assigned" />
         )}
@@ -212,17 +258,47 @@ export function DayReviewPanel({
         {dayData.t3s.length > 0 ? (
           <ul className="space-y-2">
             {dayData.t3s.map((t3, index) => (
-              <T3ListItem
-                key={`${t3.templateId}-${String(index)}`}
-                exercise={t3}
-                onRemove={() => { onT3Remove(index) }}
-                onWeightChange={
-                  onT3WeightUpdate
-                    ? (weight: number) => { onT3WeightUpdate(t3.templateId, weight) }
-                    : undefined
-                }
-                unit={unit}
-              />
+              t3.analysis ? (
+                <li key={`${t3.templateId}-${String(index)}`}>
+                  <div className="relative">
+                    <ExerciseAnalysisCard
+                      exercise={t3}
+                      tier="T3"
+                      onWeightChange={(weight: number) => {
+                        if (onT3WeightUpdate) {
+                          onT3WeightUpdate(t3.templateId, weight)
+                        }
+                      }}
+                      onStageChange={(stage: Stage) => {
+                        if (onT3StageUpdate) {
+                          onT3StageUpdate(t3.templateId, stage)
+                        }
+                      }}
+                      unit={unit}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { onT3Remove(index) }}
+                      aria-label={`Remove ${t3.name}`}
+                      className="absolute right-2 top-2 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              ) : (
+                <T3ListItem
+                  key={`${t3.templateId}-${String(index)}`}
+                  exercise={t3}
+                  onRemove={() => { onT3Remove(index) }}
+                  onWeightChange={
+                    onT3WeightUpdate
+                      ? (weight: number) => { onT3WeightUpdate(t3.templateId, weight) }
+                      : undefined
+                  }
+                  unit={unit}
+                />
+              )
             ))}
           </ul>
         ) : (
