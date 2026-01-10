@@ -59,8 +59,8 @@ export function DashboardContent({ state, onStartWorkout }: DashboardContentProp
         {/* Main Lifts Overview - T1/T2 Status [T036] */}
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Main Lifts</h2>
-            <p className="text-sm text-gray-500">T1 and T2 progression status for all main lifts</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Main Lifts</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">T1 and T2 progression status for all main lifts</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {MAIN_LIFT_ROLES.map((role) => (

@@ -28,9 +28,9 @@ interface StatCardProps {
 
 function StatCard({ label, value, warning }: StatCardProps) {
   return (
-    <div className={`rounded-lg bg-white p-4 shadow ${warning ? 'border-l-4 border-amber-500' : ''}`}>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold">{value}</p>
+    <div className={`rounded-lg bg-white dark:bg-gray-800 p-4 shadow ${warning ? 'border-l-4 border-amber-500' : ''}`}>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   )
 }

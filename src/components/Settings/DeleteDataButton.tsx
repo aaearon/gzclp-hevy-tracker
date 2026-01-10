@@ -51,16 +51,16 @@ export function DeleteDataButton({ onDelete, className = '' }: DeleteDataButtonP
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
         >
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
             <h2
               id="delete-dialog-title"
-              className="text-lg font-semibold text-gray-900 mb-4"
+              className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4"
             >
               Confirm Reset
             </h2>
 
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-300">
                 <strong>Warning:</strong> Are you sure you want to delete all your data? This will
                 remove all your exercise configurations, progression history, and settings. This
                 action cannot be undone.
@@ -71,14 +71,14 @@ export function DeleteDataButton({ onDelete, className = '' }: DeleteDataButtonP
               <button
                 type="button"
                 onClick={handleCancel}
-                className="min-h-[44px] px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                className="min-h-[44px] px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirm}
-                className="min-h-[44px] px-4 py-2 text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                className="min-h-[44px] px-4 py-2 text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
               >
                 Yes, Delete All Data
               </button>

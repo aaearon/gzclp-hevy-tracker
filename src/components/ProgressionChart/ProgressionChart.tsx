@@ -16,6 +16,7 @@ import {
   Filler,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { ChartDataPoint, WeightUnit, Tier } from '@/types/state'
 
 // Register Chart.js components
@@ -53,6 +54,24 @@ const EVENT_COLORS = {
   pr: 'rgb(34, 197, 94)',          // Green
 }
 
+/** Theme-aware colors for chart elements */
+const THEME_COLORS = {
+  light: {
+    gridColor: 'rgba(0, 0, 0, 0.08)',
+    textColor: 'rgb(55, 65, 81)', // gray-700
+    tooltipBg: 'rgba(255, 255, 255, 0.95)',
+    tooltipText: 'rgb(17, 24, 39)', // gray-900
+    tooltipBorder: 'rgb(209, 213, 219)', // gray-300
+  },
+  dark: {
+    gridColor: 'rgba(255, 255, 255, 0.1)',
+    textColor: 'rgb(209, 213, 219)', // gray-300
+    tooltipBg: 'rgba(31, 41, 55, 0.95)', // gray-800
+    tooltipText: 'rgb(243, 244, 246)', // gray-100
+    tooltipBorder: 'rgb(75, 85, 99)', // gray-600
+  },
+}
+
 export function ProgressionChart({
   data,
   yMin,
@@ -61,7 +80,9 @@ export function ProgressionChart({
   unit,
   tier,
 }: ProgressionChartProps) {
+  const { theme } = useTheme()
   const colors = TIER_COLORS[tier]
+  const themeColors = THEME_COLORS[theme]
 
   // Prepare chart data
   const chartData = {
@@ -101,6 +122,11 @@ export function ProgressionChart({
         display: false, // Using custom legend
       },
       tooltip: {
+        backgroundColor: themeColors.tooltipBg,
+        titleColor: themeColors.tooltipText,
+        bodyColor: themeColors.tooltipText,
+        borderColor: themeColors.tooltipBorder,
+        borderWidth: 1,
         callbacks: {
           title: (items: { dataIndex: number }[]) => {
             const idx = items[0]?.dataIndex
@@ -136,7 +162,11 @@ export function ProgressionChart({
         title: {
           display: true,
           text: xAxisLabel,
-          font: { size: 12, weight: 500 },
+          color: themeColors.textColor,
+          font: { size: 12, weight: 500 as const },
+        },
+        ticks: {
+          color: themeColors.textColor,
         },
         grid: {
           display: false,
@@ -146,12 +176,16 @@ export function ProgressionChart({
         title: {
           display: true,
           text: `Weight (${unit})`,
-          font: { size: 12, weight: 500 },
+          color: themeColors.textColor,
+          font: { size: 12, weight: 500 as const },
+        },
+        ticks: {
+          color: themeColors.textColor,
         },
         min: yMin,
         max: yMax,
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)',
+          color: themeColors.gridColor,
         },
       },
     },

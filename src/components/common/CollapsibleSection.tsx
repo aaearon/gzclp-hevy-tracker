@@ -39,10 +39,10 @@ export function CollapsibleSection({
       className={`group ${className}`}
       role="group"
     >
-      <summary className="flex items-center justify-between cursor-pointer list-none py-2 px-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-        <span className="text-sm font-medium text-gray-700">{title}</span>
+      <summary className="flex items-center justify-between cursor-pointer list-none py-2 px-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{title}</span>
         <svg
-          className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180"
+          className="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform group-open:rotate-180"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

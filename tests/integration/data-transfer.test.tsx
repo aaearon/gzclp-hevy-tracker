@@ -6,10 +6,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../test-utils'
 import userEvent from '@testing-library/user-event'
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION, STORAGE_KEY } from '@/lib/constants'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 
 // Mock state for testing
 const createMockState = (): GZCLPState => ({
@@ -70,7 +71,11 @@ describe('[US6] Export/Import Integration - Settings Page', () => {
   it('should render export button in settings', async () => {
     const { Settings } = await import('@/components/Settings')
 
-    render(<Settings />)
+    render(
+      <ThemeProvider>
+        <Settings />
+      </ThemeProvider>
+    )
 
     expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
   })
@@ -78,7 +83,11 @@ describe('[US6] Export/Import Integration - Settings Page', () => {
   it('should render import button in settings', async () => {
     const { Settings } = await import('@/components/Settings')
 
-    render(<Settings />)
+    render(
+      <ThemeProvider>
+        <Settings />
+      </ThemeProvider>
+    )
 
     expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument()
   })
@@ -86,7 +95,11 @@ describe('[US6] Export/Import Integration - Settings Page', () => {
   it('should render delete data button in settings', async () => {
     const { Settings } = await import('@/components/Settings')
 
-    render(<Settings />)
+    render(
+      <ThemeProvider>
+        <Settings />
+      </ThemeProvider>
+    )
 
     expect(screen.getByRole('button', { name: /delete|reset/i })).toBeInTheDocument()
   })

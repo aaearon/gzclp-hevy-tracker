@@ -28,13 +28,13 @@ export function OfflineIndicator({
   return (
     <div
       role="alert"
-      className="bg-amber-50 border-b border-amber-200 px-4 py-3"
+      className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-3"
     >
       <div className="container mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {/* Offline icon */}
           <svg
-            className="h-5 w-5 text-amber-600 flex-shrink-0"
+            className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -58,14 +58,14 @@ export function OfflineIndicator({
               />
             )}
           </svg>
-          <span className="text-sm text-amber-800">{message}</span>
+          <span className="text-sm text-amber-800 dark:text-amber-300">{message}</span>
         </div>
 
         {onRetry && isOnline && (
           <button
             type="button"
             onClick={onRetry}
-            className="text-sm font-medium text-amber-700 hover:text-amber-900 underline min-h-[44px] px-2"
+            className="text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline min-h-[44px] px-2"
           >
             Retry connection
           </button>

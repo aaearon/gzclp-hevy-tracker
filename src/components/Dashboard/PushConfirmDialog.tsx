@@ -140,9 +140,9 @@ function ExerciseRow({
   onActionChange: (progressionKey: string, action: SyncAction) => void
 }) {
   const tierColors = {
-    T1: 'bg-red-50 text-red-700',
-    T2: 'bg-orange-50 text-orange-700',
-    T3: 'bg-blue-50 text-blue-700',
+    T1: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+    T2: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
+    T3: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
   }
 
   // Get rep scheme display for T1/T2
@@ -150,12 +150,12 @@ function ExerciseRow({
 
   // Determine visual styling based on action
   const rowBg = diff.action === 'push'
-    ? 'bg-indigo-50'
+    ? 'bg-indigo-50 dark:bg-indigo-900/20'
     : diff.action === 'pull'
-      ? 'bg-green-50'
+      ? 'bg-green-50 dark:bg-green-900/20'
       : diff.isChanged
-        ? 'bg-white'
-        : 'bg-gray-50'
+        ? 'bg-white dark:bg-gray-800'
+        : 'bg-gray-50 dark:bg-gray-800/50'
 
   return (
     <div className={`flex items-center justify-between py-2 px-3 rounded ${rowBg}`}>
@@ -165,19 +165,19 @@ function ExerciseRow({
         >
           {diff.tier}
         </span>
-        <span className={`text-sm truncate ${diff.isChanged ? 'text-gray-900' : 'text-gray-500'}`}>
+        <span className={`text-sm truncate ${diff.isChanged ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
           {diff.name}
         </span>
         {schemeDisplay && (
-          <span className="text-xs text-gray-400">({schemeDisplay})</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">({schemeDisplay})</span>
         )}
       </div>
       <div className="flex items-center gap-3 text-sm">
-        <span className={diff.isChanged ? 'text-gray-600' : 'text-gray-400'}>
+        <span className={diff.isChanged ? 'text-gray-600 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500'}>
           {diff.oldWeight !== null ? formatWeight(diff.oldWeight, weightUnit) : '-'}
         </span>
-        <span className="text-gray-400">&rarr;</span>
-        <span className={diff.isChanged ? 'font-medium text-gray-900' : 'text-gray-400'}>
+        <span className="text-gray-400 dark:text-gray-500">&rarr;</span>
+        <span className={diff.isChanged ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
           {formatWeight(diff.newWeight, weightUnit)}
         </span>
         <span className="w-12 text-right mr-2">
@@ -209,21 +209,21 @@ function DaySection({
   const hasChanges = day.changeCount > 0
 
   return (
-    <details open={defaultOpen} className="group border border-gray-200 rounded-lg overflow-hidden">
-      <summary className="flex items-center justify-between cursor-pointer list-none py-3 px-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+    <details open={defaultOpen} className="group border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <summary className="flex items-center justify-between cursor-pointer list-none py-3 px-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-900">{day.routineName}</span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{day.routineName}</span>
           {!day.routineExists && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
               NEW ROUTINE
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
           {hasChanges ? (
-            <span className="text-sm text-blue-600 font-medium">{day.changeCount} change(s)</span>
+            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{day.changeCount} change(s)</span>
           ) : (
-            <span className="text-sm text-gray-500">No changes</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">No changes</span>
           )}
           <svg
             className="w-4 h-4 text-gray-500 transition-transform group-open:rotate-180"
@@ -236,9 +236,9 @@ function DaySection({
           </svg>
         </div>
       </summary>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-gray-100 dark:divide-gray-700">
         {day.exercises.length === 0 ? (
-          <div className="py-3 px-4 text-sm text-gray-500 italic">No exercises configured</div>
+          <div className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400 italic">No exercises configured</div>
         ) : (
           day.exercises.map((exercise) => (
             <ExerciseRow
@@ -280,7 +280,7 @@ export function PushConfirmDialog({
         aria-modal="true"
         aria-labelledby="push-dialog-title"
       >
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex flex-col items-center py-8">
             <svg
               className="animate-spin h-8 w-8 text-blue-600 mb-4"
@@ -296,7 +296,7 @@ export function PushConfirmDialog({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <p id="push-dialog-title" className="text-gray-600">
+            <p id="push-dialog-title" className="text-gray-600 dark:text-gray-400">
               Loading current routines from Hevy...
             </p>
           </div>
@@ -314,18 +314,18 @@ export function PushConfirmDialog({
         aria-modal="true"
         aria-labelledby="push-dialog-title"
       >
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <h2 id="push-dialog-title" className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full p-6">
+          <h2 id="push-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Error Loading Routines
           </h2>
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
           </div>
           <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={onCancel}
-              className="min-h-[44px] px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              className="min-h-[44px] px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
             </button>
@@ -361,16 +361,16 @@ export function PushConfirmDialog({
       aria-modal="true"
       aria-labelledby="push-dialog-title"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 id="push-dialog-title" className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 id="push-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Sync with Hevy
           </h2>
           <button
             type="button"
             onClick={onCancel}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+            className="p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded transition-colors"
             aria-label="Close dialog"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,13 +381,13 @@ export function PushConfirmDialog({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-sm text-gray-600 mb-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Choose an action for each exercise:
           </p>
-          <div className="flex gap-4 text-xs text-gray-500 mb-4">
-            <span><span className="font-medium text-indigo-600">Push</span> = update Hevy</span>
-            <span><span className="font-medium text-gray-600">Skip</span> = no change</span>
-            <span><span className="font-medium text-green-600">Pull</span> = update local</span>
+          <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <span><span className="font-medium text-indigo-600 dark:text-indigo-400">Push</span> = update Hevy</span>
+            <span><span className="font-medium text-gray-600 dark:text-gray-400">Skip</span> = no change</span>
+            <span><span className="font-medium text-green-600 dark:text-green-400">Pull</span> = update local</span>
           </div>
 
           <div className="space-y-3">
@@ -404,30 +404,30 @@ export function PushConfirmDialog({
         </div>
 
         {/* Footer */}
-        <div className="border-t p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {hasActions ? (
                 <span className="flex gap-3">
                   {preview.pushCount > 0 && (
-                    <span><span className="font-medium text-indigo-600">{preview.pushCount}</span> push</span>
+                    <span><span className="font-medium text-indigo-600 dark:text-indigo-400">{preview.pushCount}</span> push</span>
                   )}
                   {preview.pullCount > 0 && (
-                    <span><span className="font-medium text-green-600">{preview.pullCount}</span> pull</span>
+                    <span><span className="font-medium text-green-600 dark:text-green-400">{preview.pullCount}</span> pull</span>
                   )}
                   {preview.skipCount > 0 && (
-                    <span><span className="font-medium text-gray-500">{preview.skipCount}</span> skip</span>
+                    <span><span className="font-medium text-gray-500 dark:text-gray-400">{preview.skipCount}</span> skip</span>
                   )}
                 </span>
               ) : (
-                <span className="text-green-600">All weights are already up to date</span>
+                <span className="text-green-600 dark:text-green-400">All weights are already up to date</span>
               )}
             </div>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={onCancel}
-                className="min-h-[44px] px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                className="min-h-[44px] px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 Cancel
               </button>
@@ -435,7 +435,7 @@ export function PushConfirmDialog({
                 type="button"
                 onClick={onConfirm}
                 disabled={!hasActions}
-                className="min-h-[44px] px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                className="min-h-[44px] px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               >
                 {buttonLabel}
               </button>

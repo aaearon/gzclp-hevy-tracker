@@ -53,30 +53,33 @@ function PendingChangeCard({
   }
 
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-medium text-gray-900">{change.exerciseName}</h3>
-          <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+          <h3 className="font-medium text-gray-900 dark:text-gray-100">{change.exerciseName}</h3>
+          <span className="inline-block rounded bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
             {changeTypeLabels[change.type] ?? change.type}
           </span>
         </div>
-        <span className="text-sm text-gray-500">{change.tier}</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{change.tier}</span>
       </div>
 
       <div className="mt-3 flex items-center gap-2 text-sm">
-        <span className="text-gray-500">
+        <span className="text-gray-500 dark:text-gray-400">
           {change.currentWeight} {unit}
         </span>
-        <span className="text-gray-400">-&gt;</span>
+        <span className="text-gray-400 dark:text-gray-500">-&gt;</span>
         {isEditing ? (
           <div className="flex items-center gap-2">
             <input
               type="number"
               role="spinbutton"
               value={editWeight}
-              onChange={(e) => { setEditWeight(parseFloat(e.target.value)) }}
-              className="w-20 rounded border px-2 py-1"
+              onChange={(e) => {
+                const parsed = parseFloat(e.target.value)
+                setEditWeight(isNaN(parsed) ? 0 : parsed)
+              }}
+              className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1"
               step="2.5"
             />
             <button
@@ -88,13 +91,13 @@ function PendingChangeCard({
             </button>
           </div>
         ) : (
-          <span className="font-medium text-gray-900">
+          <span className="font-medium text-gray-900 dark:text-gray-100">
             {change.newWeight} {unit}
           </span>
         )}
       </div>
 
-      <p className="mt-2 text-xs text-gray-500">{change.reason}</p>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{change.reason}</p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button
@@ -114,7 +117,7 @@ function PendingChangeCard({
         <button
           type="button"
           onClick={() => { setIsEditing(true) }}
-          className="rounded bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
+          className="rounded bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
         >
           Edit
         </button>
@@ -199,15 +202,15 @@ export function ReviewModal({
     >
       <div
         ref={modalRef}
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white p-6"
+        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white dark:bg-gray-900 p-6"
         onClick={(e) => { e.stopPropagation() }}
       >
-        <div className="flex items-center justify-between border-b pb-4">
-          <h2 id="review-modal-title" className="text-xl font-semibold text-gray-900">Review Changes</h2>
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
+          <h2 id="review-modal-title" className="text-xl font-semibold text-gray-900 dark:text-gray-100">Review Changes</h2>
           <button
             ref={closeButtonRef}
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close modal"
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +226,7 @@ export function ReviewModal({
 
         <div className="mt-4 space-y-4">
           {pendingChanges.length === 0 ? (
-            <p className="text-center text-gray-500">No pending changes</p>
+            <p className="text-center text-gray-500 dark:text-gray-400">No pending changes</p>
           ) : (
             <>
               {pendingChanges.map((change) => (
@@ -237,7 +240,7 @@ export function ReviewModal({
                 />
               ))}
 
-              <div className="border-t pt-4">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                 <button
                   type="button"
                   onClick={onApplyAll}

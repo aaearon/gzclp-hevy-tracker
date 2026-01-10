@@ -23,14 +23,14 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div
-      className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}
+      className={`bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 ${className}`}
       role="alert"
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-red-500"
+            className="h-5 w-5 text-red-500 dark:text-red-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -45,11 +45,11 @@ export function ErrorState({
         </div>
 
         <div className="flex-1">
-          <h3 className="text-sm font-medium text-red-800">{title}</h3>
-          <p className="mt-1 text-sm text-red-700">{message}</p>
+          <h3 className="text-sm font-medium text-red-800 dark:text-red-300">{title}</h3>
+          <p className="mt-1 text-sm text-red-700 dark:text-red-400">{message}</p>
 
           {showCachedIndicator && (
-            <p className="mt-2 text-xs text-red-600 flex items-center gap-1">
+            <p className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"
@@ -73,7 +73,7 @@ export function ErrorState({
               <button
                 type="button"
                 onClick={onRetry}
-                className="min-h-[44px] px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                className="min-h-[44px] px-3 py-1.5 bg-red-100 dark:bg-red-800/50 hover:bg-red-200 dark:hover:bg-red-800 text-red-800 dark:text-red-300 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
               >
                 Try Again
               </button>
@@ -84,7 +84,7 @@ export function ErrorState({
                 href={helpLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-red-700 hover:text-red-800 underline"
+                className="text-sm text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
               >
                 Get Help
               </a>
@@ -174,10 +174,10 @@ export function EmptyState({
 
   return (
     <div className={`text-center py-8 ${className}`}>
-      <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+      <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6 text-gray-400"
+          className="h-6 w-6 text-gray-400 dark:text-gray-500"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -186,8 +186,8 @@ export function EmptyState({
         </svg>
       </div>
 
-      <h3 className="text-sm font-medium text-gray-900 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 mb-4">{message}</p>
+      <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{title}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{message}</p>
 
       {actionLabel && onAction && (
         <button

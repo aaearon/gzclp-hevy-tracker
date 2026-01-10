@@ -71,9 +71,9 @@ export function ProgressionChartContainer({
   // Empty state - no exercises configured
   if (exerciseOptions.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-        <p className="text-gray-500">No exercises configured yet.</p>
-        <p className="mt-1 text-sm text-gray-400">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center">
+        <p className="text-gray-500 dark:text-gray-400">No exercises configured yet.</p>
+        <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
           Complete the setup wizard to start tracking progression.
         </p>
       </div>
@@ -92,9 +92,9 @@ export function ProgressionChartContainer({
           />
           <GranularityToggle value={granularity} onChange={setGranularity} />
         </div>
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-          <p className="text-gray-500">No workout history yet.</p>
-          <p className="mt-1 text-sm text-gray-400">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center">
+          <p className="text-gray-500 dark:text-gray-400">No workout history yet.</p>
+          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
             Sync your workouts from Hevy to see progression charts.
           </p>
         </div>

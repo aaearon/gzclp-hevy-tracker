@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { beforeEach } from 'vitest'
 
 // Polyfill localStorage for thread pool (jsdom may not provide it in all threads)
-if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage?.getItem) {
+if (!globalThis.localStorage?.getItem) {
   const store: Record<string, string> = {}
   const localStorageMock: Storage = {
     getItem: (key: string) => store[key] ?? null,
@@ -44,6 +44,23 @@ Object.defineProperty(globalThis, 'StorageEvent', {
   value: MockStorageEvent,
   writable: true,
 })
+
+// Mock matchMedia for jsdom (required for ThemeContext)
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }),
+  })
+}
 
 // Mock URL.createObjectURL and revokeObjectURL for jsdom environment
 if (typeof URL.createObjectURL === 'undefined') {

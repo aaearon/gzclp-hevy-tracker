@@ -54,9 +54,9 @@ export function RoleDropdown({
         }
       }}
       disabled={disabled}
-      className={`block w-full rounded-md border-gray-300 shadow-sm text-sm
+      className={`block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm text-sm
                  focus:border-blue-500 focus:ring-blue-500
-                 disabled:bg-gray-100 disabled:cursor-not-allowed
+                 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed
                  ${className}`}
     >
       {showPlaceholder && (

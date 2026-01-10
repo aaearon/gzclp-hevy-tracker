@@ -44,8 +44,8 @@ export function TierSection({
   return (
     <section data-testid={`tier-section-${tier.toLowerCase()}`} className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">{tierNames[tier]}</h2>
-        <p className="text-sm text-gray-500">{tierDescriptions[tier]}</p>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{tierNames[tier]}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{tierDescriptions[tier]}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

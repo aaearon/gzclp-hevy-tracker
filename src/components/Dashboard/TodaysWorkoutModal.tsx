@@ -190,21 +190,21 @@ export function TodaysWorkoutModal({
       data-testid="todays-workout-modal"
     >
       <div
-        className="mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white shadow-xl"
+        className="mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white dark:bg-gray-800 shadow-xl"
         onClick={(e) => { e.stopPropagation() }}
       >
         {/* Header */}
-        <div className="sticky top-0 border-b bg-white px-6 py-4">
+        <div className="sticky top-0 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Next Workout</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Next Workout</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 GZCLP Day {day} - {formatDate(today)}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
               aria-label="Close"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,10 +231,10 @@ export function TodaysWorkoutModal({
                 {t1Data.warmupSets.map((set, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm"
                   >
-                    <span className="text-gray-600">Set {index + 1}</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-gray-600 dark:text-gray-400">Set {index + 1}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
                       {displayWeight(set.weight)} x {set.reps}
                     </span>
                   </div>
@@ -245,21 +245,21 @@ export function TodaysWorkoutModal({
 
           {/* T1 Exercise */}
           {t1Data && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/50 p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                   T1
                 </span>
-                <span className="text-xs font-medium text-red-700">Main Lift</span>
+                <span className="text-xs font-medium text-red-700 dark:text-red-300">Main Lift</span>
                 {/* AMRAP Indicator */}
-                <span className="ml-auto rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
+                <span className="ml-auto rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-xs font-semibold text-yellow-800 dark:text-yellow-300">
                   Last set AMRAP
                 </span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">{t1Data.exercise.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t1Data.exercise.name}</h3>
               <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="font-mono text-gray-600">{t1Data.scheme.display}</span>
-                <span className="text-lg font-bold text-red-700">
+                <span className="font-mono text-gray-600 dark:text-gray-400">{t1Data.scheme.display}</span>
+                <span className="text-lg font-bold text-red-700 dark:text-red-300">
                   {displayWeight(t1Data.progression.currentWeight)}
                 </span>
               </div>
@@ -268,17 +268,17 @@ export function TodaysWorkoutModal({
 
           {/* T2 Exercise */}
           {t2Data && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/50 p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span className="rounded bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
                   T2
                 </span>
-                <span className="text-xs font-medium text-blue-700">Secondary Lift</span>
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Secondary Lift</span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">{t2Data.exercise.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t2Data.exercise.name}</h3>
               <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="font-mono text-gray-600">{t2Data.scheme.display}</span>
-                <span className="text-lg font-bold text-blue-700">
+                <span className="font-mono text-gray-600 dark:text-gray-400">{t2Data.scheme.display}</span>
+                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
                   {displayWeight(t2Data.progression.currentWeight)}
                 </span>
               </div>
@@ -288,21 +288,21 @@ export function TodaysWorkoutModal({
           {/* T3 Exercises */}
           {t3Data.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">Accessories (T3)</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Accessories (T3)</h3>
               {t3Data.map(({ exercise, progression: prog, scheme }) => (
                 <div
                   key={exercise.id}
-                  className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3"
+                  className="flex items-center justify-between rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/50 p-3"
                 >
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-green-600 px-1.5 py-0.5 text-xs font-bold text-white">
                       T3
                     </span>
-                    <span className="font-medium text-gray-900">{exercise.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{exercise.name}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="font-mono text-gray-600">{scheme.display}</span>
-                    <span className="font-bold text-green-700">
+                    <span className="font-mono text-gray-600 dark:text-gray-400">{scheme.display}</span>
+                    <span className="font-bold text-green-700 dark:text-green-300">
                       {prog ? displayWeight(prog.currentWeight) : 'TBD'}
                     </span>
                   </div>
@@ -313,7 +313,7 @@ export function TodaysWorkoutModal({
 
           {/* Empty State */}
           {!t1Data && !t2Data && t3Data.length === 0 && (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
               <p>No exercises configured for this day.</p>
               <p className="mt-1 text-sm">Complete the setup wizard to get started.</p>
             </div>
@@ -321,7 +321,7 @@ export function TodaysWorkoutModal({
         </div>
 
         {/* Footer - Start Workout Action */}
-        <div className="sticky bottom-0 border-t bg-gray-50 px-6 py-4">
+        <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-6 py-4">
           <button
             onClick={onClose}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

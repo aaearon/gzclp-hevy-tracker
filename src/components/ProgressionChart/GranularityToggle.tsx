@@ -13,13 +13,13 @@ interface GranularityToggleProps {
 
 export function GranularityToggle({ value, onChange }: GranularityToggleProps) {
   return (
-    <div className="flex rounded-lg bg-gray-100 p-1">
+    <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
       <button
         onClick={() => { onChange('workout') }}
         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
           value === 'workout'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
+            ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
         }`}
         aria-pressed={value === 'workout'}
       >
@@ -29,8 +29,8 @@ export function GranularityToggle({ value, onChange }: GranularityToggleProps) {
         onClick={() => { onChange('week') }}
         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
           value === 'week'
-            ? 'bg-white text-gray-900 shadow-sm'
-            : 'text-gray-600 hover:text-gray-900'
+            ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
         }`}
         aria-pressed={value === 'week'}
       >

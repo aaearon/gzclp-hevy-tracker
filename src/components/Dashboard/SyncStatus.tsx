@@ -38,7 +38,7 @@ export function SyncStatus({ lastSyncTime, error, onDismissError }: SyncStatusPr
   return (
     <div className="space-y-2">
       {/* Last Sync Time */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         {lastSyncTime ? (
           <span>
             Last synced: <time dateTime={lastSyncTime}>{formatRelativeTime(lastSyncTime)}</time>
@@ -52,7 +52,7 @@ export function SyncStatus({ lastSyncTime, error, onDismissError }: SyncStatusPr
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between p-3 rounded-md bg-red-50 border border-red-200 text-red-700"
+          className="flex items-center justify-between p-3 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
         >
           <div className="flex items-center">
             <svg

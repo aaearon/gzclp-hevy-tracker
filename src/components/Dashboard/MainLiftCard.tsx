@@ -22,21 +22,21 @@ export interface MainLiftCardProps {
 }
 
 const stageColors: Record<Stage, string> = {
-  0: 'bg-green-100 text-green-800',
-  1: 'bg-yellow-100 text-yellow-800',
-  2: 'bg-red-100 text-red-800',
+  0: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
+  1: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300',
+  2: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300',
 }
 
 const tierRowStyles = {
   T1: {
-    bg: 'bg-red-50',
+    bg: 'bg-red-50 dark:bg-red-900/20',
     border: 'border-l-red-500',
-    badge: 'bg-red-100 text-red-800 border-red-200',
+    badge: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
   },
   T2: {
-    bg: 'bg-blue-50',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-l-blue-500',
-    badge: 'bg-blue-100 text-blue-800 border-blue-200',
+    badge: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800',
   },
 }
 
@@ -57,7 +57,7 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
           <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
             {tier}
           </span>
-          <span className="text-sm text-gray-500">Not configured</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Not configured</span>
         </div>
       </div>
     )
@@ -82,7 +82,7 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
             {tier}
           </span>
           {isActiveToday && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
               Today
             </span>
           )}
@@ -96,12 +96,12 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
 
       <div className="mt-2 flex items-baseline justify-between">
         {/* Weight */}
-        <span className="text-xl font-bold text-gray-900">
+        <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
           {formatWeight(progression.currentWeight, weightUnit)}
         </span>
 
         {/* Rep scheme */}
-        <span className="font-mono text-sm text-gray-600">{scheme.display}</span>
+        <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{scheme.display}</span>
       </div>
     </div>
   )
@@ -124,10 +124,10 @@ export function MainLiftCard({ role, progression, weightUnit, currentDay }: Main
   return (
     <div
       data-testid={`main-lift-card-${role}`}
-      className="rounded-lg border bg-white p-4 shadow-sm"
+      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
     >
       {/* Header with lift name */}
-      <h3 className="mb-3 text-lg font-semibold text-gray-900">{displayName}</h3>
+      <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">{displayName}</h3>
 
       {/* T1 and T2 rows */}
       <div className="space-y-2">

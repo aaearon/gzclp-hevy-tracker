@@ -56,7 +56,7 @@ const mockRoutineIds: Record<GZCLPDay, string | null> = {
 function createWorkoutExercise(
   templateId: string,
   weight: number,
-  reps: number = 5
+  reps = 5
 ): WorkoutExercise {
   return {
     index: 0,

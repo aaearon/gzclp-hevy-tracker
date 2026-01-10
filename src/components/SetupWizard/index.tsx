@@ -16,12 +16,11 @@ import { useHevyApi } from '@/hooks/useHevyApi'
 import { useProgram } from '@/hooks/useProgram'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
 import { MAIN_LIFT_ROLES, type MainLiftRole } from '@/types/state'
-import { STORAGE_KEYS } from '@/lib/constants'
 import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
-import { getProgressionKey, getT1RoleForDay, getT2RoleForDay } from '@/lib/role-utils'
 import { calculateCreatedAtFromWorkouts } from '@/lib/weeks-calculator'
 import { importProgressionHistory } from '@/lib/history-importer'
 import { createHevyClient } from '@/lib/hevy-client'
+import { buildImportProgramState, buildCreateProgramState } from '@/lib/program-builder'
 
 type SetupStep =
   | 'welcome'
@@ -147,169 +146,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const handleNextWorkoutComplete = useCallback(async () => {
     if (routineSourceMode === 'import' && routineImport.importResult) {
-      const { byDay } = routineImport.importResult
-
-      // DEBUG: Log the import result structure
-      console.log('[DEBUG] Import byDay structure:')
-      for (const d of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
-        console.log(`  ${d}: t1=${byDay[d].t1?.name ?? 'null'}, t2=${byDay[d].t2?.name ?? 'null'}, t3s=${byDay[d].t3s.length}`)
-      }
-
-      // Track saved exercise IDs for t3Schedule
-      const savedExerciseIds = new Map<string, string>() // templateId -> exerciseId
-      // Track which main lift progression keys have been set (to avoid duplicates)
-      const processedProgressionKeys = new Set<string>()
-      // Track progression entries to write directly (avoids React batching race condition)
-      // Include lastWorkoutId/Date from analysis to prevent false discrepancies on first sync
-      const progressionEntries: Record<string, { exerciseId: string; currentWeight: number; baseWeight: number; stage: number; lastWorkoutId: string | null; lastWorkoutDate: string | null; amrapRecord: number }> = {}
-
-      // Process all days and exercises
-      for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
-        const dayData = byDay[day]
-
-        // Process T1 exercise - derive role from DAY context, not exercise
-        // This fixes deduplication bug where same exercise on multiple days shared wrong role
-        if (dayData.t1) {
-          const imported = dayData.t1
-          const dayRole = getT1RoleForDay(day) // Role based on which lift is T1 on this day
-
-          // Add exercise if not already added (use day role for the exercise config)
-          let exerciseId = savedExerciseIds.get(imported.templateId)
-          if (!exerciseId) {
-            exerciseId = program.addExercise({
-              hevyTemplateId: imported.templateId,
-              name: imported.name,
-              role: dayRole,
-            })
-            savedExerciseIds.set(imported.templateId, exerciseId)
-          }
-
-          // Set T1 progression using day-based role-tier key
-          const t1Key = getProgressionKey(exerciseId, dayRole, 'T1')
-          console.log(`[DEBUG] ${day} T1: ${imported.name} -> key=${t1Key}, already processed=${processedProgressionKeys.has(t1Key)}`)
-          if (!processedProgressionKeys.has(t1Key)) {
-            // Priority: userOverride > suggestion > detected
-            const weight = imported.userWeight
-              ?? imported.analysis?.suggestion?.suggestedWeight
-              ?? imported.detectedWeight
-            const stage = imported.userStage
-              ?? imported.analysis?.suggestion?.suggestedStage
-              ?? imported.detectedStage
-            console.log(`[DEBUG]   Creating progression: ${t1Key} weight=${weight}`)
-            // Track in memory for direct localStorage write (avoids React batching race)
-            // Set lastWorkoutId/Date from analysis to prevent false discrepancies on first sync
-            progressionEntries[t1Key] = {
-              exerciseId,
-              currentWeight: weight,
-              baseWeight: imported.detectedWeight, // Keep original for reference
-              stage,
-              lastWorkoutId: imported.analysis?.performance?.workoutId ?? null,
-              lastWorkoutDate: imported.analysis?.performance?.workoutDate ?? null,
-              amrapRecord: imported.analysis?.suggestion?.amrapReps ?? 0,
-            }
-            processedProgressionKeys.add(t1Key)
-          }
-        }
-
-        // Process T2 exercise - derive role from DAY context, not exercise
-        if (dayData.t2) {
-          const imported = dayData.t2
-          const dayRole = getT2RoleForDay(day) // Role based on which lift is T2 on this day
-
-          // Add exercise if not already added (use day role for the exercise config)
-          let exerciseId = savedExerciseIds.get(imported.templateId)
-          if (!exerciseId) {
-            exerciseId = program.addExercise({
-              hevyTemplateId: imported.templateId,
-              name: imported.name,
-              role: dayRole,
-            })
-            savedExerciseIds.set(imported.templateId, exerciseId)
-          }
-
-          // Set T2 progression using day-based role-tier key
-          const t2Key = getProgressionKey(exerciseId, dayRole, 'T2')
-          console.log(`[DEBUG] ${day} T2: ${imported.name} -> key=${t2Key}, already processed=${processedProgressionKeys.has(t2Key)}`)
-          if (!processedProgressionKeys.has(t2Key)) {
-            // Priority: userOverride > suggestion > detected
-            const weight = imported.userWeight
-              ?? imported.analysis?.suggestion?.suggestedWeight
-              ?? imported.detectedWeight
-            const stage = imported.userStage
-              ?? imported.analysis?.suggestion?.suggestedStage
-              ?? imported.detectedStage
-            console.log(`[DEBUG]   Creating progression: ${t2Key} weight=${weight}`)
-            // Track in memory for direct localStorage write (avoids React batching race)
-            // Set lastWorkoutId/Date from analysis to prevent false discrepancies on first sync
-            progressionEntries[t2Key] = {
-              exerciseId,
-              currentWeight: weight,
-              baseWeight: imported.detectedWeight, // Keep original for reference
-              stage,
-              lastWorkoutId: imported.analysis?.performance?.workoutId ?? null,
-              lastWorkoutDate: imported.analysis?.performance?.workoutDate ?? null,
-              amrapRecord: 0, // T2 doesn't track AMRAP
-            }
-            processedProgressionKeys.add(t2Key)
-          }
-        }
-
-        // Process T3 exercises (still use exerciseId as key)
-        for (const t3 of dayData.t3s) {
-          if (!t3.templateId) continue
-
-          // Add exercise if not already added
-          let exerciseId = savedExerciseIds.get(t3.templateId)
-          if (!exerciseId) {
-            exerciseId = program.addExercise({
-              hevyTemplateId: t3.templateId,
-              name: t3.name,
-              role: t3.role ?? 't3',
-            })
-            savedExerciseIds.set(t3.templateId, exerciseId)
-
-            // Track T3 progression in memory (avoids React batching race)
-            // Priority: userOverride > suggestion > detected
-            const weight = t3.userWeight
-              ?? t3.analysis?.suggestion?.suggestedWeight
-              ?? t3.detectedWeight
-            // Set lastWorkoutId/Date from analysis to prevent false discrepancies on first sync
-            progressionEntries[exerciseId] = {
-              exerciseId,
-              currentWeight: weight,
-              baseWeight: t3.detectedWeight, // Keep original for reference
-              stage: 0, // T3 always uses stage 0
-              lastWorkoutId: t3.analysis?.performance?.workoutId ?? null,
-              lastWorkoutDate: t3.analysis?.performance?.workoutDate ?? null,
-              amrapRecord: t3.analysis?.suggestion?.amrapReps ?? 0,
-            }
-          }
-        }
-      }
-
-      // Build and save t3Schedule from byDay structure
-      const t3Schedule: Record<GZCLPDay, string[]> = {
-        A1: [],
-        B1: [],
-        A2: [],
-        B2: [],
-      }
-
-      for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
-        const dayData = byDay[day]
-        t3Schedule[day] = dayData.t3s
-          .filter((t3) => t3.templateId && savedExerciseIds.has(t3.templateId))
-          .map((t3) => savedExerciseIds.get(t3.templateId) ?? '')
-          .filter((id) => id !== '')
-      }
-
-      program.setT3Schedule(t3Schedule)
-
-      // Save routine IDs to program
-      program.setRoutineIds(routineImport.assignment)
-
-      // Calculate workout stats from workout history
       try {
+        // Fetch async data for import
         const allWorkouts = await hevy.getAllWorkouts()
         const weeksResult = calculateCreatedAtFromWorkouts(
           allWorkouts,
@@ -323,7 +161,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           const client = createHevyClient(program.state.apiKey)
           const historyResult = await importProgressionHistory(
             client,
-            program.state.exercises,
+            {}, // Empty exercises - will be populated by buildImportProgramState
             routineImport.assignment
           )
           progressionHistory = historyResult.history
@@ -331,56 +169,51 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           // Continue without history - charts will be empty initially
         }
 
-        // Write directly to localStorage to avoid race condition with component unmount
-        // The React state setters don't complete before navigation happens
-        // IMPORTANT: Use split storage keys (gzclp_config, gzclp_progression, gzclp_history)
-
-        // Update CONFIG storage (program.createdAt, currentDay)
-        const configState = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG) ?? '{}') as Record<string, unknown>
-        const updatedConfig = {
-          ...configState,
-          program: {
-            ...(configState.program as Record<string, unknown>),
+        // Build complete state using pure function
+        const state = buildImportProgramState({
+          importResult: routineImport.importResult,
+          selectedDay,
+          apiKey: program.state.apiKey,
+          unit,
+          workoutsPerWeek: program.state.program.workoutsPerWeek,
+          workoutStats: {
             createdAt: weeksResult.calculatedCreatedAt,
-            currentDay: selectedDay,
+            totalWorkouts: weeksResult.matchingWorkoutCount,
+            mostRecentWorkoutDate: weeksResult.mostRecentWorkoutDate,
           },
-        }
-        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(updatedConfig))
-
-        // Update PROGRESSION storage with tracked entries (avoids React batching race condition)
-        // We write the progression entries directly instead of relying on React state
-        const updatedProgression = {
-          progression: progressionEntries,
-          pendingChanges: [],
-          lastSync: null,
-          totalWorkouts: weeksResult.matchingWorkoutCount,
-          mostRecentWorkoutDate: weeksResult.mostRecentWorkoutDate,
-          acknowledgedDiscrepancies: [],
-        }
-        console.log('[DEBUG] Writing progression to localStorage:', Object.keys(progressionEntries))
-        localStorage.setItem(STORAGE_KEYS.PROGRESSION, JSON.stringify(updatedProgression))
-
-        // Update HISTORY storage (progressionHistory)
-        const historyState = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) ?? '{}') as Record<string, unknown>
-        const updatedHistory = {
-          ...historyState,
           progressionHistory,
-        }
-        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updatedHistory))
+        })
 
-        // Force page reload to ensure Dashboard reads fresh data from localStorage
-        // This avoids stale React state issues with the split storage hooks
-        window.location.reload()
+        // Atomic import via React state - no localStorage writes, no reload needed
+        // CompletedGuard will handle navigation when isSetupRequired becomes false
+        program.importState(state)
         return
       } catch {
-        // Fall through to use React state setters
+        // Fall through to fallback
       }
     }
 
-    // Fallback: Set current day via React state and complete
+    // Create path: Build complete state and import atomically
+    if (routineSourceMode === 'create') {
+      const state = buildCreateProgramState({
+        assignments,
+        weights,
+        exerciseTemplates: hevy.exerciseTemplates,
+        selectedDay,
+        apiKey: program.state.apiKey,
+        unit,
+        workoutsPerWeek: program.state.program.workoutsPerWeek,
+      })
+
+      // Atomic import - CompletedGuard handles navigation
+      program.importState(state)
+      return
+    }
+
+    // Fallback: Set current day and show complete step
     program.setCurrentDay(selectedDay)
     setCurrentStep('complete')
-  }, [routineSourceMode, routineImport, selectedDay, program, hevy])
+  }, [routineSourceMode, routineImport, selectedDay, program, hevy, unit, assignments, weights])
 
   const handleNextWorkoutBack = useCallback(() => {
     // Go back to import-review if import path, or weights if create path
@@ -450,65 +283,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   }, [assignments])
 
   const handleWeightsNext = useCallback(() => {
-    // Save main lifts with role field
-    for (const role of MAIN_LIFT_ROLES) {
-      const templateId = assignments.mainLifts[role]
-      if (!templateId) continue
-
-      const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
-      if (!exercise) continue
-
-      const exerciseId = program.addExercise({
-        hevyTemplateId: templateId,
-        name: exercise.title,
-        role: role,
-      })
-
-      const weight = weights[role] ?? 0
-      program.setInitialWeight(exerciseId, weight)
-    }
-
-    // Phase 9: Save T3s with deduplication and build t3Schedule
-    const savedT3Ids = new Map<string, string>() // templateId -> exerciseId
-    const t3Schedule: Record<GZCLPDay, string[]> = {
-      A1: [],
-      B1: [],
-      A2: [],
-      B2: [],
-    }
-
-    for (const day of ['A1', 'B1', 'A2', 'B2'] as GZCLPDay[]) {
-      for (const templateId of assignments.t3Exercises[day]) {
-        if (!templateId) continue
-
-        // Deduplicate: same T3 on multiple days uses same exerciseId
-        let exerciseId = savedT3Ids.get(templateId)
-        if (!exerciseId) {
-          const exercise = hevy.exerciseTemplates.find((ex) => ex.id === templateId)
-          if (!exercise) continue
-
-          exerciseId = program.addExercise({
-            hevyTemplateId: templateId,
-            name: exercise.title,
-            role: 't3',
-          })
-          savedT3Ids.set(templateId, exerciseId)
-
-          // Set weight for this T3 (only once per unique T3)
-          const weight = weights[`t3_${templateId}`] ?? 0
-          program.setInitialWeight(exerciseId, weight)
-        }
-
-        t3Schedule[day].push(exerciseId)
-      }
-    }
-
-    // Save t3Schedule to program
-    program.setT3Schedule(t3Schedule)
-
-    // Go to next-workout step
+    // Just advance to next-workout step
+    // State will be built atomically in handleNextWorkoutComplete
     setCurrentStep('next-workout')
-  }, [assignments, weights, hevy.exerciseTemplates, program])
+  }, [])
 
   // Count assigned exercises (main lifts + T3s across all days)
   const assignedMainLifts = MAIN_LIFT_ROLES.filter((role) => assignments.mainLifts[role] !== null).length
@@ -545,7 +323,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   }, [currentStep, routineSourceMode])
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress indicator - dynamic based on path */}
         {(() => {
@@ -571,16 +349,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                                      ? 'bg-blue-600 text-white'
                                      : index < steps.indexOf(currentStep)
                                        ? 'bg-green-500 text-white'
-                                       : 'bg-gray-200 text-gray-600'
+                                       : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                                  }`}
                     >
                       {index + 1}
                     </div>
-                    {index < steps.length - 1 && <div className="w-8 h-0.5 bg-gray-200 mx-1" />}
+                    {index < steps.length - 1 && <div className="w-8 h-0.5 bg-gray-200 dark:bg-gray-700 mx-1" />}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-center mt-2 text-xs text-gray-500">
+              <div className="flex justify-center mt-2 text-xs text-gray-500 dark:text-gray-400">
                 {labels.map((label) => (
                   <span key={label} className="w-16 text-center">
                     {label}
@@ -592,7 +370,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         })()}
 
         {/* Step content */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           {currentStep === 'welcome' && (
             <WelcomeStep
               onComplete={handleWelcomeComplete}
@@ -677,7 +455,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             <button
               type="button"
               onClick={handleBack}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 min-h-[44px]"
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 min-h-[44px]"
             >
               Back
             </button>

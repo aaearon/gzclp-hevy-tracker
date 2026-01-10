@@ -28,6 +28,8 @@ export interface UseSyncFlowOptions {
   hevyRoutineIds: Record<GZCLPDay, string | null>
   isOnline: boolean
   onLastSyncUpdate: (timestamp: string) => void
+  /** Called to record each workout to progression history for charts */
+  onRecordHistory?: (change: PendingChange) => void
 }
 
 export interface UseSyncFlowReturn {
@@ -53,10 +55,13 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     hevyRoutineIds,
     isOnline,
     onLastSyncUpdate,
+    onRecordHistory,
   } = options
 
   // Track whether auto-sync has already been triggered
   const hasAutoSynced = useRef(false)
+  // Track which changes have been recorded to history
+  const recordedChangeIds = useRef(new Set<string>())
 
   // Use the progression hook for actual sync functionality
   const {
@@ -83,6 +88,20 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Record sync results to progression history for charts
+  // This runs whenever new pending changes come from sync
+  useEffect(() => {
+    if (!onRecordHistory || syncPendingChanges.length === 0) return
+
+    for (const change of syncPendingChanges) {
+      // Only record each change once
+      if (!recordedChangeIds.current.has(change.id)) {
+        recordedChangeIds.current.add(change.id)
+        onRecordHistory(change)
+      }
+    }
+  }, [syncPendingChanges, onRecordHistory])
 
   // Handle manual sync and update timestamp
   const handleSync = useCallback(async () => {

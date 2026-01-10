@@ -46,15 +46,6 @@ export function useLocalStorage<T>(
 
           if (typeof window !== 'undefined') {
             window.localStorage.setItem(key, JSON.stringify(valueToStore))
-
-            // Dispatch storage event for cross-tab sync
-            window.dispatchEvent(
-              new StorageEvent('storage', {
-                key,
-                newValue: JSON.stringify(valueToStore),
-                storageArea: window.localStorage,
-              })
-            )
           }
 
           return valueToStore
@@ -72,15 +63,6 @@ export function useLocalStorage<T>(
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(key)
         setStoredValue(initialValue)
-
-        // Dispatch storage event for cross-tab sync
-        window.dispatchEvent(
-          new StorageEvent('storage', {
-            key,
-            newValue: null,
-            storageArea: window.localStorage,
-          })
-        )
       }
     } catch (error) {
       console.warn(`Error removing localStorage key "${key}":`, error)

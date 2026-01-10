@@ -213,7 +213,7 @@ describe('[US6] Data Import - importData', () => {
     const validData = JSON.stringify(createValidExportData())
     const result = importData(validData)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((result as any)._exportMeta).toBeUndefined()
   })
 

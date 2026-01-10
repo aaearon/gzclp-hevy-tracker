@@ -135,7 +135,7 @@ describe('useExerciseManagement', () => {
         })
       )
 
-      let exerciseId: string = ''
+      let exerciseId = ''
       act(() => {
         exerciseId = result.current.addExercise({
           hevyTemplateId: 'template-1',
@@ -169,7 +169,7 @@ describe('useExerciseManagement', () => {
         })
       )
 
-      let exerciseId: string = ''
+      let exerciseId = ''
       act(() => {
         exerciseId = result.current.addExercise({
           hevyTemplateId: 'template-1',

@@ -23,6 +23,8 @@ export interface UsePendingChangesProps {
   onDayAdvance: (nextDay: GZCLPDay) => void
   /** Callback to record a change in progression history (for charts) */
   onRecordHistory?: (change: PendingChange) => void
+  /** Callback when a workout is completed (for updating stats) */
+  onWorkoutComplete?: (workoutDate: string) => void
 }
 
 export interface UsePendingChangesResult {
@@ -41,7 +43,7 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
 
   // Undo state [Task 4.2]
@@ -115,10 +117,16 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     if (pendingChanges.length === 0) return
 
     let currentProgression = progression
+    let mostRecentDate: string | null = null
+
     for (const change of pendingChanges) {
       currentProgression = applyPendingChange(currentProgression, change)
       // Record each change to history for charts
       onRecordHistory?.(change)
+      // Track the most recent workout date
+      if (!mostRecentDate || change.workoutDate > mostRecentDate) {
+        mostRecentDate = change.workoutDate
+      }
     }
     onProgressionUpdate(currentProgression)
     setPendingChanges([])
@@ -126,7 +134,12 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     // Advance to the next day in the GZCLP rotation
     const nextDay = DAY_CYCLE[currentDay]
     onDayAdvance(nextDay)
-  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory])
+
+    // Update workout stats
+    if (mostRecentDate) {
+      onWorkoutComplete?.(mostRecentDate)
+    }
+  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete])
 
   /**
    * Clear all pending changes without applying.

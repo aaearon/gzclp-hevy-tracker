@@ -13,7 +13,6 @@ import {
 } from '@/lib/workout-analysis'
 import { createPendingChangesFromAnalysis } from '@/lib/progression'
 import { deduplicateDiscrepancies } from '@/lib/discrepancy-utils'
-import { useToast } from '@/contexts/ToastContext'
 import type {
   ExerciseConfig,
   GZCLPDay,
@@ -89,7 +88,6 @@ function findDayByRoutineId(
 
 export function useProgression(props: UseProgressionProps): UseProgressionResult {
   const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds } = props
-  const { showToast } = useToast()
 
   // State
   const [isSyncing, setIsSyncing] = useState(false)
@@ -185,13 +183,6 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       setPendingChanges(changes)
       setLastSyncTime(new Date().toISOString())
 
-      // Show toast notification if new data was detected
-      if (changes.length > 0) {
-        showToast({
-          type: 'success',
-          message: `Synced ${String(changes.length)} workout update${changes.length > 1 ? 's' : ''}!`,
-        })
-      }
     } catch (error) {
       if (error instanceof HevyApiClientError) {
         setSyncError(error.message)
@@ -203,7 +194,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
     } finally {
       setIsSyncing(false)
     }
-  }, [client, exercises, progression, settings.weightUnit, showToast, hevyRoutineIds])
+  }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds])
 
   /**
    * Clear sync error.

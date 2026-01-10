@@ -6,7 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen, act } from '../test-utils'
+import { render } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import type { ReactNode } from 'react'
 import { Dashboard } from '@/components/Dashboard'
 import { ToastProvider } from '@/contexts/ToastContext'
@@ -51,9 +53,43 @@ vi.mock('@/components/ProgressionChart', () => ({
   ProgressionChartContainer: () => <div data-testid="progression-chart-mock">Chart Mock</div>,
 }))
 
-// Wrapper component for tests that require ToastProvider
+// Mock useOnlineStatus to prevent async state updates during tests
+vi.mock('@/hooks/useOnlineStatus', () => ({
+  useOnlineStatus: () => ({
+    isOnline: true,
+    isHevyReachable: true,
+    checkHevyConnection: vi.fn().mockResolvedValue(true),
+  }),
+}))
+
+// Mock useSyncFlow to prevent async state updates during tests
+vi.mock('@/hooks/useSyncFlow', () => ({
+  useSyncFlow: () => ({
+    isSyncing: false,
+    syncError: null,
+    syncPendingChanges: [],
+    discrepancies: [],
+    handleSync: vi.fn(),
+    clearError: vi.fn(),
+  }),
+}))
+
+// Wrapper component for tests that require ToastProvider and Router
 function TestWrapper({ children }: { children: ReactNode }) {
-  return <ToastProvider>{children}</ToastProvider>
+  return (
+    <MemoryRouter>
+      <ToastProvider>{children}</ToastProvider>
+    </MemoryRouter>
+  )
+}
+
+// Helper to render Dashboard and wait for async effects to settle
+async function renderDashboard() {
+  let result: ReturnType<typeof render>
+  await act(async () => {
+    result = render(<Dashboard />, { wrapper: TestWrapper })
+  })
+  return result!
 }
 
 // Mock state with role-based exercises and CORRECT progression keys
@@ -232,8 +268,10 @@ describe('Dashboard Role-Based Grouping', () => {
   })
 
   describe('CurrentWorkout component on day A1', () => {
-    it('should render CurrentWorkout with correct exercises', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should render CurrentWorkout with correct exercises', async () => {
+      await act(async () => {
+        await renderDashboard()
+      })
 
       const currentWorkout = screen.getByTestId('current-workout')
       expect(currentWorkout).toBeInTheDocument()
@@ -243,43 +281,43 @@ describe('Dashboard Role-Based Grouping', () => {
       expect(currentWorkout).toHaveTextContent('Bench Press')
     })
 
-    it('should show correct T1 weight (100 kg for squat on A1)', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should show correct T1 weight (100 kg for squat on A1)', async () => {
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       // Squat T1 weight is 100kg
       expect(currentWorkout).toHaveTextContent('100')
     })
 
-    it('should show correct T2 weight (55 kg for bench on A1)', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should show correct T2 weight (55 kg for bench on A1)', async () => {
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       // Bench T2 weight is 55kg
       expect(currentWorkout).toHaveTextContent('55')
     })
 
-    it('should show T3 accessories for the day', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should show T3 accessories for the day', async () => {
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       expect(currentWorkout).toHaveTextContent('Bicep Curls')
       expect(currentWorkout).toHaveTextContent('Cable Rows')
     })
 
-    it('should NOT render Supplemental section (concept removed)', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should NOT render Supplemental section (concept removed)', async () => {
+      await renderDashboard()
       expect(screen.queryByText('Supplemental')).not.toBeInTheDocument()
     })
   })
 
   describe('tier rotation across days', () => {
-    it('should show bench as T1 on day A2', () => {
+    it('should show bench as T1 on day A2', async () => {
       const state = createMockState()
       state.program.currentDay = 'A2'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       // On A2: T1=Bench (80kg), T2=Squat (70kg)
@@ -287,12 +325,12 @@ describe('Dashboard Role-Based Grouping', () => {
       expect(currentWorkout).toHaveTextContent('80') // bench-T1 weight
     })
 
-    it('should show ohp as T1 on day B1', () => {
+    it('should show ohp as T1 on day B1', async () => {
       const state = createMockState()
       state.program.currentDay = 'B1'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       // On B1: T1=OHP (50kg), T2=Deadlift (85kg)
@@ -300,12 +338,12 @@ describe('Dashboard Role-Based Grouping', () => {
       expect(currentWorkout).toHaveTextContent('50') // ohp-T1 weight
     })
 
-    it('should show deadlift as T1 on day B2', () => {
+    it('should show deadlift as T1 on day B2', async () => {
       const state = createMockState()
       state.program.currentDay = 'B2'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       // On B2: T1=Deadlift (120kg), T2=OHP (35kg)
@@ -315,7 +353,7 @@ describe('Dashboard Role-Based Grouping', () => {
   })
 
   describe('per-day T3 schedule in CurrentWorkout', () => {
-    it('should show only A1 T3s when on day A1', () => {
+    it('should show only A1 T3s when on day A1', async () => {
       const state = createMockState()
       state.t3Schedule = {
         A1: ['curls'],
@@ -326,14 +364,14 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'A1'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       expect(currentWorkout).toHaveTextContent('Bicep Curls')
       expect(currentWorkout).not.toHaveTextContent('Cable Rows')
     })
 
-    it('should show only B1 T3s when on day B1', () => {
+    it('should show only B1 T3s when on day B1', async () => {
       const state = createMockState()
       state.t3Schedule = {
         A1: ['curls'],
@@ -344,14 +382,14 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'B1'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       expect(currentWorkout).toHaveTextContent('Cable Rows')
       expect(currentWorkout).not.toHaveTextContent('Bicep Curls')
     })
 
-    it('should show combined T3s for day with multiple', () => {
+    it('should show combined T3s for day with multiple', async () => {
       const state = createMockState()
       state.t3Schedule = {
         A1: ['curls'],
@@ -362,7 +400,7 @@ describe('Dashboard Role-Based Grouping', () => {
       state.program.currentDay = 'A2'
       setupSplitStorage(state)
 
-      render(<Dashboard />, { wrapper: TestWrapper })
+      await renderDashboard()
 
       const currentWorkout = screen.getByTestId('current-workout')
       expect(currentWorkout).toHaveTextContent('Bicep Curls')
@@ -371,8 +409,8 @@ describe('Dashboard Role-Based Grouping', () => {
   })
 
   describe('T3Overview component', () => {
-    it('should render T3Overview with all T3 exercises', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should render T3Overview with all T3 exercises', async () => {
+      await renderDashboard()
 
       const t3Overview = screen.getByTestId('t3-overview')
       expect(t3Overview).toBeInTheDocument()
@@ -380,8 +418,8 @@ describe('Dashboard Role-Based Grouping', () => {
       expect(t3Overview).toHaveTextContent('Cable Rows')
     })
 
-    it('should show T3 weights', () => {
-      render(<Dashboard />, { wrapper: TestWrapper })
+    it('should show T3 weights', async () => {
+      await renderDashboard()
 
       const t3Overview = screen.getByTestId('t3-overview')
       expect(t3Overview).toHaveTextContent('20') // curls weight

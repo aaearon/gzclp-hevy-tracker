@@ -221,6 +221,7 @@ describe('useDataPersistence', () => {
         totalWorkouts: sampleState.totalWorkouts,
         mostRecentWorkoutDate: sampleState.mostRecentWorkoutDate,
         acknowledgedDiscrepancies: sampleState.acknowledgedDiscrepancies,
+        needsPush: sampleState.needsPush,
       })
     })
 

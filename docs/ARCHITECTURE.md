@@ -55,6 +55,7 @@ The GZCLP Hevy Tracker is a **frontend-only progressive web application** that i
 ┌─────────────────────────────────────────────────────┐
 │  React 18.3 + TypeScript 5.9 (strict mode)         │
 │  Vite 5.4 + Tailwind CSS 4.1                       │
+│  React Router 7.x (createBrowserRouter)            │
 ├─────────────────────────────────────────────────────┤
 │  State: Custom hooks + React Context               │
 │  Storage: localStorage (split into 3 stores)       │
@@ -375,53 +376,65 @@ export function getProgressionKey(
 ### 5.1 Component Hierarchy
 
 ```
-App.tsx (Root)
-├── ErrorBoundary
-│   └── ToastProvider (Context)
-│       └── AppContent
-│           ├── SetupWizard (Lazy)
-│           │   ├── WelcomeStep
-│           │   ├── RoutineAssignmentStep
-│           │   ├── ImportReviewStep
-│           │   │   ├── DayTabBar
-│           │   │   ├── DayReviewPanel
-│           │   │   ├── ExerciseAnalysisCard
-│           │   │   └── MainLiftVerification
-│           │   ├── WeightSetupStep
-│           │   └── SetupComplete
-│           ├── Dashboard (Lazy)
-│           │   ├── DashboardHeader
-│           │   │   ├── SyncButton
-│           │   │   └── SyncStatus
-│           │   ├── DashboardAlerts
-│           │   │   ├── UpdateStatus
-│           │   │   └── DiscrepancyAlert
-│           │   ├── DashboardContent
-│           │   │   ├── QuickStats
-│           │   │   ├── CurrentWorkout
-│           │   │   ├── TierSection (T1/T2/T3)
-│           │   │   │   ├── MainLiftCard
-│           │   │   │   ├── ExerciseCard
-│           │   │   │   └── PendingBadge
-│           │   │   ├── T3Overview
-│           │   │   └── ProgressionChart
-│           │   │       ├── ExerciseSelector
-│           │   │       ├── GranularityToggle
-│           │   │       ├── ProgressionChart
-│           │   │       └── ChartLegend
-│           │   ├── ReviewModal
-│           │   │   ├── PendingChangeCard
-│           │   │   └── WeightEditor
-│           │   ├── TodaysWorkoutModal
-│           │   ├── PushConfirmDialog
-│           │   └── PostWorkoutSummary
-│           └── Settings (Lazy)
-│               ├── ExerciseManager
-│               ├── ImportButton
-│               ├── ExportButton
-│               └── DeleteDataButton
+main.tsx
+├── ThemeProvider
+│   └── RouterProvider (react-router)
+│       └── RootLayout (router.tsx)
+│           ├── ErrorBoundary
+│           │   └── ToastProvider (Context)
+│           │       └── Suspense
+│           │           └── Outlet (routes below)
+│
+│── Routes (with guards)
+│   ├── "/" → SetupGuard → Dashboard (Lazy)
+│   │   ├── DashboardHeader
+│   │   │   ├── SyncButton
+│   │   │   ├── SyncStatus
+│   │   │   └── Link to /settings
+│   │   ├── DashboardAlerts
+│   │   │   ├── UpdateStatus
+│   │   │   └── DiscrepancyAlert
+│   │   ├── DashboardContent
+│   │   │   ├── QuickStats
+│   │   │   ├── CurrentWorkout
+│   │   │   ├── TierSection (T1/T2/T3)
+│   │   │   │   ├── MainLiftCard
+│   │   │   │   ├── ExerciseCard
+│   │   │   │   └── PendingBadge
+│   │   │   └── T3Overview
+│   │   ├── ReviewModal
+│   │   ├── TodaysWorkoutModal
+│   │   └── PushConfirmDialog
+│   │
+│   ├── "/settings" → SetupGuard → Settings (Lazy)
+│   │   ├── Link to / (back)
+│   │   ├── ExerciseManager
+│   │   ├── ImportButton
+│   │   ├── ExportButton
+│   │   └── DeleteDataButton
+│   │
+│   ├── "/charts" → SetupGuard → ProgressionChart (Lazy)
+│   │   ├── ExerciseSelector
+│   │   ├── GranularityToggle
+│   │   └── ChartLegend
+│   │
+│   └── "/setup" → CompletedGuard → SetupWizard (Lazy)
+│       ├── WelcomeStep
+│       ├── RoutineAssignmentStep
+│       ├── ImportReviewStep
+│       │   ├── DayTabBar
+│       │   ├── DayReviewPanel
+│       │   ├── ExerciseAnalysisCard
+│       │   └── MainLiftVerification
+│       ├── WeightSetupStep
+│       └── SetupComplete
+│
 └── OfflineIndicator
 ```
+
+**Route Guards:**
+- `SetupGuard`: Redirects to `/setup` if `isSetupRequired` is true
+- `CompletedGuard`: Redirects to `/` if setup is already complete
 
 ### 5.2 Component Design Patterns
 

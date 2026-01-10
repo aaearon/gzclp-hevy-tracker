@@ -92,6 +92,7 @@ export function useDataPersistence({
         totalWorkouts: newState.totalWorkouts,
         mostRecentWorkoutDate: newState.mostRecentWorkoutDate,
         acknowledgedDiscrepancies: newState.acknowledgedDiscrepancies,
+        needsPush: newState.needsPush,
       })
 
       // Import into history storage

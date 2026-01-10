@@ -90,7 +90,7 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
 
   if (exercises.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         <p>No exercises have been configured yet.</p>
         <p className="text-sm mt-2">
           Import a routine to start configuring exercises.
@@ -102,29 +102,29 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
   return (
     <>
       <div className="space-y-4">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Change exercise roles to adjust how they&apos;re used in your program.
         </p>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th
                   scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
                   Exercise
                 </th>
                 <th
                   scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
                   Role
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {exercises.map((exercise) => {
                 const displayInfo = exercise.role ? ROLE_DISPLAY[exercise.role] : null
 
@@ -135,12 +135,12 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
                         {displayInfo && (
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                              ${displayInfo.color === 'blue' ? 'bg-blue-100 text-blue-700' : displayInfo.color === 'green' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}
+                              ${displayInfo.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : displayInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'}`}
                           >
                             {displayInfo.label}
                           </span>
                         )}
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {exercise.name}
                         </span>
                       </div>
@@ -179,11 +179,11 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
           aria-modal="true"
           aria-labelledby="swap-dialog-title"
         >
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 id="swap-dialog-title" className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 id="swap-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Role Conflict
             </h2>
-            <p className="text-sm text-gray-700 mb-6">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
               {ROLE_DISPLAY[swapConflict.newRole].label} is assigned to{' '}
               <strong>{swapConflict.targetExercise.name}</strong>. Swap roles?
             </p>
@@ -191,7 +191,7 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
               <button
                 type="button"
                 onClick={handleSwapCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Cancel
               </button>
