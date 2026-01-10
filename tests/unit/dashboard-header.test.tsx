@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../test-utils'
 import userEvent from '@testing-library/user-event'
 import { DashboardHeader } from '@/components/Dashboard/DashboardHeader'
 
@@ -21,9 +21,8 @@ describe('DashboardHeader', () => {
     hasApiKey: true,
     needsPush: false,
     onSync: vi.fn(),
-    onOpenPushDialog: vi.fn(),
+    onPush: vi.fn(),
     onOpenReviewModal: vi.fn(),
-    onNavigateToSettings: vi.fn(),
     onDismissError: vi.fn(),
   }
 
@@ -54,16 +53,10 @@ describe('DashboardHeader', () => {
       expect(screen.getByText('Network error')).toBeInTheDocument()
     })
 
-    it('renders settings button when onNavigateToSettings is provided', () => {
+    it('renders settings link', () => {
       render(<DashboardHeader {...defaultProps} />)
 
       expect(screen.getByLabelText('Settings')).toBeInTheDocument()
-    })
-
-    it('does not render settings button when onNavigateToSettings is undefined', () => {
-      render(<DashboardHeader {...defaultProps} onNavigateToSettings={undefined} />)
-
-      expect(screen.queryByLabelText('Settings')).not.toBeInTheDocument()
     })
   })
 
@@ -98,89 +91,168 @@ describe('DashboardHeader', () => {
     })
   })
 
-  describe('sync button', () => {
-    it('calls onSync when sync button is clicked', async () => {
-      const user = userEvent.setup()
-      const onSync = vi.fn()
-      render(<DashboardHeader {...defaultProps} onSync={onSync} />)
+  describe('sync button (split button)', () => {
+    describe('when needsPush is false', () => {
+      it('shows Fetch as primary action', () => {
+        render(<DashboardHeader {...defaultProps} needsPush={false} />)
 
-      const syncButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
-      await user.click(syncButton)
+        const fetchButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
+        expect(fetchButton).toBeInTheDocument()
+      })
 
-      expect(onSync).toHaveBeenCalled()
+      it('calls onSync when primary button is clicked', async () => {
+        const user = userEvent.setup()
+        const onSync = vi.fn()
+        render(<DashboardHeader {...defaultProps} needsPush={false} onSync={onSync} />)
+
+        const fetchButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
+        await user.click(fetchButton)
+
+        expect(onSync).toHaveBeenCalled()
+      })
+
+      it('shows Push to Hevy in dropdown', async () => {
+        const user = userEvent.setup()
+        render(<DashboardHeader {...defaultProps} needsPush={false} />)
+
+        // Open dropdown
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+
+        expect(screen.getByRole('menuitem', { name: /push to hevy/i })).toBeInTheDocument()
+      })
+
+      it('calls onPush when Push to Hevy is selected from dropdown', async () => {
+        const user = userEvent.setup()
+        const onPush = vi.fn()
+        render(<DashboardHeader {...defaultProps} needsPush={false} onPush={onPush} />)
+
+        // Open dropdown and click Push to Hevy
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+        await user.click(screen.getByRole('menuitem', { name: /push to hevy/i }))
+
+        expect(onPush).toHaveBeenCalled()
+      })
     })
 
-    it('disables sync button when offline', () => {
-      render(<DashboardHeader {...defaultProps} isOffline={true} />)
+    describe('when needsPush is true', () => {
+      it('shows Push to Hevy as primary action', () => {
+        render(<DashboardHeader {...defaultProps} needsPush={true} />)
 
-      const syncButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
-      expect(syncButton).toBeDisabled()
+        const pushButton = screen.getByRole('button', { name: /push changes to hevy/i })
+        expect(pushButton).toBeInTheDocument()
+      })
+
+      it('calls onPush when primary button is clicked', async () => {
+        const user = userEvent.setup()
+        const onPush = vi.fn()
+        render(<DashboardHeader {...defaultProps} needsPush={true} onPush={onPush} />)
+
+        const pushButton = screen.getByRole('button', { name: /push changes to hevy/i })
+        await user.click(pushButton)
+
+        expect(onPush).toHaveBeenCalled()
+      })
+
+      it('shows Fetch in dropdown', async () => {
+        const user = userEvent.setup()
+        render(<DashboardHeader {...defaultProps} needsPush={true} />)
+
+        // Open dropdown
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+
+        expect(screen.getByRole('menuitem', { name: /fetch/i })).toBeInTheDocument()
+      })
+
+      it('shows badge indicator when needsPush is true', () => {
+        render(<DashboardHeader {...defaultProps} needsPush={true} />)
+
+        expect(screen.getByLabelText('Changes need to be pushed to Hevy')).toBeInTheDocument()
+      })
     })
 
-    it('disables sync button when no API key', () => {
-      render(<DashboardHeader {...defaultProps} hasApiKey={false} />)
+    describe('disabled states', () => {
+      it('disables buttons when offline', () => {
+        render(<DashboardHeader {...defaultProps} isOffline={true} />)
 
-      const syncButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
-      expect(syncButton).toBeDisabled()
-    })
-  })
+        const fetchButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        expect(fetchButton).toBeDisabled()
+        expect(dropdownToggle).toBeDisabled()
+      })
 
-  describe('update hevy button', () => {
-    it('calls onOpenPushDialog when update button is clicked', async () => {
-      const user = userEvent.setup()
-      const onOpenPushDialog = vi.fn()
-      render(<DashboardHeader {...defaultProps} onOpenPushDialog={onOpenPushDialog} />)
+      it('disables buttons when no API key', () => {
+        render(<DashboardHeader {...defaultProps} hasApiKey={false} />)
 
-      const updateButton = screen.getByRole('button', { name: /push to hevy/i })
-      await user.click(updateButton)
+        const fetchButton = screen.getByRole('button', { name: /fetch workouts from hevy/i })
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        expect(fetchButton).toBeDisabled()
+        expect(dropdownToggle).toBeDisabled()
+      })
 
-      expect(onOpenPushDialog).toHaveBeenCalled()
-    })
+      it('does not show badge indicator when button is disabled', () => {
+        render(<DashboardHeader {...defaultProps} needsPush={true} isOffline={true} />)
 
-    it('disables update button when offline', () => {
-      render(<DashboardHeader {...defaultProps} isOffline={true} />)
-
-      const updateButton = screen.getByRole('button', { name: /push to hevy/i })
-      expect(updateButton).toBeDisabled()
-    })
-
-    it('disables update button when no API key', () => {
-      render(<DashboardHeader {...defaultProps} hasApiKey={false} />)
-
-      const updateButton = screen.getByRole('button', { name: /push to hevy/i })
-      expect(updateButton).toBeDisabled()
+        expect(screen.queryByLabelText('Changes need to be pushed to Hevy')).not.toBeInTheDocument()
+      })
     })
 
-    it('shows badge indicator when needsPush is true', () => {
-      render(<DashboardHeader {...defaultProps} needsPush={true} />)
+    describe('dropdown behavior', () => {
+      it('closes dropdown when clicking outside', async () => {
+        const user = userEvent.setup()
+        render(<DashboardHeader {...defaultProps} />)
 
-      // Badge has aria-label for accessibility
-      expect(screen.getByLabelText('Changes need to be pushed to Hevy')).toBeInTheDocument()
-    })
+        // Open dropdown
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+        expect(screen.getByRole('menu')).toBeInTheDocument()
 
-    it('does not show badge indicator when needsPush is false', () => {
-      render(<DashboardHeader {...defaultProps} needsPush={false} />)
+        // Click outside (on the header title)
+        await user.click(screen.getByText('GZCLP Tracker'))
 
-      expect(screen.queryByLabelText('Changes need to be pushed to Hevy')).not.toBeInTheDocument()
-    })
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      })
 
-    it('does not show badge indicator when button is disabled', () => {
-      render(<DashboardHeader {...defaultProps} needsPush={true} isOffline={true} />)
+      it('closes dropdown when selecting an option', async () => {
+        const user = userEvent.setup()
+        render(<DashboardHeader {...defaultProps} needsPush={false} />)
 
-      // Badge should be hidden when button is disabled
-      expect(screen.queryByLabelText('Changes need to be pushed to Hevy')).not.toBeInTheDocument()
+        // Open dropdown
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+        expect(screen.getByRole('menu')).toBeInTheDocument()
+
+        // Select an option
+        await user.click(screen.getByRole('menuitem', { name: /push to hevy/i }))
+
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      })
+
+      it('closes dropdown on escape key', async () => {
+        const user = userEvent.setup()
+        render(<DashboardHeader {...defaultProps} />)
+
+        // Open dropdown
+        const dropdownToggle = screen.getByRole('button', { name: /more sync options/i })
+        await user.click(dropdownToggle)
+        expect(screen.getByRole('menu')).toBeInTheDocument()
+
+        // Press escape
+        await user.keyboard('{Escape}')
+
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      })
     })
   })
 
   describe('settings navigation', () => {
-    it('calls onNavigateToSettings when settings button is clicked', async () => {
-      const user = userEvent.setup()
-      const onNavigateToSettings = vi.fn()
-      render(<DashboardHeader {...defaultProps} onNavigateToSettings={onNavigateToSettings} />)
+    it('settings link points to /settings', () => {
+      render(<DashboardHeader {...defaultProps} />)
 
-      await user.click(screen.getByLabelText('Settings'))
-
-      expect(onNavigateToSettings).toHaveBeenCalled()
+      const settingsLink = screen.getByLabelText('Settings')
+      expect(settingsLink).toHaveAttribute('href', '/settings')
     })
   })
 

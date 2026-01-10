@@ -27,11 +27,7 @@ import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 import { TodaysWorkoutModal } from './TodaysWorkoutModal'
 import { PushConfirmDialog } from './PushConfirmDialog'
 
-interface DashboardProps {
-  onNavigateToSettings?: () => void
-}
-
-export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
+export function Dashboard() {
   const {
     state,
     updateProgressionBatch,
@@ -42,6 +38,8 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     recordHistoryEntry,
     setProgressionHistory,
     acknowledgeDiscrepancy,
+    setTotalWorkouts,
+    setMostRecentWorkoutDate,
   } = useProgram()
   const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, progressionHistory } = state
   // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
@@ -83,6 +81,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     hevyRoutineIds: program.hevyRoutineIds,
     isOnline,
     onLastSyncUpdate: setLastSync,
+    onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
   })
 
   // Handle progression updates from pending changes
@@ -101,6 +100,15 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
       setCurrentDay(nextDay)
     },
     [setCurrentDay]
+  )
+
+  // Handle workout completion - update stats
+  const handleWorkoutComplete = useCallback(
+    (workoutDate: string) => {
+      setTotalWorkouts(state.totalWorkouts + 1)
+      setMostRecentWorkoutDate(workoutDate)
+    },
+    [state.totalWorkouts, setTotalWorkouts, setMostRecentWorkoutDate]
   )
 
   // Merge stored pending changes with sync-generated ones
@@ -132,6 +140,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
     currentDay: program.currentDay,
     onDayAdvance: handleDayAdvance,
     onRecordHistory: recordHistoryEntry,
+    onWorkoutComplete: handleWorkoutComplete,
   })
 
   // Create Hevy client
@@ -248,7 +257,7 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
   const isOffline = !isOnline || !isHevyReachable
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Offline Indicator [T102] */}
       <OfflineIndicator
         isOnline={isOnline}
@@ -267,10 +276,9 @@ export function Dashboard({ onNavigateToSettings }: DashboardProps = {}) {
         hasApiKey={!!apiKey}
         needsPush={state.needsPush}
         onSync={() => { void handleSync() }}
-        onOpenPushDialog={() => { void handleOpenPushDialog() }}
+        onPush={() => { void handleOpenPushDialog() }}
         onOpenReviewModal={() => { setIsReviewModalOpen(true) }}
         onDismissError={clearError}
-        {...(onNavigateToSettings ? { onNavigateToSettings } : {})}
       />
 
       {/* Alerts Section */}
@@ -340,7 +348,6 @@ export { CurrentWorkout } from './CurrentWorkout'
 export { T3Overview } from './T3Overview'
 export { TierSection } from './TierSection'
 export { PendingBadge } from './PendingBadge'
-export { UpdateHevyButton } from './UpdateHevyButton'
 export { UpdateStatus } from './UpdateStatus'
 export { DashboardHeader } from './DashboardHeader'
 export { DashboardAlerts } from './DashboardAlerts'
