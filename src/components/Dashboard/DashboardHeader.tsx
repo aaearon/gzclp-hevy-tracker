@@ -55,13 +55,13 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   return (
     <header className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-      <div className="container mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">GZCLP Tracker</h1>
+      <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-4">
+        <div className="min-w-0 flex-shrink">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">GZCLP Tracker</h1>
           <SyncStatus lastSyncTime={lastSync} error={syncError} onDismissError={onDismissError} />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Pending changes indicator */}
           {pendingChangesCount > 0 && (
             <button
