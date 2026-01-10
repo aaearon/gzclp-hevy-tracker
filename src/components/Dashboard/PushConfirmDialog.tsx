@@ -74,7 +74,7 @@ function ExerciseActionSelector({
   if (!isChanged) {
     return (
       <div className="flex gap-0.5 text-xs">
-        <span className="px-2 py-1 rounded bg-gray-200 text-gray-600">No change</span>
+        <span className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">No change</span>
       </div>
     )
   }
