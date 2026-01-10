@@ -103,7 +103,20 @@ export function T3Overview({
                   {prog ? formatWeight(prog.currentWeight, weightUnit) : 'TBD'}
                 </span>
                 {prog && prog.amrapRecord > 0 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p
+                    className="text-xs text-gray-500 dark:text-gray-400 cursor-help"
+                    title={prog.amrapRecordDate
+                      ? `Set on ${new Date(prog.amrapRecordDate).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}`
+                      : 'PR date unknown'
+                    }
+                  >
                     PR: {prog.amrapRecord} reps
                   </p>
                 )}

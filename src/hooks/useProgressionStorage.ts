@@ -134,6 +134,8 @@ export function useProgressionStorage(): UseProgressionStorageResult {
             lastWorkoutId: null,
             lastWorkoutDate: null,
             amrapRecord: 0,
+            amrapRecordDate: null,
+            amrapRecordWorkoutId: null,
           },
         },
       }))

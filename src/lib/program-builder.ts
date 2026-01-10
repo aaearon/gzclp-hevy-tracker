@@ -69,7 +69,9 @@ function createProgressionEntry(
   stage: Stage,
   lastWorkoutId: string | null = null,
   lastWorkoutDate: string | null = null,
-  amrapRecord = 0
+  amrapRecord = 0,
+  amrapRecordDate: string | null = null,
+  amrapRecordWorkoutId: string | null = null
 ): ProgressionState {
   return {
     exerciseId,
@@ -79,6 +81,8 @@ function createProgressionEntry(
     lastWorkoutId,
     lastWorkoutDate,
     amrapRecord,
+    amrapRecordDate,
+    amrapRecordWorkoutId,
   }
 }
 

@@ -11,8 +11,16 @@
 
 import type { GZCLPDay, MainLiftRole, ProgressionState, Stage, WeightUnit } from '@/types/state'
 import { getRepScheme, ROLE_DISPLAY, STAGE_DISPLAY } from '@/lib/constants'
-import { formatWeight } from '@/utils/formatting'
+import { formatWeight, convertWeight } from '@/utils/formatting'
 import { getTierForDay, getProgressionKey } from '@/lib/role-utils'
+import { calculateWarmupSets } from '@/lib/warmup'
+
+function formatWarmupWeight(weightKg: number, weightUnit: WeightUnit): string {
+  if (weightUnit === 'lbs') {
+    return formatWeight(convertWeight(weightKg, 'kg', 'lbs'), 'lbs')
+  }
+  return formatWeight(weightKg, 'kg')
+}
 
 export interface MainLiftCardProps {
   role: MainLiftRole
@@ -65,6 +73,7 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
 
   const scheme = getRepScheme(tier, progression.stage)
   const stageLabel = STAGE_DISPLAY[progression.stage]
+  const warmupSets = tier === 'T1' ? calculateWarmupSets(progression.currentWeight) : []
 
   return (
     <div
@@ -103,6 +112,23 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
         {/* Rep scheme */}
         <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{scheme.display}</span>
       </div>
+
+      {/* Warmup Sets - T1 only */}
+      {warmupSets.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          <span className="flex h-4 w-4 items-center justify-center rounded bg-yellow-500 text-[10px] font-bold text-white shrink-0">
+            W
+          </span>
+          {warmupSets.map((set, index) => (
+            <span
+              key={index}
+              className="rounded-full bg-yellow-100 dark:bg-yellow-800/50 px-1.5 py-0.5 text-[10px] font-medium text-yellow-800 dark:text-yellow-200"
+            >
+              {formatWarmupWeight(set.weight, weightUnit)} × {set.reps}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

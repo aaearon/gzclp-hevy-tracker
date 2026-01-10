@@ -49,6 +49,13 @@ export function applyPendingChange(
     updatedProgression.baseWeight = change.newWeight
   }
 
+  // Update AMRAP record if a new PR was achieved
+  if (change.newPR && change.newAmrapRecord !== undefined) {
+    updatedProgression.amrapRecord = change.newAmrapRecord
+    updatedProgression.amrapRecordDate = change.workoutDate
+    updatedProgression.amrapRecordWorkoutId = change.workoutId
+  }
+
   return {
     ...progression,
     [key]: updatedProgression,

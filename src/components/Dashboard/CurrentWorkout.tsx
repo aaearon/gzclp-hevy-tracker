@@ -10,8 +10,9 @@
 import { useMemo } from 'react'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { formatWeight } from '@/utils/formatting'
+import { formatWeight, convertWeight } from '@/utils/formatting'
 import { getExercisesForDay, getProgressionKey } from '@/lib/role-utils'
+import { calculateWarmupSets } from '@/lib/warmup'
 
 interface CurrentWorkoutProps {
   day: GZCLPDay
@@ -19,7 +20,6 @@ interface CurrentWorkoutProps {
   progression: Record<string, ProgressionState>
   weightUnit: WeightUnit
   t3Schedule: Record<GZCLPDay, string[]>
-  onStartWorkout: () => void
 }
 
 export function CurrentWorkout({
@@ -28,7 +28,6 @@ export function CurrentWorkout({
   progression,
   weightUnit,
   t3Schedule,
-  onStartWorkout,
 }: CurrentWorkoutProps) {
   // Get exercises for today using role-based grouping
   const dayExercises = useMemo(
@@ -46,11 +45,13 @@ export function CurrentWorkout({
     if (!prog) return null
 
     const scheme = getRepScheme('T1', prog.stage)
+    const warmupSets = calculateWarmupSets(prog.currentWeight)
 
     return {
       exercise: dayExercises.t1,
       progression: prog,
       scheme,
+      warmupSets,
     }
   }, [dayExercises.t1, progression])
 
@@ -88,6 +89,14 @@ export function CurrentWorkout({
 
   const hasExercises = t1Data || t2Data || t3Data.length > 0
 
+  // Convert weight for display based on unit preference
+  const displayWeight = (weightKg: number): string => {
+    if (weightUnit === 'lbs') {
+      return formatWeight(convertWeight(weightKg, 'kg', 'lbs'), 'lbs')
+    }
+    return formatWeight(weightKg, 'kg')
+  }
+
   return (
     <div data-testid="current-workout" className="rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950 dark:to-gray-800 p-6 shadow-sm">
       {/* Header */}
@@ -96,29 +105,16 @@ export function CurrentWorkout({
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Next Workout</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">GZCLP Day {day}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full bg-indigo-600 px-4 py-2 text-lg font-bold text-white">
-            {day}
-          </span>
-          <button
-            type="button"
-            onClick={onStartWorkout}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 min-h-[44px]"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Details
-          </button>
-        </div>
+        <span className="rounded-full bg-indigo-600 px-4 py-2 text-lg font-bold text-white">
+          {day}
+        </span>
       </div>
 
       {hasExercises ? (
         <div className="space-y-4">
           {/* Main Lifts Row - T1 and T2 side by side */}
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* T1 Exercise */}
+            {/* T1 Exercise with warmup pills */}
             {t1Data && (
               <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4">
                 <div className="mb-2 flex items-center gap-2">
@@ -137,6 +133,23 @@ export function CurrentWorkout({
                     {formatWeight(t1Data.progression.currentWeight, weightUnit)}
                   </span>
                 </div>
+
+                {/* Warmup Sets - Pills at bottom */}
+                {t1Data.warmupSets.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-yellow-500 text-xs font-bold text-white shrink-0">
+                      W
+                    </span>
+                    {t1Data.warmupSets.map((set, index) => (
+                      <span
+                        key={index}
+                        className="rounded-full bg-yellow-100 dark:bg-yellow-800/50 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:text-yellow-200"
+                      >
+                        {displayWeight(set.weight)} × {set.reps}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

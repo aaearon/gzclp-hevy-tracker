@@ -383,6 +383,8 @@ export interface PendingChangeSummaryFields {
   setsCompleted: number
   setsTarget: number
   newPR: boolean
+  /** New AMRAP record value when a PR is achieved */
+  newAmrapRecord?: number
 }
 
 /**
@@ -442,6 +444,9 @@ export function createPendingChange(
     change.setsCompleted = summaryFields.setsCompleted
     change.setsTarget = summaryFields.setsTarget
     change.newPR = summaryFields.newPR
+    if (summaryFields.newAmrapRecord !== undefined) {
+      change.newAmrapRecord = summaryFields.newAmrapRecord
+    }
   }
   if (result.amrapReps !== undefined) {
     change.amrapReps = result.amrapReps
@@ -515,6 +520,9 @@ export function createPendingChangesFromAnalysis(
         : 3 // T3 default
     const newPR = progressionResult.amrapReps !== undefined &&
       progressionResult.amrapReps > exerciseProgression.amrapRecord
+    const newAmrapRecord = newPR && progressionResult.amrapReps !== undefined
+      ? progressionResult.amrapReps
+      : undefined
 
     // Create pending change
     const pendingChange = createPendingChange(
@@ -524,7 +532,7 @@ export function createPendingChangesFromAnalysis(
       result.workoutId,
       result.workoutDate,
       day,
-      { setsCompleted, setsTarget, newPR }
+      { setsCompleted, setsTarget, newPR, newAmrapRecord }
     )
 
     pendingChanges.push(pendingChange)

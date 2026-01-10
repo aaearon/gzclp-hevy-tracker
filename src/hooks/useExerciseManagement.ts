@@ -110,6 +110,8 @@ export function useExerciseManagement({
           lastWorkoutId: null,
           lastWorkoutDate: null,
           amrapRecord: 0,
+          amrapRecordDate: null,
+          amrapRecordWorkoutId: null,
         },
       })
 

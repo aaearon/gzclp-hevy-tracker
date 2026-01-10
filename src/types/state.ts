@@ -118,7 +118,12 @@ export interface ProgressionState {
   baseWeight: number
   lastWorkoutId: string | null
   lastWorkoutDate: string | null
+  /** Best AMRAP rep count achieved */
   amrapRecord: number
+  /** ISO date when the AMRAP record was set (null for legacy/unknown) */
+  amrapRecordDate: string | null
+  /** Workout ID where the AMRAP record was set (null for legacy/unknown) */
+  amrapRecordWorkoutId: string | null
 }
 
 // =============================================================================
@@ -219,6 +224,8 @@ export interface PendingChange {
   success?: boolean
   /** Whether AMRAP beat previous record */
   newPR?: boolean
+  /** New AMRAP record value (max of current and amrapReps) */
+  newAmrapRecord?: number
 }
 
 // =============================================================================

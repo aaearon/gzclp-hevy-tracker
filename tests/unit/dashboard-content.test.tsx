@@ -5,12 +5,12 @@
  * the main content area with stats, workouts, and charts.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DashboardContent } from '@/components/Dashboard/DashboardContent'
 import type { GZCLPState } from '@/types/state'
-import { createGZCLPState, createMainLiftConfig, createProgressionState, createT3Config } from '../helpers/state-generator'
+import { createGZCLPState } from '../helpers/state-generator'
 
 describe('DashboardContent', () => {
   // Create a minimal state with required data
@@ -47,7 +47,6 @@ describe('DashboardContent', () => {
 
   const defaultProps = {
     state: createTestState(),
-    onStartWorkout: vi.fn(),
   }
 
   describe('rendering', () => {
@@ -106,16 +105,6 @@ describe('DashboardContent', () => {
   })
 
   describe('interactions', () => {
-    it('calls onStartWorkout when Details button is clicked in CurrentWorkout', async () => {
-      const user = userEvent.setup()
-      const onStartWorkout = vi.fn()
-      render(<DashboardContent {...defaultProps} onStartWorkout={onStartWorkout} />)
-
-      await user.click(screen.getByRole('button', { name: /details/i }))
-
-      expect(onStartWorkout).toHaveBeenCalled()
-    })
-
     it('expands Progression Charts when clicked', async () => {
       const user = userEvent.setup()
       render(<DashboardContent {...defaultProps} />)

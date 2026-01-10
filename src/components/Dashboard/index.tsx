@@ -17,14 +17,13 @@ import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { usePushDialog } from '@/hooks/usePushDialog'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
-import { importProgressionHistory } from '@/lib/history-importer'
+import { importProgressionHistory, backfillAmrapRecords, applyAmrapBackfill } from '@/lib/history-importer'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
 import { DashboardContent } from './DashboardContent'
 import { ReviewModal } from '@/components/ReviewModal'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
-import { TodaysWorkoutModal } from './TodaysWorkoutModal'
 import { PushConfirmDialog } from './PushConfirmDialog'
 
 export function Dashboard() {
@@ -50,9 +49,6 @@ export function Dashboard() {
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
-
-  // Today's Workout modal state [GAP-15]
-  const [showTodaysWorkout, setShowTodaysWorkout] = useState(false)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -180,6 +176,44 @@ export function Dashboard() {
     })()
   }, [apiKey, hevyClient, exercises, progressionHistory, program.hevyRoutineIds, setProgressionHistory])
 
+  // Auto-backfill AMRAP records if they're missing dates (for migration/new feature)
+  const hasBackfilledAmrap = useRef(false)
+  useEffect(() => {
+    // Only run once
+    if (hasBackfilledAmrap.current) return
+    if (!apiKey || !hevyClient) return
+    if (Object.keys(exercises).length === 0) return
+    if (Object.keys(progression).length === 0) return
+
+    // Check if we need to backfill (has amrapRecord but no amrapRecordDate)
+    const needsBackfill = Object.values(progression).some(
+      (p) => p.amrapRecord > 0 && !p.amrapRecordDate
+    )
+    if (!needsBackfill) return
+
+    const routineIdsConfigured = Object.values(program.hevyRoutineIds).some((id) => id !== null)
+    if (!routineIdsConfigured) return
+
+    hasBackfilledAmrap.current = true
+
+    // Backfill AMRAP records in background
+    void (async () => {
+      try {
+        const result = await backfillAmrapRecords(
+          hevyClient,
+          exercises,
+          program.hevyRoutineIds
+        )
+        if (result.records.length > 0) {
+          const updatedProgression = applyAmrapBackfill(progression, result.records)
+          updateProgressionBatch(updatedProgression)
+        }
+      } catch {
+        // Silently fail - tooltips will just show "unknown"
+      }
+    })()
+  }, [apiKey, hevyClient, exercises, progression, program.hevyRoutineIds, updateProgressionBatch])
+
   // Use push dialog hook for push confirmation dialog [Task 3.3]
   const {
     isOpen: isPushDialogOpen,
@@ -294,10 +328,7 @@ export function Dashboard() {
       />
 
       {/* Main Content */}
-      <DashboardContent
-        state={state}
-        onStartWorkout={() => { setShowTodaysWorkout(true) }}
-      />
+      <DashboardContent state={state} />
 
       {/* Review Modal */}
       <ReviewModal
@@ -311,17 +342,6 @@ export function Dashboard() {
         onClose={() => { setIsReviewModalOpen(false) }}
         recentlyRejected={recentlyRejected}
         onUndoReject={undoReject}
-      />
-
-      {/* Today's Workout Modal [GAP-15] */}
-      <TodaysWorkoutModal
-        isOpen={showTodaysWorkout}
-        onClose={() => { setShowTodaysWorkout(false) }}
-        day={program.currentDay}
-        exercises={exercises}
-        progression={progression}
-        weightUnit={settings.weightUnit}
-        t3Schedule={t3Schedule}
       />
 
       {/* Push Confirmation Dialog */}

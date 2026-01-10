@@ -18,8 +18,9 @@ import type {
   Tier,
   UserSettings,
 } from '@/types/state'
-import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME, WARMUP_CONFIG } from './constants'
+import { T1_SCHEMES, T2_SCHEMES, T3_SCHEME } from './constants'
 import { getT1RoleForDay, getT2RoleForDay, getTierForDay, getProgressionKey } from './role-utils'
+import { calculateWarmupSets } from './warmup'
 
 // =============================================================================
 // Constants
@@ -47,49 +48,16 @@ function toKilograms(weight: number, unit: 'kg' | 'lbs'): number {
 // =============================================================================
 
 /**
- * Round weight to nearest increment.
- */
-function roundToNearest(weight: number, increment: number): number {
-  return Math.round(weight / increment) * increment
-}
-
-/**
- * Build warmup sets for T1 exercises.
+ * Build warmup sets for T1 exercises in Hevy API format.
  *
- * Light lifts (≤40kg): Bar only x10, 50% x5, 75% x3
- * Heavy lifts (>40kg): 50% x5, 70% x3, 85% x2
- *
- * Smart filtering: skip duplicate weights.
+ * Uses shared calculateWarmupSets utility and transforms to RoutineSetWrite format.
  */
 export function buildWarmupSets(workingWeightKg: number): RoutineSetWrite[] {
-  const BAR_WEIGHT = WARMUP_CONFIG.minWeight
-  const isHeavy = workingWeightKg > WARMUP_CONFIG.heavyThreshold
-
-  const percentages = isHeavy ? WARMUP_CONFIG.heavyPercentages : WARMUP_CONFIG.lightPercentages
-  const reps = isHeavy ? WARMUP_CONFIG.heavyReps : WARMUP_CONFIG.lightReps
-
-  const sets: RoutineSetWrite[] = []
-
-  for (let i = 0; i < percentages.length; i++) {
-    const pct = percentages[i]
-    if (pct === undefined) continue
-
-    const weight =
-      pct === 0 ? BAR_WEIGHT : Math.max(BAR_WEIGHT, roundToNearest(workingWeightKg * pct, 2.5))
-
-    // Smart filtering: skip if weight equals previous set (avoid duplicates)
-    const lastSet = sets[sets.length - 1]
-    if (lastSet?.weight_kg === weight) {
-      continue
-    }
-
-    const repCount = reps[i]
-    if (repCount !== undefined) {
-      sets.push({ type: 'warmup', weight_kg: weight, reps: repCount })
-    }
-  }
-
-  return sets
+  return calculateWarmupSets(workingWeightKg).map((set) => ({
+    type: 'warmup' as const,
+    weight_kg: set.weight,
+    reps: set.reps,
+  }))
 }
 
 // =============================================================================

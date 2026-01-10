@@ -61,6 +61,37 @@ export function calculateTotalWorkouts(
 }
 
 /**
+ * Get the most recent workout date.
+ * Uses storedDate if provided, otherwise falls back to progression data.
+ *
+ * @param progression Record of exercise progression states
+ * @param storedDate Optional stored date from state (from Hevy API)
+ * @returns Date object of last workout, or null if no workouts
+ */
+export function getLastWorkoutDate(
+  progression: Record<string, ProgressionState>,
+  storedDate?: string | null
+): Date | null {
+  // Try stored date first
+  if (storedDate) {
+    return new Date(storedDate)
+  }
+
+  // Fall back to progression data
+  let latestDate: Date | null = null
+  for (const p of Object.values(progression)) {
+    if (p.lastWorkoutDate) {
+      const date = new Date(p.lastWorkoutDate)
+      if (!latestDate || date > latestDate) {
+        latestDate = date
+      }
+    }
+  }
+
+  return latestDate
+}
+
+/**
  * Calculate days since the most recent workout.
  * Uses storedDate if provided, otherwise falls back to progression data.
  *
@@ -72,25 +103,55 @@ export function calculateDaysSinceLastWorkout(
   progression: Record<string, ProgressionState>,
   storedDate?: string | null
 ): number | null {
-  let latestDate: Date | null = null
-
-  // Try stored date first
-  if (storedDate) {
-    latestDate = new Date(storedDate)
-  } else {
-    // Fall back to progression data
-    for (const p of Object.values(progression)) {
-      if (p.lastWorkoutDate) {
-        const date = new Date(p.lastWorkoutDate)
-        if (!latestDate || date > latestDate) {
-          latestDate = date
-        }
-      }
-    }
-  }
+  const latestDate = getLastWorkoutDate(progression, storedDate)
 
   if (!latestDate) return null
 
   const msPerDay = 24 * 60 * 60 * 1000
   return Math.floor((Date.now() - latestDate.getTime()) / msPerDay)
+}
+
+/**
+ * Format last workout info for display.
+ * Returns contextual subtitle based on how recent the workout was.
+ *
+ * @param lastWorkoutDate Date of last workout
+ * @param daysSince Number of days since last workout
+ * @returns Object with display value and contextual subtitle
+ */
+export function formatLastWorkoutDisplay(
+  lastWorkoutDate: Date | null,
+  daysSince: number | null
+): { value: string; subtitle: string } {
+  if (lastWorkoutDate === null || daysSince === null) {
+    return { value: '-', subtitle: 'No workouts yet' }
+  }
+
+  // Today: show time
+  if (daysSince === 0) {
+    const timeStr = lastWorkoutDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+    return { value: 'Today', subtitle: `at ${timeStr}` }
+  }
+
+  // Yesterday
+  if (daysSince === 1) {
+    return { value: '1', subtitle: 'Yesterday' }
+  }
+
+  // 2-6 days: show weekday name
+  if (daysSince <= 6) {
+    const weekday = lastWorkoutDate.toLocaleDateString('en-US', { weekday: 'long' })
+    return { value: String(daysSince), subtitle: weekday }
+  }
+
+  // 7+ days: show short date
+  const dateStr = lastWorkoutDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+  return { value: String(daysSince), subtitle: dateStr }
 }

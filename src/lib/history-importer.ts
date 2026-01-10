@@ -11,11 +11,13 @@ import type {
   GZCLPDay,
   ExerciseHistory,
   ProgressionHistoryEntry,
+  ProgressionState,
   Tier,
 } from '@/types/state'
 import {
   matchWorkoutToExercises,
   extractWorkingWeight,
+  extractRepsFromSets,
   sortWorkoutsChronologically,
 } from './workout-analysis'
 import { getTierForDay, isMainLiftRole, getProgressionKey } from './role-utils'
@@ -31,6 +33,25 @@ export interface HistoryImportResult {
   workoutCount: number
   /** Number of history entries created */
   entryCount: number
+}
+
+/** AMRAP record info for backfilling PR data */
+export interface AmrapRecordInfo {
+  /** Progression key (exerciseId for T3, role-tier for main lifts) */
+  progressionKey: string
+  /** Best AMRAP rep count found in history */
+  amrapRecord: number
+  /** ISO date when the record was set */
+  amrapRecordDate: string
+  /** Workout ID where the record was set */
+  amrapRecordWorkoutId: string
+}
+
+export interface AmrapBackfillResult {
+  /** AMRAP records found for each exercise */
+  records: AmrapRecordInfo[]
+  /** Number of workouts scanned */
+  workoutsScanned: number
 }
 
 // =============================================================================
@@ -159,4 +180,111 @@ export async function importProgressionHistory(
   }
 
   return { history, workoutCount, entryCount }
+}
+
+// =============================================================================
+// AMRAP Record Backfill
+// =============================================================================
+
+/**
+ * Backfill AMRAP records from historical workout data.
+ * Scans all workouts to find the highest AMRAP for each exercise.
+ *
+ * For T1/T3 exercises, AMRAP is typically the last set of the working sets.
+ */
+export async function backfillAmrapRecords(
+  client: HevyClient,
+  exercises: Record<string, ExerciseConfig>,
+  hevyRoutineIds: Record<GZCLPDay, string | null>
+): Promise<AmrapBackfillResult> {
+  // Fetch all workouts from Hevy
+  const allWorkouts = await client.getAllWorkouts()
+
+  // Sort chronologically (oldest first) so we get the earliest occurrence of max
+  const sortedWorkouts = sortWorkoutsChronologically(allWorkouts)
+
+  // Track best AMRAP per progression key
+  const bestAmrap: Record<string, AmrapRecordInfo> = {}
+  let workoutsScanned = 0
+
+  for (const workout of sortedWorkouts) {
+    // Find which GZCLP day this workout belongs to
+    const day = findDayByRoutineId(workout.routine_id, hevyRoutineIds)
+    if (!day) continue // Skip non-GZCLP workouts
+
+    workoutsScanned++
+
+    // Match exercises in this workout
+    const matches = matchWorkoutToExercises(workout, exercises)
+
+    for (const match of matches) {
+      const { exerciseId, exerciseConfig, workoutExercise } = match
+
+      // Derive tier and get progression key
+      const tier = deriveTier(exerciseConfig.role, day)
+      const progressionKey = getProgressionKey(exerciseId, exerciseConfig.role, tier)
+
+      // Only T1 and T3 have AMRAP sets
+      if (tier === 'T2') continue
+
+      // Extract reps from working sets
+      const reps = extractRepsFromSets(workoutExercise.sets)
+      if (reps.length === 0) continue
+
+      // AMRAP is typically the last set
+      const amrapReps = reps[reps.length - 1] ?? 0
+      if (amrapReps <= 0) continue
+
+      // Check if this is a new record
+      const existing = bestAmrap[progressionKey]
+      if (!existing || amrapReps > existing.amrapRecord) {
+        bestAmrap[progressionKey] = {
+          progressionKey,
+          amrapRecord: amrapReps,
+          amrapRecordDate: workout.start_time,
+          amrapRecordWorkoutId: workout.id,
+        }
+      }
+    }
+  }
+
+  return {
+    records: Object.values(bestAmrap),
+    workoutsScanned,
+  }
+}
+
+/**
+ * Apply backfilled AMRAP records to progression state.
+ * Only updates if the backfilled record is >= current record.
+ *
+ * @param progression - Current progression state
+ * @param records - AMRAP records from backfill
+ * @returns Updated progression state with AMRAP record info
+ */
+export function applyAmrapBackfill(
+  progression: Record<string, ProgressionState>,
+  records: AmrapRecordInfo[]
+): Record<string, ProgressionState> {
+  const updated = { ...progression }
+
+  for (const record of records) {
+    const existing = updated[record.progressionKey]
+    if (!existing) continue
+
+    // Only update if backfilled record is >= current (or no current date)
+    if (
+      record.amrapRecord >= existing.amrapRecord &&
+      (!existing.amrapRecordDate || record.amrapRecord > existing.amrapRecord)
+    ) {
+      updated[record.progressionKey] = {
+        ...existing,
+        amrapRecord: record.amrapRecord,
+        amrapRecordDate: record.amrapRecordDate,
+        amrapRecordWorkoutId: record.amrapRecordWorkoutId,
+      }
+    }
+  }
+
+  return updated
 }

@@ -29,11 +29,9 @@ const ProgressionChartContainer = lazy(() =>
 export interface DashboardContentProps {
   /** Full application state */
   state: GZCLPState
-  /** Callback when user clicks to view workout details */
-  onStartWorkout: () => void
 }
 
-export function DashboardContent({ state, onStartWorkout }: DashboardContentProps) {
+export function DashboardContent({ state }: DashboardContentProps) {
   const { exercises, progression, settings, program, t3Schedule, progressionHistory } = state
 
   // Defer chart data updates to prevent blocking UI [Task 4.3]
@@ -53,7 +51,6 @@ export function DashboardContent({ state, onStartWorkout }: DashboardContentProp
           progression={progression}
           weightUnit={settings.weightUnit}
           t3Schedule={t3Schedule}
-          onStartWorkout={onStartWorkout}
         />
 
         {/* Main Lifts Overview - T1/T2 Status [T036] */}
