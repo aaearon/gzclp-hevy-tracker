@@ -391,12 +391,12 @@ export function PushConfirmDialog({
           </div>
 
           <div className="space-y-3">
-            {preview.days.map((day, index) => (
+            {preview.days.map((day) => (
               <DaySection
                 key={day.day}
                 day={day}
                 weightUnit={weightUnit}
-                defaultOpen={index < 2}
+                defaultOpen={day.changeCount > 0}
                 onActionChange={onActionChange}
               />
             ))}
