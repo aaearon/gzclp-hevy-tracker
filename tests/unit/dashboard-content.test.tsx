@@ -7,7 +7,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { DashboardContent } from '@/components/Dashboard/DashboardContent'
 import type { GZCLPState } from '@/types/state'
 import { createGZCLPState } from '../helpers/state-generator'
@@ -101,24 +100,6 @@ describe('DashboardContent', () => {
       render(<DashboardContent {...defaultProps} />)
 
       expect(screen.getByText('Progression Charts')).toBeInTheDocument()
-    })
-  })
-
-  describe('interactions', () => {
-    it('expands Progression Charts when clicked', async () => {
-      const user = userEvent.setup()
-      render(<DashboardContent {...defaultProps} />)
-
-      const chartsSection = screen.getByText('Progression Charts')
-      const details = chartsSection.closest('details')
-
-      // Initially collapsed
-      expect(details).not.toHaveAttribute('open')
-
-      await user.click(chartsSection)
-
-      // Should be expanded
-      expect(details).toHaveAttribute('open')
     })
   })
 

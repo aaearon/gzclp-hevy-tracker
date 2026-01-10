@@ -16,7 +16,6 @@ import { QuickStats } from './QuickStats'
 import { CurrentWorkout } from './CurrentWorkout'
 import { MainLiftCard } from './MainLiftCard'
 import { T3Overview } from './T3Overview'
-import { CollapsibleSection } from '@/components/common/CollapsibleSection'
 import { ChartSkeleton } from '@/components/common/ChartSkeleton'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ErrorFallback } from '@/components/common/ErrorFallback'
@@ -81,7 +80,8 @@ export function DashboardContent({ state }: DashboardContentProps) {
         />
 
         {/* Progression Charts [Feature 007] - Lazy loaded [Task 3.4], Error boundary [Task 3.5], Deferred [Task 4.3] */}
-        <CollapsibleSection title="Progression Charts" defaultOpen={false}>
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Progression Charts</h2>
           <ErrorBoundary
             fallback={
               <ErrorFallback
@@ -100,7 +100,7 @@ export function DashboardContent({ state }: DashboardContentProps) {
               />
             </Suspense>
           </ErrorBoundary>
-        </CollapsibleSection>
+        </section>
       </div>
     </main>
   )
