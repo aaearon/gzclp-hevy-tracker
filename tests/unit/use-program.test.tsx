@@ -9,17 +9,21 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useProgram } from '@/hooks/useProgram'
-import { STORAGE_KEY } from '@/lib/constants'
+import { STORAGE_KEYS } from '@/lib/constants'
 
 describe('useProgram', () => {
   beforeEach(() => {
-    // Clear localStorage before each test
-    localStorage.removeItem(STORAGE_KEY)
+    // Clear all split storage keys before each test
+    localStorage.removeItem(STORAGE_KEYS.CONFIG)
+    localStorage.removeItem(STORAGE_KEYS.PROGRESSION)
+    localStorage.removeItem(STORAGE_KEYS.HISTORY)
   })
 
   afterEach(() => {
     // Clean up after each test
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(STORAGE_KEYS.CONFIG)
+    localStorage.removeItem(STORAGE_KEYS.PROGRESSION)
+    localStorage.removeItem(STORAGE_KEYS.HISTORY)
   })
 
   describe('setT3Schedule', () => {
@@ -54,8 +58,8 @@ describe('useProgram', () => {
         result.current.setT3Schedule(newSchedule)
       })
 
-      // Verify it was persisted
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+      // Verify it was persisted to config storage (t3Schedule is part of config)
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG) || '{}')
       expect(stored.t3Schedule).toEqual(newSchedule)
     })
 

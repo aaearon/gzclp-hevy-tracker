@@ -11,7 +11,40 @@ import type { ReactNode } from 'react'
 import { Dashboard } from '@/components/Dashboard'
 import { ToastProvider } from '@/contexts/ToastContext'
 import type { GZCLPState } from '@/types/state'
-import { STORAGE_KEY, CURRENT_STATE_VERSION } from '@/lib/constants'
+import type { ConfigState, ProgressionStore, HistoryState } from '@/types/storage'
+import { STORAGE_KEYS, CURRENT_STATE_VERSION } from '@/lib/constants'
+
+/**
+ * Helper to set up split localStorage from a GZCLPState
+ */
+function setupSplitStorage(state: GZCLPState) {
+  const configState: ConfigState = {
+    version: state.version,
+    apiKey: state.apiKey,
+    program: state.program,
+    settings: state.settings,
+    exercises: state.exercises,
+    t3Schedule: state.t3Schedule,
+  }
+
+  const progressionStore: ProgressionStore = {
+    progression: state.progression,
+    pendingChanges: state.pendingChanges,
+    lastSync: state.lastSync,
+    totalWorkouts: state.totalWorkouts ?? 0,
+    mostRecentWorkoutDate: state.mostRecentWorkoutDate ?? null,
+    acknowledgedDiscrepancies: state.acknowledgedDiscrepancies ?? [],
+    needsPush: state.needsPush ?? false,
+  }
+
+  const historyState: HistoryState = {
+    progressionHistory: state.progressionHistory,
+  }
+
+  localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(configState))
+  localStorage.setItem(STORAGE_KEYS.PROGRESSION, JSON.stringify(progressionStore))
+  localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(historyState))
+}
 
 // Mock Chart.js components (not supported in JSDOM)
 vi.mock('@/components/ProgressionChart', () => ({
@@ -191,7 +224,7 @@ describe('Dashboard Role-Based Grouping', () => {
   beforeEach(() => {
     localStorage.clear()
     const state = createMockState()
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    setupSplitStorage(state)
   })
 
   afterEach(() => {
@@ -244,7 +277,7 @@ describe('Dashboard Role-Based Grouping', () => {
     it('should show bench as T1 on day A2', () => {
       const state = createMockState()
       state.program.currentDay = 'A2'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
@@ -257,7 +290,7 @@ describe('Dashboard Role-Based Grouping', () => {
     it('should show ohp as T1 on day B1', () => {
       const state = createMockState()
       state.program.currentDay = 'B1'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
@@ -270,7 +303,7 @@ describe('Dashboard Role-Based Grouping', () => {
     it('should show deadlift as T1 on day B2', () => {
       const state = createMockState()
       state.program.currentDay = 'B2'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
@@ -291,7 +324,7 @@ describe('Dashboard Role-Based Grouping', () => {
         B2: [],
       }
       state.program.currentDay = 'A1'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
@@ -309,7 +342,7 @@ describe('Dashboard Role-Based Grouping', () => {
         B2: [],
       }
       state.program.currentDay = 'B1'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 
@@ -327,7 +360,7 @@ describe('Dashboard Role-Based Grouping', () => {
         B2: [],
       }
       state.program.currentDay = 'A2'
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      setupSplitStorage(state)
 
       render(<Dashboard />, { wrapper: TestWrapper })
 

@@ -13,7 +13,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['tests/*.ts', 'tests/*.tsx', 'tests/*/*.ts', 'tests/*/*.tsx'],
+          allowDefaultProject: ['tests/*.ts', 'tests/*.tsx', 'tests/*/*.ts', 'tests/*/*.tsx', 'tests/*/*/*.ts', 'tests/*/*/*.tsx'],
           maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50,
         },
         tsconfigRootDir: import.meta.dirname,
