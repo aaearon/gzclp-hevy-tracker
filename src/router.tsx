@@ -11,6 +11,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ProgramProvider } from '@/contexts/ProgramContext'
 import { PageSkeleton } from '@/components/common/PageSkeleton'
+import { StorageErrorBanner } from '@/components/common/StorageErrorBanner'
+import { DataRecoveryDialog } from '@/components/common/DataRecoveryDialog'
 import { useProgram } from '@/hooks/useProgram'
 import { useDataMaintenance } from '@/hooks/useDataMaintenance'
 
@@ -71,6 +73,12 @@ function RootLayout() {
     <ErrorBoundary>
       <ToastProvider>
         <AppProviders>
+          {/* Storage error UI - shows warnings and recovery dialogs */}
+          <div className="fixed top-4 left-4 right-4 z-50 max-w-xl mx-auto">
+            <StorageErrorBanner />
+          </div>
+          <DataRecoveryDialog />
+
           <Suspense fallback={<PageSkeleton />}>
             <Outlet />
           </Suspense>

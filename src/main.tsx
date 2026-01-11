@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router'
 import './index.css'
 import { router } from './router'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { StorageProvider } from './contexts/StorageContext'
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
@@ -13,7 +14,9 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <StorageProvider>
+        <RouterProvider router={router} />
+      </StorageProvider>
     </ThemeProvider>
   </StrictMode>,
 )

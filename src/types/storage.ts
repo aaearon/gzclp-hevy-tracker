@@ -86,6 +86,46 @@ export interface HistoryState {
 }
 
 // =============================================================================
+// Storage Error Types
+// =============================================================================
+
+/**
+ * Categories of localStorage errors that can occur.
+ */
+export type StorageErrorType =
+  | 'quota_exceeded'    // Browser threw QuotaExceededError
+  | 'write_blocked'     // Prevented by storage quota threshold check
+  | 'write_failed'      // Other write error (permission, etc.)
+  | 'corruption'        // JSON.parse failed or schema validation failed
+  | 'unavailable'       // localStorage disabled or inaccessible
+
+/**
+ * Represents a storage error with context for user notification and recovery.
+ */
+export interface StorageError {
+  /** Error category */
+  type: StorageErrorType
+  /** localStorage key that caused the error */
+  key: string
+  /** Human-readable error message */
+  message: string
+  /** Raw corrupted data string (for corruption errors, allows download) */
+  rawData?: string
+  /** Original error object for debugging */
+  originalError?: unknown
+  /** ISO timestamp when error occurred */
+  timestamp: string
+}
+
+/**
+ * Result of a storage write operation.
+ */
+export interface StorageWriteResult {
+  success: boolean
+  error?: StorageError
+}
+
+// =============================================================================
 // Type Guards
 // =============================================================================
 
