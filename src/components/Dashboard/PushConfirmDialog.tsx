@@ -160,10 +160,11 @@ function ExerciseRow({
         : 'bg-gray-50 dark:bg-gray-800/50'
 
   return (
-    <div className={`flex items-center justify-between py-2 px-3 rounded ${rowBg}`}>
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+    <div className={`flex flex-col gap-2 py-2 px-3 rounded ${rowBg} sm:flex-row sm:items-center sm:justify-between`}>
+      {/* Exercise name and tier */}
+      <div className="flex items-center gap-2 min-w-0">
         <span
-          className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${tierColors[diff.tier]}`}
+          className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium shrink-0 ${tierColors[diff.tier]}`}
         >
           {diff.tier}
         </span>
@@ -171,20 +172,23 @@ function ExerciseRow({
           {diff.name}
         </span>
         {schemeDisplay && (
-          <span className="text-xs text-gray-400 dark:text-gray-500">({schemeDisplay})</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">({schemeDisplay})</span>
         )}
       </div>
-      <div className="flex items-center gap-3 text-sm">
-        <span className={diff.isChanged ? 'text-gray-600 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500'}>
-          {diff.oldWeight !== null ? formatWeight(diff.oldWeight, weightUnit) : '-'}
-        </span>
-        <span className="text-gray-400 dark:text-gray-500">&rarr;</span>
-        <span className={diff.isChanged ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
-          {formatWeight(diff.newWeight, weightUnit)}
-        </span>
-        <span className="w-12 text-right mr-2">
-          <ChangeIndicator oldWeight={diff.oldWeight} newWeight={diff.newWeight} />
-        </span>
+      {/* Weight changes and actions */}
+      <div className="flex items-center justify-between gap-2 text-sm sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className={`${diff.isChanged ? 'text-gray-600 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500'}`}>
+            {diff.oldWeight !== null ? formatWeight(diff.oldWeight, weightUnit) : '-'}
+          </span>
+          <span className="text-gray-400 dark:text-gray-500">&rarr;</span>
+          <span className={diff.isChanged ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
+            {formatWeight(diff.newWeight, weightUnit)}
+          </span>
+          <span className="w-10 text-right text-xs sm:w-12 sm:text-sm">
+            <ChangeIndicator oldWeight={diff.oldWeight} newWeight={diff.newWeight} />
+          </span>
+        </div>
         <ExerciseActionSelector
           action={diff.action}
           isChanged={diff.isChanged}
