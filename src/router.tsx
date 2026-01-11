@@ -159,10 +159,11 @@ function ChartsPage() {
   )
 }
 
-export const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <RootLayout />,
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <RootLayout />,
     children: [
       // Routes that require setup to be complete
       {
@@ -195,4 +196,8 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+  ],
+  {
+    basename: import.meta.env.BASE_URL,
+  }
+)
