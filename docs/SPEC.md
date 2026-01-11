@@ -2,6 +2,16 @@
 
 ## Technical Specification v1.0
 
+> **HISTORICAL DOCUMENT**
+>
+> This is the original specification from project inception. The implementation has evolved significantly since then:
+> - **4-day rotation** (A1/B1/A2/B2) instead of 3-day (A/B)
+> - **Split localStorage** (3 keys) instead of monolithic `gzclp_state`
+> - **Role-based exercise system** instead of slot-based
+> - **React Router 7.x** for navigation instead of conditional rendering
+>
+> For current architecture, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
 ---
 
 ## 1. Overview

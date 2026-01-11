@@ -1,7 +1,7 @@
 # GZCLP Hevy Tracker - Technical Architecture Documentation
 
-**Version:** 2.3.0
-**Last Updated:** 2026-01-10
+**Version:** 2.4.0
+**Last Updated:** 2026-01-11
 **Target Audience:** LLM assistants and developers working on the codebase
 
 ---
@@ -66,7 +66,7 @@ The GZCLP Hevy Tracker is a **frontend-only progressive web application** that i
 └─────────────────────────────────────────────────────┘
 ```
 
-**Total codebase:** ~9,228 lines of TypeScript/TSX
+**Total codebase:** ~11,832 lines of TypeScript/TSX (119 source files)
 
 ---
 
@@ -310,6 +310,71 @@ export function useProgram(): UseProgramResult {
 | **useProgressionManager** | Progression state, sync, discrepancies | `setProgressionByKey()`, `updateProgressionBatch()`, `setLastSync()`, `acknowledgeDiscrepancy()` |
 | **useHistoryManager** | Workout history for charts | `setProgressionHistory()`, `recordHistoryEntry()` |
 | **useDataPersistence** | State import/export/reset | `importState()`, `resetState()` |
+
+### 4.3 Storage Error Handling
+
+**Problem:** localStorage operations can fail silently or lose user data:
+- QuotaExceededError when storage is full
+- Data corruption from browser issues or app updates
+- Schema validation failures on version mismatch
+
+**Solution:** Centralized error handling via `StorageContext`:
+
+```typescript
+// src/contexts/StorageContext.tsx
+interface StorageContextValue {
+  errors: StorageError[]              // Active errors to display
+  hasActiveErrors: boolean
+  reportError: (error) => void        // Report storage errors
+  dismissError: (index) => void
+
+  corruptedData: Map<string, string>  // In-memory backup of corrupted data
+  hasCorruptedData: boolean
+  downloadCorruptedData: (key) => void // Save corrupted data as JSON file
+  discardCorruptedData: (key) => void
+}
+
+// StorageError types
+type StorageErrorType =
+  | 'quota_exceeded'    // Browser threw QuotaExceededError
+  | 'write_blocked'     // Prevented by pre-write quota check
+  | 'write_failed'      // Other write error
+  | 'corruption'        // JSON.parse or schema validation failed
+  | 'unavailable'       // localStorage disabled
+```
+
+**Key Pattern in `useLocalStorage`:**
+
+```typescript
+// Write-before-state pattern (critical bug fix)
+const setValue = useCallback((value) => {
+  try {
+    const serialized = JSON.stringify(valueToStore)
+
+    // 1. Check quota for large writes (>1KB)
+    if (serialized.length > 1024) {
+      const status = checkStorageStatus()
+      if (status.isWarning) {
+        onError?.({ type: 'write_blocked', ... })
+        return // Don't attempt write
+      }
+    }
+
+    // 2. Write to disk FIRST
+    localStorage.setItem(key, serialized)
+
+    // 3. Update React state only after successful write
+    setStoredValue(valueToStore)
+  } catch (error) {
+    // State NOT updated - UI remains consistent with storage
+    onError?.({ type: isQuotaError(error) ? 'quota_exceeded' : 'write_failed', ... })
+  }
+}, [key, storedValue, onError])
+```
+
+**UI Components:**
+- `StorageErrorBanner` - Dismissible warning banner for quota/write errors
+- `DataRecoveryDialog` - Modal for corruption (forces user action: download or discard)
 
 **Benefits of this pattern:**
 - **Separation of concerns**: Each hook handles one domain
@@ -1851,47 +1916,56 @@ const applyAllChanges = useCallback(() => {
 
 ## 15. Future Architecture Considerations
 
-### 15.1 Scalability Concerns
+### 15.1 Recently Resolved (v2.4.0)
+
+The following architectural concerns have been addressed:
+
+| Item | Resolution | Implementation |
+|------|------------|----------------|
+| **localStorage Quota** | Proactive monitoring + error handling | `StorageContext`, `storage-monitor.ts` |
+| **History Growth** | Auto-pruning to 200 entries/exercise | `useHistoryStorage.ts` |
+| **Data Corruption** | In-memory backup + recovery dialog | `DataRecoveryDialog.tsx` |
+| **Runtime Validation** | Zod schemas for imports | `data-import.ts` |
+| **API Request Cancellation** | AbortController on unmount | `useProgression.ts` |
+| **Cross-tab Sync** | Storage event + custom events | `useLocalStorage.ts` |
+
+### 15.2 Scalability Concerns
 
 #### localStorage Size Limits
 **Current limit:** ~5-10MB (browser-dependent)
-**Current usage:** ~50KB-500KB typical, ~1-5MB with years of history
+**Mitigations implemented:**
+- History pruning (200 entries per exercise)
+- Storage monitoring with 80% warning threshold
+- Split storage architecture
 
-**Future solution (when needed):**
-- Migrate `gzclp_history` to IndexedDB (unlimited storage)
-- Keep config and progression in localStorage (fast access)
-- Lazy-load history only when viewing charts
+**Future option (if needed):**
+- Migrate `gzclp_history` to IndexedDB for unlimited storage
+- Keep config/progression in localStorage for fast access
 
-#### API Rate Limiting
-**Current approach:** Sequential pagination, no caching between sessions
+#### API Performance
+**Current approach:**
+- AbortController for request cancellation
+- Sequential pagination with proper cleanup
 
 **Future improvements:**
-- Implement request queue with exponential backoff
-- Cache API responses in sessionStorage
-- Implement "last sync" timestamp to fetch only new data
+- Request queue with exponential backoff for rate limits
+- Incremental sync (fetch only workouts since lastSync)
 
-### 15.2 Potential Features
+### 15.3 Potential Features
 
 #### Offline-First Architecture
-Currently the app requires online access for sync/push operations.
+Currently requires online access for sync/push operations.
 
 **Enhancement:**
-- Implement service worker for offline caching
-- Queue pending changes in localStorage
+- Service worker for offline caching
 - Auto-sync when connection restored
 - PWA manifest for installable app
 
 #### Advanced Analytics
 **Potential additions:**
-- Volume calculations (total weight × reps × sets)
+- Volume calculations (weight × reps × sets)
 - Training intensity metrics (RPE tracking)
 - Periodization planning
-- Body weight correlation
-
-**Architecture impact:**
-- New `analytics/` directory in `src/lib/`
-- New `AnalyticsContext` for computed metrics
-- Extend `ProgressionHistoryEntry` with additional fields
 
 #### Multi-Program Support
 **Current limitation:** Single GZCLP program per user
@@ -1899,42 +1973,26 @@ Currently the app requires online access for sync/push operations.
 **Enhancement:**
 - Multiple programs with switching
 - Program templates library
-- Program comparison/analytics
 
-**Architecture changes:**
-- Add `programs: Record<string, GZCLPState>` to root state
-- Add `activeProgramId: string` selector
-- Migrate localStorage to `gzclp_programs` namespace
+### 15.4 Remaining Technical Debt
 
-### 15.3 Technical Debt
+#### API Response Validation
+- Hevy API responses lack runtime validation
+- Currently rely on TypeScript type assertions
 
-#### Type Coverage Gaps
-- Some Hevy API response types are partial (missing fields)
-- No runtime validation on API responses (rely on type assertions)
+**Resolution:** Add Zod schemas for API responses
 
-**Resolution:**
-- Implement Zod schemas for API responses
-- Generate TypeScript types from Zod schemas
-- Add runtime validation with descriptive error messages
+#### E2E Testing
+- 86 test files with good unit coverage
+- No Playwright/Cypress E2E tests
 
-#### Testing Coverage
-- Business logic well-tested (~80% coverage)
-- Component tests sparse (~30% coverage)
-- No E2E tests
-
-**Resolution:**
-- Add Playwright for E2E testing
-- Test critical user flows (setup wizard, sync, review, push)
-- Automated visual regression testing for UI changes
+**Resolution:** Add E2E tests for critical user flows
 
 #### Performance Monitoring
-- No performance metrics collection
+- No Web Vitals collection
 - No error tracking (Sentry, etc.)
 
-**Resolution:**
-- Add Web Vitals monitoring
-- Implement error boundary with error reporting
-- Track localStorage size growth over time
+**Resolution:** Consider adding telemetry for production
 
 ---
 
@@ -1944,42 +2002,42 @@ Currently the app requires online access for sync/push operations.
 
 | File | Purpose | Lines | Importance |
 |------|---------|-------|------------|
-| `src/types/state.ts` | Core type definitions | 439 | ⭐⭐⭐⭐⭐ |
-| `src/lib/progression.ts` | GZCLP progression algorithms | 535 | ⭐⭐⭐⭐⭐ |
-| `src/hooks/useProgram.ts` | Facade: state orchestrator | 196 | ⭐⭐⭐⭐⭐ |
-| `src/components/Dashboard/index.tsx` | Main application view | 348 | ⭐⭐⭐⭐ |
-| `src/lib/hevy-client.ts` | Hevy API integration | 365 | ⭐⭐⭐⭐ |
-| `src/lib/workout-analysis.ts` | Workout analysis logic | ~200 | ⭐⭐⭐⭐ |
-| `src/hooks/useProgression.ts` | Sync orchestration | ~150 | ⭐⭐⭐⭐ |
-| `src/lib/routine-builder.ts` | Routine generation | ~250 | ⭐⭐⭐ |
-| `src/contexts/ProgramContext.tsx` | Read-only state context | 175 | ⭐⭐⭐ |
+| `src/types/state.ts` | Core type definitions | ~450 | ⭐⭐⭐⭐⭐ |
+| `src/lib/progression.ts` | GZCLP progression algorithms | ~565 | ⭐⭐⭐⭐⭐ |
+| `src/hooks/useProgram.ts` | Facade: state orchestrator | ~196 | ⭐⭐⭐⭐⭐ |
+| `src/router.tsx` | Routing + AppProviders | ~198 | ⭐⭐⭐⭐⭐ |
+| `src/components/Dashboard/index.tsx` | Main application view | ~303 | ⭐⭐⭐⭐ |
+| `src/lib/hevy-client.ts` | Hevy API integration | ~472 | ⭐⭐⭐⭐ |
+| `src/hooks/useLocalStorage.ts` | Storage with error handling | ~388 | ⭐⭐⭐⭐ |
+| `src/lib/routine-importer.ts` | Import from Hevy | ~970 | ⭐⭐⭐⭐ |
+| `src/contexts/StorageContext.tsx` | Error recovery UI | ~180 | ⭐⭐⭐ |
 
 ### Domain-Specific Hooks (used by useProgram facade)
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `src/hooks/useExerciseManagement.ts` | Exercise CRUD operations | ~60 |
-| `src/hooks/useProgramSettings.ts` | Config settings mutations | ~80 |
-| `src/hooks/useProgressionManager.ts` | Progression/sync/discrepancy | ~120 |
-| `src/hooks/useHistoryManager.ts` | History operations | ~40 |
-| `src/hooks/useDataPersistence.ts` | Import/export/reset | ~50 |
+| `src/hooks/useExerciseManagement.ts` | Exercise CRUD + role cleanup | ~211 |
+| `src/hooks/useProgramSettings.ts` | Config settings mutations | ~158 |
+| `src/hooks/useProgressionManager.ts` | Progression/sync/discrepancy | ~190 |
+| `src/hooks/useHistoryManager.ts` | History operations | ~80 |
+| `src/hooks/useDataPersistence.ts` | Import/export/reset | ~156 |
+| `src/hooks/useDataMaintenance.ts` | Startup migrations | ~125 |
 
 ### Reading Path for New Developers/LLMs
 
 **Phase 1: Domain Understanding**
 1. Read `docs/GZCLP-Progression-Spec.md` (GZCLP methodology)
-2. Read `docs/SPEC.md` (original technical spec)
-3. Skim `src/types/state.ts` (core type definitions)
+2. Skim `src/types/state.ts` (core type definitions)
 
 **Phase 2: Architecture Understanding**
-4. Read this file (ARCHITECTURE.md) sections 1-3
-5. Examine `src/lib/constants.ts` (GZCLP rules codified)
-6. Study `src/lib/progression.ts` (progression algorithms)
+3. Read this file (ARCHITECTURE.md) sections 1-4
+4. Examine `src/lib/constants.ts` (GZCLP rules codified)
+5. Study `src/lib/progression.ts` (progression algorithms)
 
 **Phase 3: Implementation Details**
+6. Examine `src/router.tsx` (routing + AppProviders)
 7. Trace `useProgram()` → storage hooks → localStorage
 8. Follow sync flow: `Dashboard` → `useSyncFlow` → `useProgression` → `HevyClient`
-9. Examine component hierarchy starting from `App.tsx`
 
 ---
 
@@ -2003,7 +2061,33 @@ Currently the app requires online access for sync/push operations.
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** 2026-01-10
+**Document Version:** 2.4
+**Last Updated:** 2026-01-11
 **Maintained By:** LLM-assisted development
 **Next Review:** When major architectural changes are made
+
+---
+
+## Appendix C: Documentation Index
+
+### Active Documentation (docs/)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `ARCHITECTURE.md` | Technical architecture reference | **Primary reference** |
+| `GZCLP-Progression-Spec.md` | GZCLP algorithm specification | Current |
+| `PRE-RELEASE-REVIEW.md` | Pre-release checklist | Current |
+
+### Review Documents (docs/)
+
+| File | Purpose |
+|------|---------|
+| `code-review-2026-01-11.md` | Latest code review findings |
+| `architecture-review-2026-01-11.md` | Architecture analysis |
+| `comprehensive-pre-release-review.md` | Combined review summary |
+| `security-audit-report.md` | Security findings |
+| `edge-case-analysis.md` | Edge case analysis |
+
+### Historical (docs/archive/)
+
+Implementation plans for completed features are archived in `docs/archive/`. These include feature-specific plans (006-009 series), refactoring plans, and completed fix plans.

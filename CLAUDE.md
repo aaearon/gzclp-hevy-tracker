@@ -1,63 +1,94 @@
 # gzclp-hevy-tracker Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-01-02
+**Last updated:** 2026-01-11
 
-## Active Technologies
-- TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1 (002-routine-selection-wizard)
-- Browser localStorage (key: `gzclp_state`) (002-routine-selection-wizard)
-- Browser localStorage (key: `gzclp_state`, extended with classifications store) (003-exercise-classification)
-- Chart.js 4.x + react-chartjs-2 for progression visualization (007-progression-charts)
-
-- TypeScript 5.x (strict mode enabled) + React 18, Vite 5, Tailwind CSS 3.4 (001-gzclp-hevy-tracker)
+## Tech Stack
+- **React** 18.3 + **TypeScript** 5.9 (strict mode)
+- **Vite** 5.4 + **Tailwind CSS** 4.1
+- **React Router** 7.x
+- **Chart.js** 4.x + react-chartjs-2
+- **Zod** 4.x for schema validation
 
 ## Project Structure
 
 ```text
-backend/
-frontend/
-tests/
+src/
+├── components/     # React components (59 files)
+├── hooks/          # Custom hooks (19 files)
+├── lib/            # Business logic (23 files)
+├── contexts/       # React contexts (4 files)
+├── types/          # TypeScript types (4 files)
+├── utils/          # Utilities (5 files)
+├── router.tsx      # App routing + providers
+└── main.tsx        # Entry point
+
+tests/              # Test files (86 files)
+docs/               # Documentation
+docs/archive/       # Completed implementation plans
 ```
 
 ## Commands
 
-npm test && npm run lint
+```bash
+npm test           # Run tests (1250+ tests)
+npm run lint       # Run ESLint
+npm run build      # Production build
+npm run dev        # Development server
+```
 
-## Code Style
-
-TypeScript 5.x (strict mode enabled): Follow standard conventions
-
-## Recent Changes
-- 008-selective-push: Added selective push/pull/skip per exercise when syncing with Hevy
-- 007-progression-charts: Added Chart.js progression visualization with GZCLP-aware prediction algorithm
-- 005-t1-t2-progression: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
-- 003-exercise-classification: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
-- 002-routine-selection-wizard: Added TypeScript 5.9 (strict mode enabled) + React 18.3, Vite 5.4, Tailwind CSS 4.1
-
-
-<!-- MANUAL ADDITIONS START -->
 ## Architecture Documentation
 
-For comprehensive technical architecture reference, see: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+**Primary reference:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (v2.4)
 
-This documentation covers:
-- System overview with Mermaid diagrams
-- State management patterns (split localStorage, React Context)
+Key sections:
+- State management (split localStorage with StorageContext)
 - Component hierarchy and responsibilities
 - Business logic algorithms (T1/T2/T3 progression)
 - Data flow and API integration patterns
-- Key files reference for quick navigation
-
-## Known Architectural Concerns
-
-Priority improvements identified in architecture review:
-1. **State Management** - ProgramContext exists but is underutilized; `useProgram` is a large orchestrator hook
-2. **Dashboard Complexity** - `src/components/Dashboard/index.tsx` manages multiple concerns (348 lines)
-3. **localStorage Scalability** - History data can grow unbounded; consider IndexedDB for future
-4. **No Router** - Manual view switching in App.tsx; no deep linking support
-5. **Schema Validation** - No runtime validation when hydrating from localStorage
 
 ## localStorage Keys
-- `gzclp_config` - Program configuration (exercises, assignments, API key)
-- `gzclp_progression` - Current progression state per exercise
-- `gzclp_history` - Workout history and pending changes
-<!-- MANUAL ADDITIONS END -->
+
+| Key | Purpose | Size |
+|-----|---------|------|
+| `gzclp_config` | Program config, exercises, API key | ~2-10KB |
+| `gzclp_progression` | Current weights, stages, pending changes | ~5-20KB |
+| `gzclp_history` | Chart data (auto-pruned to 200/exercise) | ~50KB-500KB |
+| `gzclp_theme` | Theme preference (light/dark/system) | ~10 bytes |
+
+## Resolved Architectural Issues
+
+All major architectural concerns from pre-release review have been addressed:
+
+| Issue | Resolution |
+|-------|------------|
+| ProgramContext wiring | Now wired via AppProviders in router.tsx |
+| Data migrations in Dashboard | Extracted to useDataMaintenance hook |
+| localStorage quota | StorageContext with proactive monitoring |
+| Data corruption | In-memory backup + DataRecoveryDialog |
+| History unbounded growth | Auto-pruning to 200 entries/exercise |
+| API request cancellation | AbortController on unmount |
+| Role change orphan data | Automatic cleanup in useExerciseManagement |
+
+## Documentation Index
+
+### Active (docs/)
+- `ARCHITECTURE.md` - Technical architecture (primary reference)
+- `GZCLP-Progression-Spec.md` - GZCLP algorithm spec
+- `PRE-RELEASE-REVIEW.md` - Release checklist
+
+### Historical
+- `SPEC.md` - Original spec (outdated, kept for reference)
+- `GZCLP-Functional-Requirements-v2.md` - Requirements (largely superseded)
+- `docs/archive/` - Completed implementation plans
+
+## Weight Storage Convention
+
+**IMPORTANT:** All weights stored internally in **kg**, matching Hevy API format.
+
+```typescript
+// INPUT: Convert user input to kg before storage
+const storedWeight = toKg(userInput, userUnit)
+
+// OUTPUT: Convert kg to user's unit for display
+const displayValue = displayWeight(storedKg, userUnit)
+```

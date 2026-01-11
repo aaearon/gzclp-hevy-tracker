@@ -3,6 +3,11 @@
 **Version:** 2.3
 **Last Updated:** 2026-01-04
 
+> **NOTE:** This requirements document is largely **superseded** by the implementation in [ARCHITECTURE.md](ARCHITECTURE.md).
+> The architecture doc reflects the actual codebase state and is kept up-to-date, while this document captures the original design intent and may not reflect all implementation decisions.
+>
+> Use this for understanding design rationale; use ARCHITECTURE.md for current implementation details.
+
 ---
 
 ## 0. Document Metadata
