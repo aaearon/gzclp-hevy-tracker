@@ -110,6 +110,9 @@ export function CurrentWorkout({
             {t1Data && (
               <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4">
                 <div className="mb-2 flex items-center gap-2">
+                  <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white sm:hidden">
+                    {day}
+                  </span>
                   <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                     T1
                   </span>
