@@ -106,7 +106,52 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
           Change exercise roles to adjust how they&apos;re used in your program.
         </p>
 
-        <div className="overflow-x-auto">
+        {/* Mobile: Stacked card layout */}
+        <div className="sm:hidden space-y-3">
+          {exercises.map((exercise) => {
+            const displayInfo = exercise.role ? ROLE_DISPLAY[exercise.role] : null
+
+            return (
+              <div
+                key={exercise.id}
+                className="py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {displayInfo && (
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0
+                        ${displayInfo.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : displayInfo.color === 'green' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'}`}
+                    >
+                      {displayInfo.label}
+                    </span>
+                  )}
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {exercise.name}
+                  </span>
+                </div>
+                <label
+                  htmlFor={`role-mobile-${exercise.id}`}
+                  className="sr-only"
+                >
+                  Role for {exercise.name}
+                </label>
+                <RoleDropdown
+                  id={`role-mobile-${exercise.id}`}
+                  ariaLabel={`Role for ${exercise.name}`}
+                  value={exercise.role}
+                  onChange={(role) => {
+                    handleRoleChange(exercise, role)
+                  }}
+                  className="w-full"
+                  showPlaceholder={false}
+                />
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop: Table layout */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
