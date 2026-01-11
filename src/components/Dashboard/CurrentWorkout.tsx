@@ -112,9 +112,6 @@ export function CurrentWorkout({
                 {/* Name row with badges */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t1Data.exercise.name}</h3>
-                  <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white sm:hidden">
-                    {day}
-                  </span>
                   <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                     T1
                   </span>
