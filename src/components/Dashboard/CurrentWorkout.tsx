@@ -176,14 +176,14 @@ export function CurrentWorkout({
                   Accessories ({t3Data.length})
                 </span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                 {t3Data.map(({ exercise, progression: prog, scheme }) => (
                   <div
                     key={exercise.id}
-                    className="flex items-center justify-between rounded bg-white/60 dark:bg-gray-800/60 px-3 py-2"
+                    className="flex flex-col rounded bg-white/60 dark:bg-gray-800/60 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-3 sm:py-2"
                   >
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate mr-2">{exercise.name}</span>
-                    <div className="flex items-center gap-2 text-sm shrink-0">
+                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base sm:mr-2">{exercise.name}</span>
+                    <div className="flex items-center gap-1 text-xs sm:gap-2 sm:text-sm shrink-0">
                       <span className="font-mono text-gray-500 dark:text-gray-400">{scheme.display}</span>
                       <span className="font-bold text-green-700 dark:text-green-400">
                         {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
