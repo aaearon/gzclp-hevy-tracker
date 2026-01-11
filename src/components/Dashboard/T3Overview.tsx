@@ -102,37 +102,38 @@ export function T3Overview({
             key={exercise.id}
             className="rounded-lg border border-green-200 dark:border-green-800 bg-white dark:bg-green-900/30 p-4 shadow-sm"
           >
-            {/* Exercise name on top */}
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate" title={exercise.name}>
-              {exercise.name}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {formatSchedule(scheduledDays)}
-            </p>
-
-            {/* Weight and PR on bottom */}
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
-              </span>
-              {prog && prog.amrapRecord > 0 && (
-                <span
-                  className="text-xs text-gray-500 dark:text-gray-400 cursor-help"
-                  title={prog.amrapRecordDate
-                    ? `Set on ${new Date(prog.amrapRecordDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}`
-                    : 'PR date unknown'
-                  }
-                >
-                  PR: {prog.amrapRecord} reps
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate" title={exercise.name}>
+                  {exercise.name}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {formatSchedule(scheduledDays)}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-lg font-bold text-green-700 dark:text-green-300">
+                  {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
                 </span>
-              )}
+                {prog && prog.amrapRecord > 0 && (
+                  <p
+                    className="text-xs text-gray-500 dark:text-gray-400 cursor-help"
+                    title={prog.amrapRecordDate
+                      ? `Set on ${new Date(prog.amrapRecordDate).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}`
+                      : 'PR date unknown'
+                    }
+                  >
+                    PR: {prog.amrapRecord} reps
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Schedule pills */}
