@@ -23,27 +23,6 @@ import { getT1RoleForDay, getT2RoleForDay, getTierForDay, getProgressionKey } fr
 import { calculateWarmupSets } from './warmup'
 
 // =============================================================================
-// Constants
-// =============================================================================
-
-const LBS_TO_KG = 1 / 2.20462
-
-// =============================================================================
-// Weight Conversion
-// =============================================================================
-
-/**
- * Convert weight to kilograms for Hevy API.
- * Hevy API always expects weights in kg.
- */
-function toKilograms(weight: number, unit: 'kg' | 'lbs'): number {
-  if (unit === 'kg') {
-    return weight
-  }
-  return Math.round(weight * LBS_TO_KG * 10) / 10 // Round to 1 decimal
-}
-
-// =============================================================================
 // Warmup Set Builder
 // =============================================================================
 
@@ -99,10 +78,8 @@ export function buildRoutineExercise(
 ): RoutineExerciseWrite {
   // Derive tier from role + day
   const tier = deriveTier(exercise.role, day)
-  const { currentWeight, stage } = progression
-
-  // Convert weight to kg for Hevy API
-  const weightKg = toKilograms(currentWeight, settings.weightUnit)
+  const { currentWeight: weightKg, stage } = progression
+  // Note: currentWeight is already stored in kg (internal storage format)
 
   // Get rest timer based on tier
   const restSeconds = settings.restTimers[tier.toLowerCase() as 't1' | 't2' | 't3']
@@ -294,17 +271,13 @@ export function buildSelectiveRoutinePayload(
   }
 
   // Copy progression, applying overrides
+  // Note: Both progression.currentWeight and overrideWeightKg are in kg (internal format)
   for (const [key, state] of Object.entries(progression)) {
     const overrideWeightKg = overrideMap.get(key)
     if (overrideWeightKg !== undefined) {
-      // Convert kg back to user's unit for the progression state
-      const overrideWeight =
-        settings.weightUnit === 'kg'
-          ? overrideWeightKg
-          : Math.round(overrideWeightKg / LBS_TO_KG * 10) / 10
       effectiveProgression[key] = {
         ...state,
-        currentWeight: overrideWeight,
+        currentWeight: overrideWeightKg,
       }
     } else {
       effectiveProgression[key] = state

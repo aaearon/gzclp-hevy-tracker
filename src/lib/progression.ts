@@ -7,6 +7,7 @@
 import type { ProgressionState, WeightUnit, MuscleGroupCategory, ChangeType, Stage, PendingChange, ExerciseConfig, ExerciseRole, GZCLPDay, Tier } from '@/types/state'
 import type { WorkoutAnalysisResult } from './workout-analysis'
 import { generateId } from '@/utils/id'
+import { toKg } from '@/utils/formatting'
 import {
   T1_SCHEMES,
   T2_SCHEMES,
@@ -75,6 +76,7 @@ export const T3_SUCCESS_THRESHOLD = 25 // Total reps needed across all sets
 
 /**
  * Round weight to the nearest valid increment based on unit.
+ * Note: This is used for rounding within the user's unit system.
  */
 export function roundWeight(weight: number, unit: WeightUnit): number {
   const increment = WEIGHT_ROUNDING[unit]
@@ -82,29 +84,47 @@ export function roundWeight(weight: number, unit: WeightUnit): number {
 }
 
 /**
- * Minimum weight is the bar weight.
- * REQ-PROG-009: Deload never goes below bar weight (20kg / 44lbs).
+ * Round weight in kg to the nearest 2.5kg increment.
+ * Used for internal storage rounding.
  */
-const BAR_WEIGHT_KG = 20
-const BAR_WEIGHT_LBS = 44 // Approximate conversion of 20kg
-
-/**
- * Calculate deload weight (85% rounded to valid increment).
- * [GAP-10] Minimum weight is bar weight (20kg / 44lbs), not just the rounding increment.
- */
-export function calculateDeload(weight: number, unit: WeightUnit): number {
-  const deloadedWeight = weight * DELOAD_PERCENTAGE
-  const rounded = roundWeight(deloadedWeight, unit)
-  // Ensure we don't go below bar weight [REQ-PROG-009]
-  const barWeight = unit === 'kg' ? BAR_WEIGHT_KG : BAR_WEIGHT_LBS
-  return Math.max(rounded, barWeight)
+function roundWeightKg(weightKg: number): number {
+  const KG_INCREMENT = 2.5
+  return Math.round(weightKg / KG_INCREMENT) * KG_INCREMENT
 }
 
 /**
- * Get weight increment based on muscle group and unit.
+ * Minimum weight is the bar weight.
+ * REQ-PROG-009: Deload never goes below bar weight (20kg).
  */
-function getIncrement(muscleGroup: MuscleGroupCategory, unit: WeightUnit): number {
-  return WEIGHT_INCREMENTS[unit][muscleGroup]
+const BAR_WEIGHT_KG = 20
+
+/**
+ * Calculate deload weight (85% rounded to nearest 2.5kg).
+ * [GAP-10] Minimum weight is bar weight (20kg).
+ *
+ * Note: Input weight is always in kg (internal storage format).
+ * The unit parameter determines which increment system to use for
+ * selecting the base increment, but result is always in kg.
+ */
+export function calculateDeload(weightKg: number, _unit: WeightUnit): number {
+  const deloadedWeight = weightKg * DELOAD_PERCENTAGE
+  const rounded = roundWeightKg(deloadedWeight)
+  // Ensure we don't go below bar weight [REQ-PROG-009]
+  return Math.max(rounded, BAR_WEIGHT_KG)
+}
+
+/**
+ * Get weight increment in kg based on muscle group and user's preferred unit.
+ *
+ * The user's unit determines which increment system they're using:
+ * - kg: 2.5kg upper, 5kg lower
+ * - lbs: 5lbs (~2.27kg) upper, 10lbs (~4.54kg) lower
+ *
+ * Returns the increment converted to kg for internal calculation.
+ */
+function getIncrementKg(muscleGroup: MuscleGroupCategory, unit: WeightUnit): number {
+  const userIncrement = WEIGHT_INCREMENTS[unit][muscleGroup]
+  return toKg(userIncrement, unit)
 }
 
 // =============================================================================
@@ -162,7 +182,7 @@ export function calculateT1Progression(
 ): ProgressionResult {
   const success = isT1Success(reps, current.stage)
   const scheme = T1_SCHEMES[current.stage]
-  const increment = getIncrement(muscleGroup, unit)
+  const increment = getIncrementKg(muscleGroup, unit)
 
   // Track AMRAP (last set of prescribed sets)
   const requiredSets = T1_REQUIRED_SETS[current.stage]
@@ -253,7 +273,7 @@ export function calculateT2Progression(
 ): ProgressionResult {
   const success = isT2Success(reps, current.stage)
   const scheme = T2_SCHEMES[current.stage]
-  const increment = getIncrement(muscleGroup, unit)
+  const increment = getIncrementKg(muscleGroup, unit)
 
   if (success) {
     // Add weight, keep stage
@@ -322,7 +342,7 @@ export function calculateT3Progression(
 ): ProgressionResult {
   const amrapReps = reps.length > 0 ? (reps[reps.length - 1] ?? 0) : 0
   const success = isT3Success(reps)
-  const increment = getIncrement(muscleGroup, unit)
+  const increment = getIncrementKg(muscleGroup, unit)
 
   if (success) {
     return {

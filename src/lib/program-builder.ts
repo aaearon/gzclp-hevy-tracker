@@ -6,6 +6,7 @@
  */
 
 import { generateId } from '@/utils/id'
+import { toKg } from '@/utils/formatting'
 import { createInitialState, createDefaultSettings } from '@/lib/state-factory'
 import { getProgressionKey, getT1RoleForDay, getT2RoleForDay } from '@/lib/role-utils'
 import type {
@@ -327,15 +328,16 @@ export function buildCreateProgramState(params: CreatePathParams): GZCLPState {
     }
     state.exercises[exerciseId] = exercise
 
-    // Get initial weight (from weights map, keyed by role)
-    const initialWeight = weights[role] ?? 0
+    // Get initial weight (from weights map, keyed by role) and convert to kg for storage
+    const userWeight = weights[role] ?? 0
+    const initialWeightKg = toKg(userWeight, unit)
 
     // Create both T1 and T2 progressions for this main lift
     const t1Key = getProgressionKey(exerciseId, role, 'T1')
     const t2Key = getProgressionKey(exerciseId, role, 'T2')
 
-    state.progression[t1Key] = createProgressionEntry(exerciseId, initialWeight, 0)
-    state.progression[t2Key] = createProgressionEntry(exerciseId, initialWeight, 0)
+    state.progression[t1Key] = createProgressionEntry(exerciseId, initialWeightKg, 0)
+    state.progression[t2Key] = createProgressionEntry(exerciseId, initialWeightKg, 0)
   }
 
   // Create T3 exercises with deduplication
@@ -362,11 +364,12 @@ export function buildCreateProgramState(params: CreatePathParams): GZCLPState {
         state.exercises[exerciseId] = exercise
         savedT3Ids.set(templateId, exerciseId)
 
-        // Set T3 weight (keyed by t3_templateId)
-        const t3Weight = weights[`t3_${templateId}`] ?? 0
+        // Set T3 weight (keyed by t3_templateId) and convert to kg for storage
+        const t3UserWeight = weights[`t3_${templateId}`] ?? 0
+        const t3WeightKg = toKg(t3UserWeight, unit)
 
         // T3 uses exerciseId as progression key
-        state.progression[exerciseId] = createProgressionEntry(exerciseId, t3Weight, 0)
+        state.progression[exerciseId] = createProgressionEntry(exerciseId, t3WeightKg, 0)
       }
 
       state.t3Schedule[day].push(exerciseId)

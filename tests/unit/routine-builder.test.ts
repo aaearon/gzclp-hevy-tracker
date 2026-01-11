@@ -587,32 +587,30 @@ describe('[US4] Routine Builder', () => {
     })
   })
 
-  describe('Weight Conversion', () => {
-    it('should store weights in kg even when settings are in lbs', () => {
+  describe('Weight Handling', () => {
+    it('should use kg weights directly (internal storage is always kg)', () => {
       const lbsSettings: UserSettings = {
         ...defaultSettings,
         weightUnit: 'lbs',
       }
-      // Progression stores weight in the user's unit (lbs in this case)
-      // But Hevy API always expects kg
-      const lbsProgression: ProgressionState = {
+      // Progression weights are ALWAYS stored in kg internally
+      // (even when user prefers lbs for display)
+      const kgProgression: ProgressionState = {
         ...mockProgression['squat-T1']!,
-        currentWeight: 225, // 225 lbs
+        currentWeight: 102, // 102 kg (equivalent to ~225 lbs)
       }
 
       const exercise = buildRoutineExercise(
         mockExercises['ex-squat']!,
-        lbsProgression,
+        kgProgression,
         lbsSettings,
         'A1'
       )
 
-      // Should convert to kg (225 lbs = ~102 kg)
-      // The exact conversion: 225 / 2.20462 = ~102.06
-      // Rounded to nearest 2.5 = 102.5
+      // Should use the kg weight directly (no conversion needed)
       // Working sets come after warmup sets (T1 has warmups prepended)
       const workingSets = exercise.sets.filter((s) => s.type === 'normal')
-      expect(workingSets[0]?.weight_kg).toBeCloseTo(102, 0)
+      expect(workingSets[0]?.weight_kg).toBe(102)
     })
 
     it('should pass through kg weights unchanged', () => {

@@ -6,7 +6,7 @@
 
 import type { ExerciseConfig, ProgressionState, Tier, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { formatWeight } from '@/utils/formatting'
+import { displayWeight } from '@/utils/formatting'
 
 interface ExerciseCardProps {
   exercise: ExerciseConfig
@@ -43,7 +43,7 @@ export function ExerciseCard({
         <div className="flex-1">
           <h3 className="font-medium text-gray-900 dark:text-gray-100">{exercise.name}</h3>
           <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {formatWeight(progression.currentWeight, weightUnit)}
+            {displayWeight(progression.currentWeight, weightUnit)}
           </p>
         </div>
         <span

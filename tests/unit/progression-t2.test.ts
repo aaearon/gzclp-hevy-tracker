@@ -82,15 +82,19 @@ describe('[US2] T2 Progression Logic', () => {
       expect(result.newWeight).toBe(65) // +5kg for lower body
     })
 
-    it('should add weight in lbs correctly', () => {
+    it('should add weight correctly for lbs user (increment converted to kg)', () => {
+      // User prefers lbs, stored as kg internally (135 lbs ≈ 61.2 kg)
+      const weightKg = 61.2
       const result = calculateT2Progression(
-        { ...baseProgression, stage: 0, currentWeight: 135 },
+        { ...baseProgression, stage: 0, currentWeight: weightKg },
         [10, 10, 10],
         'upper',
         'lbs'
       )
 
-      expect(result.newWeight).toBe(140) // +5lbs for upper body
+      // Upper body lbs increment: 5 lbs ≈ 2.27 kg
+      // 61.2 + 2.27 ≈ 63.5 kg
+      expect(result.newWeight).toBeCloseTo(63.5, 1)
     })
   })
 

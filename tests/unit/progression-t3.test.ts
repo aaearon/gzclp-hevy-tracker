@@ -88,15 +88,19 @@ describe('[US2] T3 Progression Logic', () => {
       expect(result.newWeight).toBe(25) // +5kg for lower
     })
 
-    it('should add weight in lbs correctly', () => {
+    it('should add weight correctly for lbs user (increment converted to kg)', () => {
+      // User prefers lbs, stored as kg internally (25 lbs ≈ 11.3 kg)
+      const weightKg = 11.3
       const result = calculateT3Progression(
-        { ...baseProgression, currentWeight: 25 },
+        { ...baseProgression, currentWeight: weightKg },
         [15, 15, 26],
         'upper',
         'lbs'
       )
 
-      expect(result.newWeight).toBe(30) // +5lbs for upper
+      // Upper body lbs increment: 5 lbs ≈ 2.27 kg
+      // 11.3 + 2.27 ≈ 13.6 kg
+      expect(result.newWeight).toBeCloseTo(13.6, 1)
     })
 
     it('should include AMRAP reps in reason message', () => {

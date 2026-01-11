@@ -15,9 +15,12 @@ describe('[US2] Deload Calculation', () => {
       expect(calculateDeload(200, 'kg')).toBe(170)
     })
 
-    it('should work with lbs', () => {
-      expect(calculateDeload(225, 'lbs')).toBe(190) // 191.25 rounded to 190
-      expect(calculateDeload(315, 'lbs')).toBe(270) // 267.75 rounded to 270
+    it('should work for lbs users (input/output always in kg)', () => {
+      // Note: All weights are stored in kg. The lbs parameter doesn't change calculation.
+      // 225 lbs ≈ 102 kg: 85% of 102 = 86.7, rounds to 87.5kg
+      expect(calculateDeload(102, 'lbs')).toBe(87.5)
+      // 315 lbs ≈ 143 kg: 85% of 143 = 121.55, rounds to 122.5kg
+      expect(calculateDeload(143, 'lbs')).toBe(122.5)
     })
   })
 
@@ -44,24 +47,34 @@ describe('[US2] Deload Calculation', () => {
     })
   })
 
-  describe('Rounding to lbs (5lb increments)', () => {
-    it('should round to nearest 5lbs', () => {
-      // 85% of 225 = 191.25, rounds to 190
-      expect(calculateDeload(225, 'lbs')).toBe(190)
+  describe('Rounding for lbs users (always rounds to 2.5kg internally)', () => {
+    // Note: With the new design, weight is always stored in kg internally.
+    // Deload always rounds to 2.5kg regardless of user's display preference.
+    // The 'lbs' parameter is kept for API compatibility but doesn't affect rounding.
+
+    it('should round to nearest 2.5kg even for lbs user', () => {
+      // 225 lbs ≈ 102 kg
+      // 85% of 102 = 86.7, rounds to 87.5kg
+      expect(calculateDeload(102, 'lbs')).toBe(87.5)
     })
 
-    it('should round up when closer', () => {
-      // 85% of 235 = 199.75, rounds to 200
-      expect(calculateDeload(235, 'lbs')).toBe(200)
+    it('should round to nearest 2.5kg', () => {
+      // 235 lbs ≈ 106.6 kg
+      // 85% of 106.6 = 90.61, rounds to 90kg
+      expect(calculateDeload(106.6, 'lbs')).toBe(90)
     })
 
     it('should handle exact values', () => {
-      // 85% of 200 = 170, exact
-      expect(calculateDeload(200, 'lbs')).toBe(170)
+      // 200 lbs ≈ 90.7 kg
+      // 85% of 90.7 = 77.1, rounds to 77.5kg
+      expect(calculateDeload(90.7, 'lbs')).toBe(77.5)
     })
   })
 
   describe('Edge Cases - Bar Weight Minimum [GAP-10]', () => {
+    // Note: Bar weight minimum is always 20kg regardless of user's unit preference.
+    // This ensures safety - you can't lift less than an empty bar.
+
     it('should enforce bar weight minimum for very small weights', () => {
       // 85% of 5kg = 4.25, but minimum is bar weight (20kg)
       expect(calculateDeload(5, 'kg')).toBe(20)
@@ -72,16 +85,17 @@ describe('[US2] Deload Calculation', () => {
       expect(calculateDeload(0, 'kg')).toBe(20)
     })
 
-    it('should enforce bar weight minimum in lbs', () => {
-      // Minimum is bar weight (44lbs)
-      expect(calculateDeload(10, 'lbs')).toBe(44)
+    it('should enforce bar weight minimum for lbs user with small weight', () => {
+      // 10 lbs ≈ 4.5 kg, 85% = 3.8kg, but minimum is 20kg bar weight
+      // Using kg input since all weights are stored in kg
+      expect(calculateDeload(4.5, 'lbs')).toBe(20)
     })
 
     it('should not affect weights above bar weight', () => {
       // 85% of 25kg = 21.25, rounds to 22.5 (above bar weight)
       expect(calculateDeload(25, 'kg')).toBe(22.5)
-      // 85% of 55lbs = 46.75, rounds to 45 (above bar weight)
-      expect(calculateDeload(55, 'lbs')).toBe(45)
+      // 55 lbs ≈ 25 kg, same calculation as above
+      expect(calculateDeload(25, 'lbs')).toBe(22.5)
     })
   })
 })

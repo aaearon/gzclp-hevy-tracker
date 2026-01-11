@@ -10,7 +10,7 @@
 import { useMemo } from 'react'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { formatWeight, convertWeight } from '@/utils/formatting'
+import { displayWeight } from '@/utils/formatting'
 import { getExercisesForDay, getProgressionKey } from '@/lib/role-utils'
 import { calculateWarmupSets } from '@/lib/warmup'
 
@@ -89,14 +89,6 @@ export function CurrentWorkout({
 
   const hasExercises = t1Data || t2Data || t3Data.length > 0
 
-  // Convert weight for display based on unit preference
-  const displayWeight = (weightKg: number): string => {
-    if (weightUnit === 'lbs') {
-      return formatWeight(convertWeight(weightKg, 'kg', 'lbs'), 'lbs')
-    }
-    return formatWeight(weightKg, 'kg')
-  }
-
   return (
     <div data-testid="current-workout" className="rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950 dark:to-gray-800 p-6 shadow-sm">
       {/* Header */}
@@ -130,7 +122,7 @@ export function CurrentWorkout({
                 <div className="mt-2 flex items-center justify-between">
                   <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{t1Data.scheme.display}</span>
                   <span className="text-xl font-bold text-red-700 dark:text-red-400">
-                    {formatWeight(t1Data.progression.currentWeight, weightUnit)}
+                    {displayWeight(t1Data.progression.currentWeight, weightUnit)}
                   </span>
                 </div>
 
@@ -145,7 +137,7 @@ export function CurrentWorkout({
                         key={index}
                         className="rounded-full bg-yellow-100 dark:bg-yellow-800/50 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:text-yellow-200"
                       >
-                        {displayWeight(set.weight)} × {set.reps}
+                        {displayWeight(set.weight, weightUnit)} × {set.reps}
                       </span>
                     ))}
                   </div>
@@ -166,7 +158,7 @@ export function CurrentWorkout({
                 <div className="mt-2 flex items-center justify-between">
                   <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{t2Data.scheme.display}</span>
                   <span className="text-xl font-bold text-blue-700 dark:text-blue-400">
-                    {formatWeight(t2Data.progression.currentWeight, weightUnit)}
+                    {displayWeight(t2Data.progression.currentWeight, weightUnit)}
                   </span>
                 </div>
               </div>
@@ -194,7 +186,7 @@ export function CurrentWorkout({
                     <div className="flex items-center gap-2 text-sm shrink-0">
                       <span className="font-mono text-gray-500 dark:text-gray-400">{scheme.display}</span>
                       <span className="font-bold text-green-700 dark:text-green-400">
-                        {prog ? formatWeight(prog.currentWeight, weightUnit) : 'TBD'}
+                        {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
                       </span>
                     </div>
                   </div>

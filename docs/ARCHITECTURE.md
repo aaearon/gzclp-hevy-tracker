@@ -1262,13 +1262,32 @@ export interface ExerciseConfig {
 // Current progression state
 export interface ProgressionState {
   exerciseId: string
-  currentWeight: number
+  currentWeight: number  // ALWAYS stored in kg (see Weight Storage Convention below)
   stage: Stage
-  baseWeight: number
+  baseWeight: number     // ALWAYS stored in kg
   lastWorkoutId: string | null
   lastWorkoutDate: string | null
   amrapRecord: number
 }
+
+// ============================================================================
+// WEIGHT STORAGE CONVENTION
+// ============================================================================
+// All weight values (currentWeight, baseWeight, newWeight) are stored
+// internally in KILOGRAMS (kg), matching the Hevy API format.
+//
+// This applies regardless of the user's display preference (kg or lbs).
+//
+// Conversion rules:
+// - INPUT:  User enters weight in their unit → converted to kg before storage
+// - OUTPUT: Stored kg weight → converted to user's unit for display
+// - API:    Hevy returns/expects kg → used directly
+//
+// Key functions:
+// - toKg(weight, fromUnit)     → converts user input to kg
+// - displayWeight(kgWeight, unit) → formats kg for user display
+// - getIncrementKg(muscleGroup, unit) → gets progression increment in kg
+// ============================================================================
 
 // Pending change (awaiting user review)
 export interface PendingChange {

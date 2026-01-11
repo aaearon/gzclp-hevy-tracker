@@ -90,15 +90,19 @@ describe('[US2] T1 Progression Logic', () => {
       expect(result.type).toBe('progress')
     })
 
-    it('should add weight in lbs correctly', () => {
+    it('should add weight correctly for lbs user (increment converted to kg)', () => {
+      // User prefers lbs, stored as kg internally (225 lbs ≈ 102 kg)
+      const weightKg = 102
       const result = calculateT1Progression(
-        { ...baseProgression, stage: 0, currentWeight: 225 },
+        { ...baseProgression, stage: 0, currentWeight: weightKg },
         [3, 3, 3, 3, 5],
         'lower',
         'lbs'
       )
 
-      expect(result.newWeight).toBe(235) // +10lbs for lower body
+      // Lower body lbs increment: 10 lbs ≈ 4.54 kg
+      // 102 + 4.54 ≈ 106.54 kg
+      expect(result.newWeight).toBeCloseTo(106.54, 1)
     })
   })
 
@@ -156,16 +160,18 @@ describe('[US2] T1 Progression Logic', () => {
       expect(result.newWeight).toBe(82.5)
     })
 
-    it('should round deload weight to nearest 5lbs', () => {
+    it('should round deload weight to nearest 2.5kg (even when user prefers lbs)', () => {
+      // 225 lbs ≈ 102 kg stored internally
+      const weightKg = 102
       const result = calculateT1Progression(
-        { ...baseProgression, stage: 2, currentWeight: 225 },
+        { ...baseProgression, stage: 2, currentWeight: weightKg },
         [1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
         'lower',
         'lbs'
       )
 
-      // 85% of 225 = 191.25, rounds to 190
-      expect(result.newWeight).toBe(190)
+      // 85% of 102 = 86.7, rounds to 87.5kg
+      expect(result.newWeight).toBe(87.5)
     })
 
     it('should update baseWeight after deload', () => {

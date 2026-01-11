@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { formatWeight } from '@/utils/formatting'
+import { displayWeight } from '@/utils/formatting'
 
 interface T3OverviewProps {
   exercises: Record<string, ExerciseConfig>
@@ -113,7 +113,7 @@ export function T3Overview({
               </div>
               <div className="text-right shrink-0">
                 <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                  {prog ? formatWeight(prog.currentWeight, weightUnit) : 'TBD'}
+                  {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
                 </span>
                 {prog && prog.amrapRecord > 0 && (
                   <p

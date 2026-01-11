@@ -11,15 +11,12 @@
 
 import type { GZCLPDay, MainLiftRole, ProgressionState, Stage, WeightUnit } from '@/types/state'
 import { getRepScheme, ROLE_DISPLAY, STAGE_DISPLAY } from '@/lib/constants'
-import { formatWeight, convertWeight } from '@/utils/formatting'
+import { displayWeight } from '@/utils/formatting'
 import { getTierForDay, getProgressionKey } from '@/lib/role-utils'
 import { calculateWarmupSets } from '@/lib/warmup'
 
 function formatWarmupWeight(weightKg: number, weightUnit: WeightUnit): string {
-  if (weightUnit === 'lbs') {
-    return formatWeight(convertWeight(weightKg, 'kg', 'lbs'), 'lbs')
-  }
-  return formatWeight(weightKg, 'kg')
+  return displayWeight(weightKg, weightUnit)
 }
 
 export interface MainLiftCardProps {
@@ -104,9 +101,9 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
       </div>
 
       <div className="mt-2 flex items-baseline justify-between">
-        {/* Weight */}
+        {/* Weight (stored in kg, converted to user's unit for display) */}
         <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          {formatWeight(progression.currentWeight, weightUnit)}
+          {displayWeight(progression.currentWeight, weightUnit)}
         </span>
 
         {/* Rep scheme */}

@@ -431,14 +431,17 @@ describe('createPendingChangesFromAnalysis', () => {
     expect(changes).toHaveLength(0)
   })
 
-  it('should use lbs increments when unit is lbs', () => {
+  it('should use lbs increments when unit is lbs (converted to kg)', () => {
+    // All weights are stored in kg internally, even for lbs users
+    // 220 lbs ≈ 100 kg
+    const weightKg = 100
     const analysisResults: WorkoutAnalysisResult[] = [
       {
         exerciseId: 'ex-squat',
         exerciseName: 'Squat',
         tier: 'T1',
         reps: [3, 3, 3, 3, 5],
-        weight: 220, // Weight in lbs
+        weight: weightKg, // Weight from Hevy (always kg)
         workoutId: 'workout-1',
         workoutDate: '2024-01-15T10:00:00Z',
       },
@@ -448,9 +451,9 @@ describe('createPendingChangesFromAnalysis', () => {
     const lbsProgression: Record<string, ProgressionState> = {
       'squat-T1': {
         exerciseId: 'squat',
-        currentWeight: 220,
+        currentWeight: weightKg, // Stored in kg
         stage: 0,
-        baseWeight: 220,
+        baseWeight: weightKg,
         lastWorkoutId: null,
         lastWorkoutDate: null,
         amrapRecord: 5,
@@ -466,7 +469,9 @@ describe('createPendingChangesFromAnalysis', () => {
     )
 
     expect(changes).toHaveLength(1)
-    expect(changes[0].newWeight).toBe(230) // 220 + 10lbs (lower body increment)
+    // Lower body lbs increment: 10 lbs ≈ 4.54 kg
+    // 100 + 4.54 ≈ 104.54 kg
+    expect(changes[0].newWeight).toBeCloseTo(104.54, 1)
   })
 
   it('should handle discrepancy by using actual workout weight', () => {

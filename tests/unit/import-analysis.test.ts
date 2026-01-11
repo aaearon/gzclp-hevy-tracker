@@ -418,11 +418,14 @@ describe('calculateImportProgression', () => {
       expect(result.amrapReps).toBe(8)
     })
 
-    it('uses lbs increments correctly', () => {
+    it('uses lbs increments correctly (converted to kg)', () => {
+      // All weights are stored in kg internally
+      // 225 lbs ≈ 102 kg
+      const weightKg = 102
       const performance: WorkoutPerformance = {
         workoutId: 'w1',
         workoutDate: '2026-01-05T10:00:00Z',
-        weight: 225,
+        weight: weightKg, // Stored in kg
         reps: [3, 3, 3, 3, 5],
         totalSets: 5,
       }
@@ -435,7 +438,9 @@ describe('calculateImportProgression', () => {
         'lbs' as WeightUnit
       )
 
-      expect(result.suggestedWeight).toBe(235) // +10lbs for lower body
+      // Lower body lbs increment: 10 lbs ≈ 4.54 kg
+      // 102 + 4.54 ≈ 106.54 kg
+      expect(result.suggestedWeight).toBeCloseTo(106.54, 1)
     })
   })
 
