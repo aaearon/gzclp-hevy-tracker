@@ -108,30 +108,32 @@ export function T3Overview({
               ))}
             </div>
 
-            {/* Weight and PR */}
+            {/* Weight and scheme row */}
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-lg font-bold text-green-700 dark:text-green-300">
+              <span className="text-xl font-bold text-green-700 dark:text-green-300">
                 {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
               </span>
-              {prog && prog.amrapRecord > 0 && (
-                <span
-                  className="text-xs text-gray-500 dark:text-gray-400 cursor-help"
-                  title={prog.amrapRecordDate
-                    ? `Set on ${new Date(prog.amrapRecordDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}`
-                    : 'PR date unknown'
-                  }
-                >
-                  PR: {prog.amrapRecord} reps
-                </span>
-              )}
+              <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
             </div>
+            {/* PR indicator */}
+            {prog && prog.amrapRecord > 0 && (
+              <div
+                className="mt-1 text-xs text-gray-500 dark:text-gray-400 cursor-help"
+                title={prog.amrapRecordDate
+                  ? `Set on ${new Date(prog.amrapRecordDate).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}`
+                  : 'PR date unknown'
+                }
+              >
+                PR: {prog.amrapRecord} reps
+              </div>
+            )}
           </div>
         ))}
       </div>
