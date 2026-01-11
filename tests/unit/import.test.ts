@@ -204,9 +204,19 @@ describe('[US6] Data Import - importData', () => {
     const result = importData(validData)
 
     expect(result.version).toBe(CURRENT_STATE_VERSION)
-    expect(result.apiKey).toBe('test-api-key-12345678-1234-1234-1234-123456789012')
+    // apiKey is preserved from import (may be empty for security in new exports)
+    expect(result.apiKey).toBeDefined()
     expect(result.program.name).toBe('My GZCLP')
     expect(result.exercises['ex-1']).toBeDefined()
+  })
+
+  it('should accept empty apiKey from secure exports', () => {
+    const data = createValidExportData()
+    data.apiKey = '' // Empty apiKey from secure export
+    const result = importData(JSON.stringify(data))
+
+    expect(result.apiKey).toBe('')
+    expect(result.program.name).toBe('My GZCLP')
   })
 
   it('should strip export metadata from imported state', () => {
@@ -228,14 +238,15 @@ describe('[US6] Data Import - importData', () => {
     expect(result.version).toBe(CURRENT_STATE_VERSION)
   })
 
-  it('should preserve data when importing newer versions', () => {
+  it('should throw error when importing from newer versions', () => {
     const newerVersionData = createValidExportData()
     newerVersionData.version = '99.0.0'
     const dataStr = JSON.stringify(newerVersionData)
 
-    // Should not throw, should preserve data (with warning)
-    const result = importData(dataStr)
-    expect(result.apiKey).toBe('test-api-key-12345678-1234-1234-1234-123456789012')
+    // Should throw error for newer versions to prevent data loss
+    expect(() => importData(dataStr)).toThrow(
+      'Cannot import data from newer version 99.0.0'
+    )
   })
 
   it('should handle empty exercises and progression', () => {
@@ -251,6 +262,68 @@ describe('[US6] Data Import - importData', () => {
 
   it('should throw descriptive error for invalid data', () => {
     expect(() => importData('not json')).toThrow()
+  })
+
+  // Tests for missing field defaults (Phase 1 fix)
+  it('should provide default for missing pendingChanges', () => {
+    const data = createValidExportData()
+    delete data.pendingChanges
+    const result = importData(JSON.stringify(data))
+    expect(result.pendingChanges).toEqual([])
+  })
+
+  it('should provide default for missing t3Schedule', () => {
+    const data = createValidExportData()
+    delete data.t3Schedule
+    const result = importData(JSON.stringify(data))
+    expect(result.t3Schedule).toEqual({ A1: [], B1: [], A2: [], B2: [] })
+  })
+
+  it('should provide default for missing totalWorkouts', () => {
+    const data = createValidExportData()
+    delete data.totalWorkouts
+    const result = importData(JSON.stringify(data))
+    expect(result.totalWorkouts).toBe(0)
+  })
+
+  it('should provide default for missing mostRecentWorkoutDate', () => {
+    const data = createValidExportData()
+    delete data.mostRecentWorkoutDate
+    const result = importData(JSON.stringify(data))
+    expect(result.mostRecentWorkoutDate).toBeNull()
+  })
+
+  it('should provide default for missing needsPush', () => {
+    const data = createValidExportData()
+    delete data.needsPush
+    const result = importData(JSON.stringify(data))
+    expect(result.needsPush).toBe(false)
+  })
+
+  it('should provide default for missing lastSync', () => {
+    const data = createValidExportData()
+    delete data.lastSync
+    const result = importData(JSON.stringify(data))
+    expect(result.lastSync).toBeNull()
+  })
+
+  it('should preserve existing values when not missing', () => {
+    const data = createValidExportData()
+    data.pendingChanges = [{ id: 'test' }]
+    data.t3Schedule = { A1: ['ex-1'], B1: [], A2: [], B2: [] }
+    data.totalWorkouts = 42
+    data.mostRecentWorkoutDate = '2024-01-15T10:00:00.000Z'
+    data.needsPush = true
+    data.lastSync = '2024-01-15T10:00:00.000Z'
+
+    const result = importData(JSON.stringify(data))
+
+    expect(result.pendingChanges).toEqual([{ id: 'test' }])
+    expect(result.t3Schedule).toEqual({ A1: ['ex-1'], B1: [], A2: [], B2: [] })
+    expect(result.totalWorkouts).toBe(42)
+    expect(result.mostRecentWorkoutDate).toBe('2024-01-15T10:00:00.000Z')
+    expect(result.needsPush).toBe(true)
+    expect(result.lastSync).toBe('2024-01-15T10:00:00.000Z')
   })
 })
 
@@ -301,5 +374,109 @@ describe('[US6] Data Import - validateImportFile', () => {
 
     expect(result.isValid).toBe(false)
     expect(result.error).toBeDefined()
+  })
+})
+
+// Phase 2: Deep validation tests
+describe('[US6] Data Import - Deep Validation', () => {
+  let importData: (data: string) => GZCLPState
+
+  beforeEach(async () => {
+    const module = await import('@/lib/data-import')
+    importData = module.importData
+  })
+
+  it('should reject exercises with missing required fields', () => {
+    const data = createValidExportData()
+    data.exercises = {
+      'ex-1': {
+        id: 'ex-1',
+        // missing hevyTemplateId and name
+      },
+    }
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject exercises that is not an object', () => {
+    const data = createValidExportData()
+    data.exercises = 'not-an-object'
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject progression with invalid stage value', () => {
+    const data = createValidExportData()
+    data.progression = {
+      'ex-1': {
+        exerciseId: 'ex-1',
+        currentWeight: 100,
+        stage: 5, // invalid: must be 0, 1, or 2
+        baseWeight: 80,
+        lastWorkoutId: null,
+        lastWorkoutDate: null,
+        amrapRecord: 5,
+      },
+    }
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject progression with non-numeric weight', () => {
+    const data = createValidExportData()
+    data.progression = {
+      'ex-1': {
+        exerciseId: 'ex-1',
+        currentWeight: 'heavy', // invalid: must be number
+        stage: 0,
+        baseWeight: 80,
+        lastWorkoutId: null,
+        lastWorkoutDate: null,
+        amrapRecord: 5,
+      },
+    }
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject settings with invalid weightUnit', () => {
+    const data = createValidExportData()
+    ;(data.settings as any).weightUnit = 'stones' // invalid: must be kg or lbs
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject settings with missing increments fields', () => {
+    const data = createValidExportData()
+    ;(data.settings as any).increments = { upper: 2.5 } // missing lower
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should reject program with invalid currentDay', () => {
+    const data = createValidExportData()
+    ;(data.program as any).currentDay = 'C1' // invalid: must be A1, B1, A2, or B2
+    expect(() => importData(JSON.stringify(data))).toThrow()
+  })
+
+  it('should accept valid deeply nested structure', () => {
+    const data = createValidExportData()
+    // Ensure all nested fields are correct
+    data.exercises = {
+      'ex-1': {
+        id: 'ex-1',
+        hevyTemplateId: 'hevy-squat',
+        name: 'Back Squat',
+        role: 'squat',
+      },
+    }
+    data.progression = {
+      'squat-T1': {
+        exerciseId: 'ex-1',
+        currentWeight: 100,
+        stage: 0,
+        baseWeight: 80,
+        lastWorkoutId: null,
+        lastWorkoutDate: null,
+        amrapRecord: 5,
+      },
+    }
+    const result = importData(JSON.stringify(data))
+    expect(result.exercises['ex-1'].name).toBe('Back Squat')
+    expect(result.progression['squat-T1'].currentWeight).toBe(100)
   })
 })

@@ -217,7 +217,34 @@ describe('useExerciseManagement', () => {
 
   describe('updateExercise', () => {
     it('should update exercise in config storage only', () => {
-      const mockConfigStorage = createMockConfigStorage()
+      // Create mock with an existing exercise
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Back Squat',
+              role: 'squat',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
       const mockProgressionStorage = createMockProgressionStorage()
 
       const { result } = renderHook(() =>
@@ -234,12 +261,40 @@ describe('useExerciseManagement', () => {
       expect(mockConfigStorage.updateExercise).toHaveBeenCalledWith('exercise-1', {
         name: 'Updated Name',
       })
-      // Progression storage should NOT be touched for updates
-      expect(mockProgressionStorage.setProgression).not.toHaveBeenCalled()
+      // Progression storage should NOT be touched for name-only updates
+      expect(mockProgressionStorage.removeProgression).not.toHaveBeenCalled()
+      expect(mockProgressionStorage.setProgressionByKey).not.toHaveBeenCalled()
     })
 
-    it('should allow updating exercise role', () => {
-      const mockConfigStorage = createMockConfigStorage()
+    it('should allow updating exercise role and handle progression cleanup', () => {
+      // Create mock with an existing squat exercise
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Back Squat',
+              role: 'squat',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
       const mockProgressionStorage = createMockProgressionStorage()
 
       const { result } = renderHook(() =>
@@ -256,12 +311,90 @@ describe('useExerciseManagement', () => {
       expect(mockConfigStorage.updateExercise).toHaveBeenCalledWith('exercise-1', {
         role: 'bench',
       })
+      // Role change should clean up old progression keys and create new ones
+      expect(mockProgressionStorage.removeProgression).toHaveBeenCalledWith('squat-T1')
+      expect(mockProgressionStorage.removeProgression).toHaveBeenCalledWith('squat-T2')
+      expect(mockProgressionStorage.setProgressionByKey).toHaveBeenCalledWith('bench-T1', 'exercise-1', 0, 0)
+      expect(mockProgressionStorage.setProgressionByKey).toHaveBeenCalledWith('bench-T2', 'exercise-1', 0, 0)
+    })
+
+    it('should not modify progression when updating non-role fields', () => {
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Back Squat',
+              role: 'squat',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
+      const mockProgressionStorage = createMockProgressionStorage()
+
+      const { result } = renderHook(() =>
+        useExerciseManagement({
+          configStorage: mockConfigStorage,
+          progressionStorage: mockProgressionStorage,
+        })
+      )
+
+      act(() => {
+        // Updating role to same value should not trigger cleanup
+        result.current.updateExercise('exercise-1', { role: 'squat' })
+      })
+
+      // No progression changes when role stays the same
+      expect(mockProgressionStorage.removeProgression).not.toHaveBeenCalled()
+      expect(mockProgressionStorage.setProgressionByKey).not.toHaveBeenCalled()
     })
   })
 
   describe('removeExercise', () => {
     it('should remove exercise from config storage', () => {
-      const mockConfigStorage = createMockConfigStorage()
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Lat Pulldown',
+              role: 't3',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
       const mockProgressionStorage = createMockProgressionStorage()
 
       const { result } = renderHook(() =>
@@ -278,8 +411,34 @@ describe('useExerciseManagement', () => {
       expect(mockConfigStorage.removeExercise).toHaveBeenCalledWith('exercise-1')
     })
 
-    it('should remove progression from progression storage', () => {
-      const mockConfigStorage = createMockConfigStorage()
+    it('should remove progression keys for T3 exercise', () => {
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Lat Pulldown',
+              role: 't3',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
       const mockProgressionStorage = createMockProgressionStorage()
 
       const { result } = renderHook(() =>
@@ -293,11 +452,84 @@ describe('useExerciseManagement', () => {
         result.current.removeExercise('exercise-1')
       })
 
+      // T3 uses exercise ID as progression key
       expect(mockProgressionStorage.removeProgression).toHaveBeenCalledWith('exercise-1')
     })
 
+    it('should remove progression keys for main lift exercise', () => {
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Back Squat',
+              role: 'squat',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
+      const mockProgressionStorage = createMockProgressionStorage()
+
+      const { result } = renderHook(() =>
+        useExerciseManagement({
+          configStorage: mockConfigStorage,
+          progressionStorage: mockProgressionStorage,
+        })
+      )
+
+      act(() => {
+        result.current.removeExercise('exercise-1')
+      })
+
+      // Main lift uses role-based keys (squat-T1, squat-T2)
+      expect(mockProgressionStorage.removeProgression).toHaveBeenCalledWith('squat-T1')
+      expect(mockProgressionStorage.removeProgression).toHaveBeenCalledWith('squat-T2')
+    })
+
     it('should coordinate removal from both storages', () => {
-      const mockConfigStorage = createMockConfigStorage()
+      const mockConfigStorage = createMockConfigStorage({
+        config: {
+          version: '1.0.0',
+          apiKey: '',
+          program: {
+            name: 'Test Program',
+            createdAt: '2024-01-01T00:00:00Z',
+            hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
+            currentDay: 'A1',
+            workoutsPerWeek: 3,
+          },
+          settings: {
+            weightUnit: 'kg',
+            increments: { upper: 2.5, lower: 5 },
+            restTimers: { t1: 180, t2: 120, t3: 60 },
+          },
+          exercises: {
+            'exercise-1': {
+              id: 'exercise-1',
+              hevyTemplateId: 'template-1',
+              name: 'Lat Pulldown',
+              role: 't3',
+            },
+          },
+          t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
+        },
+      })
       const mockProgressionStorage = createMockProgressionStorage()
 
       const { result } = renderHook(() =>

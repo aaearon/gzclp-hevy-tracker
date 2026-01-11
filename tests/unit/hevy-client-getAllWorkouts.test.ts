@@ -143,17 +143,21 @@ describe('HevyClient.getAllWorkouts', () => {
   })
 
   it('should handle API errors gracefully', async () => {
+    // Create a client with no retries to avoid test timeout
+    const noRetryClient = new HevyClient({ apiKey: 'test-api-key', maxRetries: 0 })
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
       json: async () => ({ error: 'Internal Server Error' }),
     })
 
-    await expect(client.getAllWorkouts()).rejects.toThrow()
+    await expect(noRetryClient.getAllWorkouts()).rejects.toThrow()
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('should handle rate limit errors', async () => {
+    // Create a client with no retries for this test to avoid timeout
+    const noRetryClient = new HevyClient({ apiKey: 'test-api-key', maxRetries: 0 })
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 429,
@@ -161,7 +165,7 @@ describe('HevyClient.getAllWorkouts', () => {
       json: async () => ({}),
     })
 
-    await expect(client.getAllWorkouts()).rejects.toThrow('Rate limit')
+    await expect(noRetryClient.getAllWorkouts()).rejects.toThrow('Rate limit')
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

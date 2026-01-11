@@ -5,12 +5,14 @@
  * Replaces manual view switching with proper URL-based navigation.
  */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { ProgramProvider } from '@/contexts/ProgramContext'
 import { PageSkeleton } from '@/components/common/PageSkeleton'
 import { useProgram } from '@/hooks/useProgram'
+import { useDataMaintenance } from '@/hooks/useDataMaintenance'
 
 // Lazy load main views
 const Dashboard = lazy(() =>
@@ -27,6 +29,40 @@ const ProgressionChart = lazy(() =>
 )
 
 /**
+ * App providers component
+ * Provides program state via ProgramContext and runs data maintenance tasks.
+ * Must be inside RootLayout (after useProgram hook can run).
+ */
+function AppProviders({ children }: { children: ReactNode }) {
+  const { state, updateProgressionBatch, setProgressionHistory } = useProgram()
+
+  // Run data maintenance tasks at app startup (H1 fix)
+  useDataMaintenance({
+    apiKey: state.apiKey,
+    exercises: state.exercises,
+    progression: state.progression,
+    progressionHistory: state.progressionHistory,
+    hevyRoutineIds: state.program.hevyRoutineIds,
+    setProgressionHistory,
+    updateProgressionBatch,
+  })
+
+  // Provide read-only program state to all components (H2 fix)
+  return (
+    <ProgramProvider
+      weightUnit={state.settings.weightUnit}
+      exercises={state.exercises}
+      progression={state.progression}
+      t3Schedule={state.t3Schedule}
+      currentDay={state.program.currentDay}
+      increments={state.settings.increments}
+    >
+      {children}
+    </ProgramProvider>
+  )
+}
+
+/**
  * Root layout component
  * Wraps all routes with providers and suspense boundary
  */
@@ -34,9 +70,11 @@ function RootLayout() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
+        <AppProviders>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </AppProviders>
       </ToastProvider>
     </ErrorBoundary>
   )

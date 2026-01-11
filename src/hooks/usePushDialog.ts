@@ -3,9 +3,89 @@
  *
  * Manages push confirmation dialog state and actions.
  * [Task 3.3] Extracted from Dashboard/index.tsx to reduce component size.
+ * Includes multi-tab mutex to prevent concurrent pushes.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+
+// =============================================================================
+// Multi-Tab Mutex for Push Operations
+// =============================================================================
+
+const PUSH_LOCK_KEY = 'gzclp_push_lock'
+const LOCK_TIMEOUT_MS = 60000 // 60 seconds max lock duration
+
+interface PushLock {
+  timestamp: number
+  tabId: string
+}
+
+/** Generate a unique ID for this browser tab */
+function getTabId(): string {
+  let tabId = sessionStorage.getItem('gzclp_tab_id')
+  if (!tabId) {
+    tabId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+    sessionStorage.setItem('gzclp_tab_id', tabId)
+  }
+  return tabId
+}
+
+/** Try to acquire the push lock */
+function acquirePushLock(): boolean {
+  try {
+    const existing = localStorage.getItem(PUSH_LOCK_KEY)
+    if (existing) {
+      const lock = JSON.parse(existing) as PushLock
+      // Check if lock is still valid (not expired)
+      if (Date.now() - lock.timestamp < LOCK_TIMEOUT_MS) {
+        // Lock is held by another tab
+        if (lock.tabId !== getTabId()) {
+          return false
+        }
+        // We already hold the lock
+        return true
+      }
+      // Lock expired, we can take it
+    }
+    // Acquire the lock
+    const newLock: PushLock = {
+      timestamp: Date.now(),
+      tabId: getTabId(),
+    }
+    localStorage.setItem(PUSH_LOCK_KEY, JSON.stringify(newLock))
+    return true
+  } catch {
+    // If localStorage fails, allow the operation (single-tab fallback)
+    return true
+  }
+}
+
+/** Release the push lock if we own it */
+function releasePushLock(): void {
+  try {
+    const existing = localStorage.getItem(PUSH_LOCK_KEY)
+    if (existing) {
+      const lock = JSON.parse(existing) as PushLock
+      if (lock.tabId === getTabId()) {
+        localStorage.removeItem(PUSH_LOCK_KEY)
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+}
+
+/** Check if push is locked by another tab */
+function isPushLockedByOtherTab(): boolean {
+  try {
+    const existing = localStorage.getItem(PUSH_LOCK_KEY)
+    if (!existing) return false
+    const lock = JSON.parse(existing) as PushLock
+    return lock.tabId !== getTabId() && Date.now() - lock.timestamp < LOCK_TIMEOUT_MS
+  } catch {
+    return false
+  }
+}
 import type { HevyClient } from '@/lib/hevy-client'
 import {
   fetchCurrentHevyState,
@@ -49,6 +129,8 @@ export interface UsePushDialogReturn {
   isUpdating: boolean
   updateError: string | null
   updateSuccess: boolean
+  /** True if another tab is currently pushing */
+  isLockedByOtherTab: boolean
   // Actions
   open: () => Promise<void>
   close: () => void
@@ -85,6 +167,41 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [updateSuccess, setUpdateSuccess] = useState(false)
+  const [isLockedByOtherTab, setIsLockedByOtherTab] = useState(false)
+
+  // Check for lock from other tabs periodically and on visibility change
+  useEffect(() => {
+    const checkLock = () => {
+      setIsLockedByOtherTab(isPushLockedByOtherTab())
+    }
+
+    // Check immediately
+    checkLock()
+
+    // Check when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkLock()
+      }
+    }
+
+    // Listen for storage changes (from other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PUSH_LOCK_KEY) {
+        checkLock()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('storage', handleStorageChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorageChange)
+      // Release lock if we hold it when component unmounts
+      releasePushLock()
+    }
+  }, [])
 
   // Open dialog and fetch current Hevy state
   const open = useCallback(async () => {
@@ -139,6 +256,11 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
 
   // Confirm and execute push
   const confirm = useCallback(async () => {
+    // Prevent double-click - check if already updating
+    if (isUpdating) {
+      return
+    }
+
     if (!hevyClient || !preview || !hevyState) {
       setUpdateError('Missing data for sync')
       close()
@@ -147,6 +269,13 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
 
     if (preview.pushCount === 0 && preview.pullCount === 0) {
       close()
+      return
+    }
+
+    // Try to acquire the multi-tab lock
+    if (!acquirePushLock()) {
+      setUpdateError('Another tab is currently syncing. Please wait.')
+      setIsLockedByOtherTab(true)
       return
     }
 
@@ -202,8 +331,11 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
       }
     } finally {
       setIsUpdating(false)
+      releasePushLock()
+      setIsLockedByOtherTab(isPushLockedByOtherTab())
     }
   }, [
+    isUpdating,
     hevyClient,
     preview,
     hevyState,
@@ -232,6 +364,7 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
     isUpdating,
     updateError,
     updateSuccess,
+    isLockedByOtherTab,
     open,
     close,
     confirm,

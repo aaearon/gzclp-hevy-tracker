@@ -78,17 +78,17 @@ export function RoutineAssignmentStep({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Assign Routines to GZCLP Days
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Match your existing Hevy routines to each GZCLP workout day.
         </p>
       </div>
 
       {/* Duplicate warning */}
       {hasDuplicates && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-300">
           <strong>Note:</strong> Same routine is assigned to multiple days. This is allowed but
           may affect exercise detection.
         </div>
@@ -105,33 +105,35 @@ export function RoutineAssignmentStep({
             <div
               key={day}
               className={`border rounded-lg p-4 ${
-                isDuplicate ? 'border-amber-300 bg-amber-50' : 'border-gray-200'
+                isDuplicate
+                  ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'
+                  : 'border-gray-200 dark:border-gray-700'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="font-medium text-gray-900">{label}</h3>
-                  <p className="text-sm text-gray-500">{description}</p>
+                  <h3 className="font-medium text-gray-900 dark:text-white">{label}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
                 </div>
                 {isDuplicate && (
-                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                  <span className="text-xs text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded">
                     Duplicate
                   </span>
                 )}
               </div>
 
               {assignedRoutine ? (
-                <div className="flex items-center justify-between mt-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div>
-                    <p className="font-medium text-gray-900">{assignedRoutine.title}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-gray-900 dark:text-white">{assignedRoutine.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {assignedRoutine.exercisePreview.slice(0, 2).join(', ')}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => { onAssign(day, null) }}
-                    className="text-sm text-red-600 hover:text-red-700 px-3 py-1 min-h-[44px]"
+                    className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1 min-h-[44px]"
                     aria-label="Clear"
                   >
                     Clear
@@ -141,8 +143,9 @@ export function RoutineAssignmentStep({
                 <button
                   type="button"
                   onClick={() => { setSelectorOpen(day) }}
-                  className="w-full mt-3 px-4 py-3 border-2 border-dashed border-gray-300
-                             rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600
+                  className="w-full mt-3 px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600
+                             rounded-lg text-gray-500 dark:text-gray-400 hover:border-blue-400 dark:hover:border-blue-500
+                             hover:text-blue-600 dark:hover:text-blue-400
                              transition-colors min-h-[44px]"
                   aria-label="Select routine"
                 >
@@ -160,7 +163,7 @@ export function RoutineAssignmentStep({
           type="button"
           onClick={onBack}
           disabled={isLoading}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 min-h-[44px]"
+          className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50 min-h-[44px]"
         >
           Back
         </button>
@@ -169,7 +172,7 @@ export function RoutineAssignmentStep({
           onClick={onNext}
           disabled={!canProceed || isLoading}
           className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium
-                     hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed
+                     hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed
                      min-h-[44px] flex items-center gap-2"
         >
           {isLoading ? (
@@ -193,7 +196,7 @@ export function RoutineAssignmentStep({
               Loading workout history...
             </>
           ) : (
-            `Next (${assignedCount} assigned)`
+            `Next (${String(assignedCount)} assigned)`
           )}
         </button>
       </div>

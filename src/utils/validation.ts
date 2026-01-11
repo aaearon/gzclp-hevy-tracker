@@ -5,6 +5,7 @@
  */
 
 import type { WeightUnit } from '@/types/state'
+import { MAX_WEIGHT_LIMITS } from '@/lib/constants'
 
 // =============================================================================
 // Weight Input Validation Result
@@ -34,7 +35,7 @@ export function isValidApiKey(apiKey: string): boolean {
 /**
  * Validate weight is within reasonable range.
  * Minimum: 0 (bodyweight exercises)
- * Maximum: 1000kg / 2200lbs (reasonable upper bound)
+ * Maximum: 500kg / 1100lbs (reasonable upper bound for human lifters)
  */
 export function isValidWeight(weight: number, unit: 'kg' | 'lbs'): boolean {
   if (typeof weight !== 'number' || isNaN(weight)) {
@@ -45,8 +46,7 @@ export function isValidWeight(weight: number, unit: 'kg' | 'lbs'): boolean {
     return false
   }
 
-  const maxWeight = unit === 'kg' ? 1000 : 2200
-  return weight <= maxWeight
+  return weight <= MAX_WEIGHT_LIMITS[unit]
 }
 
 /**
@@ -81,12 +81,6 @@ export function sanitizeInput(input: string): string {
 // Weight Input Validation (Real-time)
 // =============================================================================
 
-/** Maximum weight limits by unit */
-const MAX_WEIGHT = {
-  kg: 500,
-  lbs: 1100,
-} as const
-
 /**
  * Validate a weight input value for real-time form validation.
  *
@@ -120,8 +114,7 @@ export function validateWeight(value: string, unit: WeightUnit): WeightValidatio
   }
 
   // Upper bound check
-  const maxWeight = MAX_WEIGHT[unit]
-  if (num > maxWeight) {
+  if (num > MAX_WEIGHT_LIMITS[unit]) {
     return { isValid: false, error: 'Weight seems too high' }
   }
 

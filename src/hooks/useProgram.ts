@@ -5,7 +5,7 @@
  * Uses three separate storage hooks for config, progression, and history.
  */
 
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useConfigStorage } from './useConfigStorage'
 import { useProgressionStorage } from './useProgressionStorage'
 import { useHistoryStorage } from './useHistoryStorage'
@@ -13,7 +13,7 @@ import { useExerciseManagement } from './useExerciseManagement'
 import { useProgramSettings } from './useProgramSettings'
 import { useProgressionManager } from './useProgressionManager'
 import { useHistoryManager } from './useHistoryManager'
-import { useDataPersistence } from './useDataPersistence'
+import { useDataPersistence, type ImportResult } from './useDataPersistence'
 import { isSetupRequired } from '@/lib/state-factory'
 import type {
   GZCLPState,
@@ -82,7 +82,7 @@ export interface UseProgramResult {
 
   // Full state management
   resetState: () => void
-  importState: (state: GZCLPState) => void
+  importState: (state: GZCLPState) => ImportResult
 }
 
 export function useProgram(): UseProgramResult {

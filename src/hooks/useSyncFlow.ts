@@ -105,8 +105,14 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
 
   // Handle manual sync and update timestamp
   const handleSync = useCallback(async () => {
-    await syncWorkouts()
-    onLastSyncUpdate(new Date().toISOString())
+    try {
+      await syncWorkouts()
+      onLastSyncUpdate(new Date().toISOString())
+    } catch (error) {
+      // Errors from syncWorkouts are already handled in useProgression
+      // This catch is a safety net for any unexpected errors
+      console.error('Sync failed:', error)
+    }
   }, [syncWorkouts, onLastSyncUpdate])
 
   return {

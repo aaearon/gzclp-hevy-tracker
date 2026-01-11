@@ -35,10 +35,15 @@ export function Settings() {
 
   const handleImportConfirm = () => {
     if (pendingImport) {
-      importState(pendingImport)
+      const result = importState(pendingImport)
       setPendingImport(null)
-      setSuccessMessage('Data imported successfully!')
-      setTimeout(() => { setSuccessMessage(null) }, 3000)
+      if (result.success) {
+        setSuccessMessage('Data imported successfully!')
+        setTimeout(() => { setSuccessMessage(null) }, 3000)
+      } else {
+        setImportError(result.error ?? 'Import failed')
+        setTimeout(() => { setImportError(null) }, 5000)
+      }
     }
   }
 

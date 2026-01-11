@@ -26,6 +26,8 @@ export interface PushConfirmDialogProps {
   error: string | null
   preview: SelectablePushPreview | null
   weightUnit: WeightUnit
+  /** Whether a push operation is currently in progress */
+  isPushing?: boolean
   onConfirm: () => void
   onCancel: () => void
   onRetry: () => void
@@ -40,7 +42,7 @@ export interface PushConfirmDialogProps {
 function ChangeIndicator({ oldWeight, newWeight }: { oldWeight: number | null; newWeight: number }) {
   if (oldWeight === null) {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
         NEW
       </span>
     )
@@ -48,14 +50,14 @@ function ChangeIndicator({ oldWeight, newWeight }: { oldWeight: number | null; n
 
   const diff = newWeight - oldWeight
   if (Math.abs(diff) < 0.01) {
-    return <span className="text-gray-400">-</span>
+    return <span className="text-gray-400 dark:text-gray-500">-</span>
   }
 
   if (diff > 0) {
-    return <span className="text-green-600 font-medium">+{diff.toFixed(1)}</span>
+    return <span className="text-green-600 dark:text-green-400 font-medium">+{diff.toFixed(1)}</span>
   }
 
-  return <span className="text-red-600 font-medium">{diff.toFixed(1)}</span>
+  return <span className="text-red-600 dark:text-red-400 font-medium">{diff.toFixed(1)}</span>
 }
 
 /** Three-way action selector: Push / Skip / Pull */
@@ -79,7 +81,7 @@ function ExerciseActionSelector({
     )
   }
 
-  const buttonBase = "px-2 py-1 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-offset-1"
+  const buttonBase = "px-2 py-1 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-offset-1 dark:focus:ring-offset-gray-900"
 
   return (
     <div className="flex gap-0.5" role="group" aria-label="Sync action">
@@ -90,7 +92,7 @@ function ExerciseActionSelector({
         className={`${buttonBase} ${
           action === 'push'
             ? 'bg-indigo-600 text-white focus:ring-indigo-500'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 focus:ring-gray-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400'
         }`}
         title="Push local weight to Hevy"
       >
@@ -103,7 +105,7 @@ function ExerciseActionSelector({
         className={`${buttonBase} ${
           action === 'skip'
             ? 'bg-gray-600 text-white focus:ring-gray-500'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 focus:ring-gray-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400'
         }`}
         title="Skip - keep both unchanged"
       >
@@ -118,8 +120,8 @@ function ExerciseActionSelector({
           action === 'pull'
             ? 'bg-green-600 text-white focus:ring-green-500'
             : canPull
-              ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 focus:ring-gray-400'
-              : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400'
+              : 'bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'
         }`}
         title={canPull ? "Pull Hevy weight to local" : "No Hevy weight to pull"}
       >
@@ -264,6 +266,7 @@ export function PushConfirmDialog({
   error,
   preview,
   weightUnit,
+  isPushing = false,
   onConfirm,
   onCancel,
   onRetry,
@@ -434,10 +437,10 @@ export function PushConfirmDialog({
               <button
                 type="button"
                 onClick={onConfirm}
-                disabled={!hasActions}
+                disabled={!hasActions || isPushing}
                 className="min-h-[44px] px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               >
-                {buttonLabel}
+                {isPushing ? 'Syncing...' : buttonLabel}
               </button>
             </div>
           </div>

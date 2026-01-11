@@ -345,9 +345,12 @@ export interface GZCLPState {
 // =============================================================================
 
 /**
- * User's choice between creating new routines or importing existing ones.
+ * User's choice for initial setup flow.
+ * - 'create': Start a new GZCLP program from scratch
+ * - 'import': Import existing GZCLP routines from Hevy
+ * - 'restore': Restore from a previously exported backup file
  */
-export type RoutineSourceMode = 'create' | 'import'
+export type RoutineSourceMode = 'create' | 'import' | 'restore'
 
 /**
  * Summary of a Hevy routine for display in the selector.

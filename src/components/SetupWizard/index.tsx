@@ -16,7 +16,7 @@ import { useHevyApi } from '@/hooks/useHevyApi'
 import { useProgram } from '@/hooks/useProgram'
 import { useRoutineImport } from '@/hooks/useRoutineImport'
 import { MAIN_LIFT_ROLES, type MainLiftRole } from '@/types/state'
-import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise } from '@/types/state'
+import type { GZCLPDay, WeightUnit, RoutineSourceMode, ImportedExercise, GZCLPState } from '@/types/state'
 import { calculateCreatedAtFromWorkouts } from '@/lib/weeks-calculator'
 import { importProgressionHistory } from '@/lib/history-importer'
 import { createHevyClient } from '@/lib/hevy-client'
@@ -84,11 +84,24 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     path: RoutineSourceMode
     unit: WeightUnit
     workoutsPerWeek: number
+    restoredState?: GZCLPState
   }) => {
     setRoutineSourceMode(data.path)
     program.setWeightUnit(data.unit)
     program.setWorkoutsPerWeek(data.workoutsPerWeek)
     setUnit(data.unit)
+
+    if (data.path === 'restore' && data.restoredState) {
+      // Restore path - merge new API key with restored state and complete setup
+      const mergedState: GZCLPState = {
+        ...data.restoredState,
+        apiKey: data.apiKey, // Use the newly validated API key
+      }
+      program.importState(mergedState)
+      // CompletedGuard will handle navigation when isSetupRequired becomes false
+      return
+    }
+
     if (data.path === 'create') {
       setCurrentStep('exercises')
     } else {

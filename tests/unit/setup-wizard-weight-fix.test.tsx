@@ -505,7 +505,7 @@ describe('Phase 8: Integration - handleNextWorkoutComplete behavior', () => {
 
     // Wait for any initial renders
     await waitFor(() => {
-      expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')).toBeInTheDocument()
     })
 
     // Navigate through the wizard steps would be complex
@@ -535,7 +535,7 @@ describe('Phase 8: Integration - handleNextWorkoutComplete behavior', () => {
     render(<SetupWizard onComplete={mockOnComplete} />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')).toBeInTheDocument()
     })
 
     // Verify the test setup

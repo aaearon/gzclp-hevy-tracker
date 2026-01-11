@@ -17,7 +17,6 @@ import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { usePushDialog } from '@/hooks/usePushDialog'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { createHevyClient } from '@/lib/hevy-client'
-import { importProgressionHistory, backfillAmrapRecords, applyAmrapBackfill } from '@/lib/history-importer'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -35,12 +34,11 @@ export function Dashboard() {
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
-    setProgressionHistory,
     acknowledgeDiscrepancy,
     setTotalWorkouts,
     setMostRecentWorkoutDate,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, progressionHistory } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
   // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
   const acknowledgedDiscrepancies = state.acknowledgedDiscrepancies ?? []
 
@@ -144,75 +142,6 @@ export function Dashboard() {
     if (!apiKey) return null
     return createHevyClient(apiKey)
   }, [apiKey])
-
-  // Auto-import progression history if empty (for users who set up before this feature)
-  const hasImportedHistory = useRef(false)
-  useEffect(() => {
-    // Only run once, when history is empty and we have all required data
-    if (hasImportedHistory.current) return
-    if (!apiKey || !hevyClient) return
-    if (Object.keys(exercises).length === 0) return
-    if (Object.keys(progressionHistory).length > 0) return // Already has history
-
-    const routineIdsConfigured = Object.values(program.hevyRoutineIds).some((id) => id !== null)
-    if (!routineIdsConfigured) return
-
-    hasImportedHistory.current = true
-
-    // Import historical data in background
-    void (async () => {
-      try {
-        const result = await importProgressionHistory(
-          hevyClient,
-          exercises,
-          program.hevyRoutineIds
-        )
-        if (result.entryCount > 0) {
-          setProgressionHistory(result.history)
-        }
-      } catch {
-        // Silently fail - charts will just be empty
-      }
-    })()
-  }, [apiKey, hevyClient, exercises, progressionHistory, program.hevyRoutineIds, setProgressionHistory])
-
-  // Auto-backfill AMRAP records if they're missing dates (for migration/new feature)
-  const hasBackfilledAmrap = useRef(false)
-  useEffect(() => {
-    // Only run once
-    if (hasBackfilledAmrap.current) return
-    if (!apiKey || !hevyClient) return
-    if (Object.keys(exercises).length === 0) return
-    if (Object.keys(progression).length === 0) return
-
-    // Check if we need to backfill (has amrapRecord but no amrapRecordDate)
-    const needsBackfill = Object.values(progression).some(
-      (p) => p.amrapRecord > 0 && !p.amrapRecordDate
-    )
-    if (!needsBackfill) return
-
-    const routineIdsConfigured = Object.values(program.hevyRoutineIds).some((id) => id !== null)
-    if (!routineIdsConfigured) return
-
-    hasBackfilledAmrap.current = true
-
-    // Backfill AMRAP records in background
-    void (async () => {
-      try {
-        const result = await backfillAmrapRecords(
-          hevyClient,
-          exercises,
-          program.hevyRoutineIds
-        )
-        if (result.records.length > 0) {
-          const updatedProgression = applyAmrapBackfill(progression, result.records)
-          updateProgressionBatch(updatedProgression)
-        }
-      } catch {
-        // Silently fail - tooltips will just show "unknown"
-      }
-    })()
-  }, [apiKey, hevyClient, exercises, progression, program.hevyRoutineIds, updateProgressionBatch])
 
   // Use push dialog hook for push confirmation dialog [Task 3.3]
   const {

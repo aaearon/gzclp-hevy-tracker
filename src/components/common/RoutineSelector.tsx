@@ -48,18 +48,18 @@ export function RoutineSelector({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-white flex flex-col"
+      className="fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label="Select routine"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Select Routine</h2>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Select Routine</h2>
         <button
           type="button"
           onClick={onClose}
-          className="p-2 text-gray-500 hover:text-gray-700 min-h-[44px] min-w-[44px]
+          className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 min-h-[44px] min-w-[44px]
                      flex items-center justify-center"
           aria-label="Close"
         >
@@ -76,13 +76,15 @@ export function RoutineSelector({
 
       {/* Search (only if more than 10 routines) */}
       {showSearch && (
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value) }}
             placeholder="Search routines..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       placeholder:text-gray-400 dark:placeholder:text-gray-500
                        focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
           />
         </div>
@@ -91,7 +93,7 @@ export function RoutineSelector({
       {/* Routine list */}
       <div className="flex-1 overflow-y-auto p-4">
         {filteredRoutines.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No routines found</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">No routines found</p>
         ) : (
           <div className="space-y-3">
             {filteredRoutines.map((routine) => (
@@ -103,18 +105,18 @@ export function RoutineSelector({
                            focus:outline-none focus:ring-2 focus:ring-blue-500
                            ${
                              selectedId === routine.id
-                               ? 'border-blue-500 bg-blue-50'
-                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                               ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                               : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                            }`}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-medium text-gray-900">{routine.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h3 className="font-medium text-gray-900 dark:text-white">{routine.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {routine.exercisePreview.join(', ')}
                     </p>
                   </div>
-                  <span className="text-sm text-gray-400 ml-2 whitespace-nowrap">
+                  <span className="text-sm text-gray-400 dark:text-gray-500 ml-2 whitespace-nowrap">
                     {routine.exerciseCount} exercises
                   </span>
                 </div>

@@ -4,7 +4,7 @@
  * Manages workout synchronization, analysis, and progression change generation.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { createHevyClient, HevyApiClientError } from '@/lib/hevy-client'
 import {
   analyzeWorkout,
@@ -97,6 +97,21 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyInfo[]>([])
   const [analysisResults, setAnalysisResults] = useState<WorkoutAnalysisResult[]>([])
 
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true)
+
+  // AbortController for cancelling requests on unmount
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup: abort any pending requests and mark as unmounted
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
   // Create client
   const client = useMemo(() => {
     if (!apiKey) return null
@@ -112,12 +127,23 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       return
     }
 
+    // Abort any previous request
+    abortControllerRef.current?.abort()
+
+    // Create new controller for this request
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     setIsSyncing(true)
     setSyncError(null)
 
     try {
       // Fetch workouts from Hevy (first page for now)
-      const response = await client.getWorkouts({ page: 1, pageSize: 10 })
+      const response = await client.getWorkouts({ page: 1, pageSize: 10 }, controller.signal)
+
+      // Check if still mounted before processing
+      if (!isMountedRef.current) return
+
       const workouts = response.workouts
 
       // Sort chronologically (oldest first) for proper processing
@@ -177,6 +203,9 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         settings.weightUnit
       )
 
+      // Check if still mounted before updating state
+      if (!isMountedRef.current) return
+
       // Update state
       setAnalysisResults(allAnalysisResults)
       setDiscrepancies(deduplicateDiscrepancies(allDiscrepancies))
@@ -184,7 +213,12 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       setLastSyncTime(new Date().toISOString())
 
     } catch (error) {
+      // Don't update state if unmounted or request was cancelled
+      if (!isMountedRef.current) return
+
       if (error instanceof HevyApiClientError) {
+        // Silently ignore cancellation errors
+        if (error.message === 'Request cancelled') return
         setSyncError(error.message)
       } else if (error instanceof Error) {
         setSyncError(error.message)
@@ -192,7 +226,10 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         setSyncError('Failed to sync workouts')
       }
     } finally {
-      setIsSyncing(false)
+      // Always update syncing state if still mounted
+      if (isMountedRef.current) {
+        setIsSyncing(false)
+      }
     }
   }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds])
 

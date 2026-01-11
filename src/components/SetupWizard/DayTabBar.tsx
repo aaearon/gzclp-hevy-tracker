@@ -46,7 +46,7 @@ export function DayTabBar({
                        min-h-[44px] transition-colors
                        ${isActive
                          ? 'bg-blue-600 text-white'
-                         : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                         : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-blue-300 dark:hover:border-blue-500'
                        }`}
           >
             {day}

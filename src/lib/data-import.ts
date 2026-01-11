@@ -4,6 +4,7 @@
  * Handles parsing, validating, and importing exported state.
  */
 
+import { z } from 'zod'
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION } from './constants'
 
@@ -16,6 +17,70 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024
  * Semver regex pattern.
  */
 const SEMVER_REGEX = /^\d+\.\d+\.\d+$/
+
+// =============================================================================
+// Zod Schemas for Deep Validation
+// =============================================================================
+
+const GZCLPDaySchema = z.enum(['A1', 'B1', 'A2', 'B2'])
+const StageSchema = z.union([z.literal(0), z.literal(1), z.literal(2)])
+const WeightUnitSchema = z.enum(['kg', 'lbs'])
+const ExerciseRoleSchema = z.enum(['squat', 'bench', 'ohp', 'deadlift', 't3']).optional()
+
+const ExerciseConfigSchema = z.object({
+  id: z.string(),
+  hevyTemplateId: z.string(),
+  name: z.string(),
+  role: ExerciseRoleSchema,
+}).loose() // Allow additional fields for backwards compatibility
+
+const ProgressionStateSchema = z.object({
+  exerciseId: z.string(),
+  currentWeight: z.number(),
+  stage: StageSchema,
+  baseWeight: z.number(),
+  lastWorkoutId: z.string().nullable(),
+  lastWorkoutDate: z.string().nullable(),
+  amrapRecord: z.number(),
+}).loose() // Allow additional fields
+
+const ProgramConfigSchema = z.object({
+  name: z.string(),
+  createdAt: z.string(),
+  hevyRoutineIds: z.object({
+    A1: z.string().nullable(),
+    B1: z.string().nullable(),
+    A2: z.string().nullable(),
+    B2: z.string().nullable(),
+  }),
+  currentDay: GZCLPDaySchema,
+}).loose()
+
+const UserSettingsSchema = z.object({
+  weightUnit: WeightUnitSchema,
+  increments: z.object({
+    upper: z.number(),
+    lower: z.number(),
+  }),
+  restTimers: z.object({
+    t1: z.number(),
+    t2: z.number(),
+    t3: z.number(),
+  }),
+}).loose()
+
+/**
+ * Deep validation schema for imported state.
+ * Uses passthrough() to allow unknown fields for forward compatibility.
+ */
+const ImportStateSchema = z.object({
+  version: z.string().regex(SEMVER_REGEX, 'Invalid version format (expected X.Y.Z)'),
+  apiKey: z.string(),
+  program: ProgramConfigSchema,
+  exercises: z.record(z.string(), ExerciseConfigSchema),
+  progression: z.record(z.string(), ProgressionStateSchema),
+  settings: UserSettingsSchema,
+}).loose()
 
 /**
  * Parse raw JSON data from import string.
@@ -38,48 +103,44 @@ export function parseImportData(data: string): Record<string, unknown> {
 }
 
 /**
- * Validate the structure of imported data.
+ * Validate the structure of imported data using zod schema.
+ * Provides deep validation of nested structures.
  * @throws Error if structure is invalid.
  */
 export function validateImportStructure(data: Record<string, unknown>): void {
-  // Check required top-level fields
-  const requiredFields = ['version', 'apiKey', 'program', 'exercises', 'progression', 'settings']
+  const result = ImportStateSchema.safeParse(data)
 
-  for (const field of requiredFields) {
-    if (!(field in data)) {
-      throw new Error(`Invalid import: missing required field: ${field}`)
+  if (!result.success) {
+    // Extract the first error for a clear message
+    const firstIssue = result.error.issues[0]
+    if (!firstIssue) {
+      throw new Error('Invalid import: validation failed')
     }
-  }
+    const path = firstIssue.path.join('.')
+    const message = firstIssue.message
+    const topLevelField = firstIssue.path[0] as string | undefined
 
-  // Validate version format
-  const version = data.version
-  if (typeof version !== 'string' || !SEMVER_REGEX.test(version)) {
-    throw new Error('Invalid import: invalid version format (expected X.Y.Z)')
-  }
-
-  // Validate program structure
-  const program = data.program as Record<string, unknown> | undefined
-  if (!program || typeof program !== 'object') {
-    throw new Error('Invalid import: invalid program structure')
-  }
-
-  const programFields = ['name', 'createdAt', 'hevyRoutineIds', 'currentDay']
-  for (const field of programFields) {
-    if (!(field in program)) {
-      throw new Error('Invalid import: invalid program structure')
+    // Check if this is a missing required top-level field
+    const requiredTopLevel = ['version', 'apiKey', 'program', 'exercises', 'progression', 'settings']
+    if (topLevelField && requiredTopLevel.includes(topLevelField) && !(topLevelField in data)) {
+      throw new Error(`Invalid import: missing required field: ${topLevelField}`)
     }
-  }
 
-  // Validate settings structure
-  const settings = data.settings as Record<string, unknown> | undefined
-  if (!settings || typeof settings !== 'object') {
-    throw new Error('Invalid import: invalid settings structure')
-  }
-
-  const settingsFields = ['weightUnit', 'increments', 'restTimers']
-  for (const field of settingsFields) {
-    if (!(field in settings)) {
-      throw new Error('Invalid import: invalid settings structure')
+    // Provide user-friendly error messages
+    if (path === '') {
+      throw new Error(`Invalid import: ${message}`)
+    } else if (path === 'version') {
+      throw new Error('Invalid import: invalid version format (expected X.Y.Z)')
+    } else if (path.startsWith('program')) {
+      throw new Error(`Invalid import: invalid program structure (${path}: ${message})`)
+    } else if (path.startsWith('settings')) {
+      throw new Error(`Invalid import: invalid settings structure (${path}: ${message})`)
+    } else if (path.startsWith('exercises')) {
+      throw new Error(`Invalid import: invalid exercise data (${path}: ${message})`)
+    } else if (path.startsWith('progression')) {
+      throw new Error(`Invalid import: invalid progression data (${path}: ${message})`)
+    } else {
+      throw new Error(`Invalid import: ${path}: ${message}`)
     }
   }
 }
@@ -128,16 +189,25 @@ export function importData(data: string): GZCLPState {
   const versionCheck = checkVersion(version)
 
   if (versionCheck.isNewer) {
-    console.warn(
-      `Importing data from newer version ${version}. Current version is ${CURRENT_STATE_VERSION}. Some features may not work correctly.`
+    throw new Error(
+      `Cannot import data from newer version ${version}. Current app version is ${CURRENT_STATE_VERSION}. Please update the app to import this file.`
     )
   }
 
-  // Ensure required fields have defaults
+  // Ensure required fields have defaults for backwards compatibility
   const state = {
     ...stateData,
+    // Existing defaults
     progressionHistory: stateData.progressionHistory ?? {},
     acknowledgedDiscrepancies: stateData.acknowledgedDiscrepancies ?? [],
+    // New defaults for fields added in later versions
+    pendingChanges: stateData.pendingChanges ?? [],
+    t3Schedule: stateData.t3Schedule ?? { A1: [], B1: [], A2: [], B2: [] },
+    totalWorkouts: stateData.totalWorkouts ?? 0,
+    mostRecentWorkoutDate: stateData.mostRecentWorkoutDate ?? null,
+    needsPush: stateData.needsPush ?? false,
+    lastSync: stateData.lastSync ?? null,
+    // Always update version to current
     version: CURRENT_STATE_VERSION,
   } as GZCLPState
 
@@ -151,6 +221,8 @@ export interface FileValidationResult {
   isValid: boolean
   error?: string
   data?: GZCLPState
+  /** Timestamp when the backup was exported (if available) */
+  exportedAt?: string
 }
 
 /**
@@ -177,9 +249,20 @@ export async function validateImportFile(file: File): Promise<FileValidationResu
     const content = await file.text()
     const importedState = importData(content)
 
+    // Extract export timestamp from raw JSON (before stripping metadata)
+    let exportedAt: string | undefined
+    try {
+      const rawParsed = JSON.parse(content) as Record<string, unknown>
+      const meta = rawParsed._exportMeta as { exportedAt?: string } | undefined
+      exportedAt = meta?.exportedAt
+    } catch {
+      // Ignore - exportedAt will be undefined
+    }
+
     return {
       isValid: true,
       data: importedState,
+      ...(exportedAt != null && { exportedAt }),
     }
   } catch (error) {
     return {

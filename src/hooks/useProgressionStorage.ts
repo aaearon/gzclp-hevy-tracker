@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { useLocalStorage } from './useLocalStorage'
 import { STORAGE_KEYS } from '@/lib/constants'
 import type { ProgressionStore } from '@/types/storage'
+import { isProgressionStore } from '@/types/storage'
 import type {
   ProgressionState,
   PendingChange,
@@ -80,7 +81,8 @@ export interface UseProgressionStorageResult {
 export function useProgressionStorage(): UseProgressionStorageResult {
   const [rawStore, setRawStore, removeStore] = useLocalStorage<ProgressionStore>(
     STORAGE_KEYS.PROGRESSION,
-    createDefaultProgressionStore()
+    createDefaultProgressionStore(),
+    { validator: isProgressionStore }
   )
 
   // Ensure store has all required fields

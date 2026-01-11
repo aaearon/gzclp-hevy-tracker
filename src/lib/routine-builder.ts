@@ -246,14 +246,15 @@ export function buildRoutinePayload(
 ): CreateRoutineRequest {
   const routine = buildDayRoutine(day, exercises, progression, settings, t3Schedule)
 
-  return {
-    routine: {
-      title: routine.title,
-      folder_id: folderId ?? null,
-      notes: notes ?? null,
-      exercises: routine.exercises,
-    },
+  const routineData: CreateRoutineRequest['routine'] = {
+    title: routine.title,
+    folder_id: folderId ?? null,
+    exercises: routine.exercises,
   }
+  if (notes !== undefined) {
+    routineData.notes = notes
+  }
+  return { routine: routineData }
 }
 
 // =============================================================================

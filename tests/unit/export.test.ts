@@ -87,18 +87,27 @@ describe('[US6] Data Export - serializeState', () => {
     expect(() => JSON.parse(serialized)).not.toThrow()
   })
 
-  it('should preserve all state fields in serialization', () => {
+  it('should preserve all state fields in serialization (except apiKey)', () => {
     const state = createMockState()
     const serialized = serializeState(state)
     const parsed = JSON.parse(serialized)
 
     expect(parsed.version).toBe(state.version)
-    expect(parsed.apiKey).toBe(state.apiKey)
     expect(parsed.program).toEqual(state.program)
     expect(parsed.exercises).toEqual(state.exercises)
     expect(parsed.progression).toEqual(state.progression)
     expect(parsed.settings).toEqual(state.settings)
     expect(parsed.lastSync).toBe(state.lastSync)
+  })
+
+  it('should exclude apiKey from export for security', () => {
+    const state = createMockState()
+    const serialized = serializeState(state)
+    const parsed = JSON.parse(serialized)
+
+    // apiKey should be empty, not the original value
+    expect(parsed.apiKey).toBe('')
+    expect(parsed.apiKey).not.toBe(state.apiKey)
   })
 
   it('should include export metadata', () => {

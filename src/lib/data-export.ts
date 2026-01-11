@@ -25,10 +25,16 @@ interface ExportedState extends GZCLPState {
 /**
  * Serialize application state to a JSON string.
  * Adds export metadata for tracking.
+ * SECURITY: Excludes apiKey from export to prevent credential exposure.
  */
 export function serializeState(state: GZCLPState): string {
+  // Exclude apiKey from export - users must re-enter on import
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { apiKey: _excluded, ...stateWithoutApiKey } = state
+
   const exportedState: ExportedState = {
-    ...state,
+    ...stateWithoutApiKey,
+    apiKey: '', // Empty placeholder for schema compatibility
     _exportMeta: {
       exportedAt: new Date().toISOString(),
       appVersion: CURRENT_STATE_VERSION,

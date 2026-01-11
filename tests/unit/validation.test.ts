@@ -69,13 +69,13 @@ describe('[US1] Weight Validation', () => {
     })
 
     it('should reject weights above maximum', () => {
-      expect(isValidWeight(1001, 'kg')).toBe(false)
-      expect(isValidWeight(2201, 'lbs')).toBe(false)
+      expect(isValidWeight(501, 'kg')).toBe(false)
+      expect(isValidWeight(1101, 'lbs')).toBe(false)
     })
 
     it('should accept weights at maximum boundary', () => {
-      expect(isValidWeight(1000, 'kg')).toBe(true)
-      expect(isValidWeight(2200, 'lbs')).toBe(true)
+      expect(isValidWeight(500, 'kg')).toBe(true)
+      expect(isValidWeight(1100, 'lbs')).toBe(true)
     })
 
     it('should reject NaN and non-number inputs', () => {

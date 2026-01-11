@@ -54,7 +54,7 @@ describe('DashboardContent', () => {
 
       expect(screen.getByText('Current Week')).toBeInTheDocument()
       expect(screen.getByText('Total Workouts')).toBeInTheDocument()
-      expect(screen.getByText('Days Since Last')).toBeInTheDocument()
+      expect(screen.getByText('Days Since Last Workout')).toBeInTheDocument()
     })
 
     it('renders CurrentWorkout section', () => {

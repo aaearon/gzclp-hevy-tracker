@@ -353,8 +353,8 @@ describe('[US6] Full Export/Import Cycle', () => {
     // Import
     const imported = importData(exported)
 
-    // Verify key fields match
-    expect(imported.apiKey).toBe(originalState.apiKey)
+    // Verify key fields match (except apiKey which is excluded for security)
+    expect(imported.apiKey).toBe('') // SECURITY: apiKey is excluded from export
     expect(imported.program.name).toBe(originalState.program.name)
     expect(imported.program.currentDay).toBe(originalState.program.currentDay)
     expect(Object.keys(imported.exercises)).toHaveLength(Object.keys(originalState.exercises).length)

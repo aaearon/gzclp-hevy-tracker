@@ -29,14 +29,24 @@ export interface UseDataPersistenceParams {
 }
 
 /**
+ * Result of an import operation.
+ */
+export interface ImportResult {
+  /** Whether the import succeeded */
+  success: boolean
+  /** Error message if import failed */
+  error?: string
+}
+
+/**
  * Result interface for useDataPersistence hook.
  */
 export interface UseDataPersistenceResult {
   /** Reset all state (config, progression, history) */
   resetState: () => void
 
-  /** Import full state from a GZCLPState object */
-  importState: (state: GZCLPState) => void
+  /** Import full state from a GZCLPState object with atomic rollback on failure */
+  importState: (state: GZCLPState) => ImportResult
 }
 
 /**
@@ -73,32 +83,68 @@ export function useDataPersistence({
   }, [configStorage, progressionStorage, historyStorage])
 
   const importState = useCallback(
-    (newState: GZCLPState) => {
-      // Import into config storage
-      configStorage.importConfig({
-        version: newState.version,
-        apiKey: newState.apiKey,
-        program: newState.program,
-        settings: newState.settings,
-        exercises: newState.exercises,
-        t3Schedule: newState.t3Schedule,
-      })
+    (newState: GZCLPState): ImportResult => {
+      // Snapshot current state for rollback capability
+      // Note: we don't snapshot history because if history import fails,
+      // the original history is still in storage (unchanged)
+      const previousConfig = { ...configStorage.config }
+      const previousProgression = { ...progressionStorage.store }
 
-      // Import into progression storage
-      progressionStorage.importProgression({
-        progression: newState.progression,
-        pendingChanges: newState.pendingChanges,
-        lastSync: newState.lastSync,
-        totalWorkouts: newState.totalWorkouts,
-        mostRecentWorkoutDate: newState.mostRecentWorkoutDate,
-        acknowledgedDiscrepancies: newState.acknowledgedDiscrepancies,
-        needsPush: newState.needsPush,
-      })
+      try {
+        // Step 1: Import into config storage
+        configStorage.importConfig({
+          version: newState.version,
+          apiKey: newState.apiKey,
+          program: newState.program,
+          settings: newState.settings,
+          exercises: newState.exercises,
+          t3Schedule: newState.t3Schedule,
+        })
 
-      // Import into history storage
-      historyStorage.importHistory({
-        progressionHistory: newState.progressionHistory,
-      })
+        try {
+          // Step 2: Import into progression storage
+          progressionStorage.importProgression({
+            progression: newState.progression,
+            pendingChanges: newState.pendingChanges,
+            lastSync: newState.lastSync,
+            totalWorkouts: newState.totalWorkouts,
+            mostRecentWorkoutDate: newState.mostRecentWorkoutDate,
+            acknowledgedDiscrepancies: newState.acknowledgedDiscrepancies,
+            needsPush: newState.needsPush,
+          })
+
+          try {
+            // Step 3: Import into history storage
+            historyStorage.importHistory({
+              progressionHistory: newState.progressionHistory,
+            })
+
+            // All imports succeeded
+            return { success: true }
+          } catch (historyError) {
+            // History import failed, rollback config and progression
+            configStorage.importConfig(previousConfig)
+            progressionStorage.importProgression(previousProgression)
+            return {
+              success: false,
+              error: historyError instanceof Error ? historyError.message : 'History import failed',
+            }
+          }
+        } catch (progressionError) {
+          // Progression import failed, rollback config
+          configStorage.importConfig(previousConfig)
+          return {
+            success: false,
+            error: progressionError instanceof Error ? progressionError.message : 'Progression import failed',
+          }
+        }
+      } catch (configError) {
+        // Config import failed, no rollback needed
+        return {
+          success: false,
+          error: configError instanceof Error ? configError.message : 'Config import failed',
+        }
+      }
     },
     [configStorage, progressionStorage, historyStorage]
   )

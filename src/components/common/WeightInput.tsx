@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { validateWeight } from '@/utils/validation'
+import { MAX_WEIGHT_LIMITS } from '@/lib/constants'
 import type { WeightUnit } from '@/types/state'
 
 // =============================================================================
@@ -76,7 +77,7 @@ export function ValidatingWeightInput({
   const [touched, setTouched] = useState(false)
 
   // Compute effective max based on unit [Task 4.1]
-  const maxWeight = max ?? (unit === 'kg' ? 500 : 1100)
+  const maxWeight = max ?? MAX_WEIGHT_LIMITS[unit]
   const minWeight = min
 
   // Validate current value

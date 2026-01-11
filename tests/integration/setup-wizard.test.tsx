@@ -86,7 +86,7 @@ describe('[US1] Setup Wizard Flow', () => {
     it('should render the API key input field', () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
-      expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /validate/i })).toBeInTheDocument()
       // App branding should be visible
       expect(screen.getByText('GZCLP Hevy Tracker')).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('[US1] Setup Wizard Flow', () => {
     it('should show validation error for invalid API key format', async () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
-      const input = screen.getByLabelText(/api key/i)
+      const input = screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
       await user.type(input, 'invalid-key')
 
       const validateButton = screen.getByRole('button', { name: /validate/i })
@@ -112,7 +112,7 @@ describe('[US1] Setup Wizard Flow', () => {
 
       render(<SetupWizard onComplete={mockOnComplete} />)
 
-      const input = screen.getByLabelText(/api key/i)
+      const input = screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
       await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
 
       const validateButton = screen.getByRole('button', { name: /validate/i })
@@ -126,7 +126,7 @@ describe('[US1] Setup Wizard Flow', () => {
     it('should show path options and unit selector after successful API key validation', async () => {
       render(<SetupWizard onComplete={mockOnComplete} />)
 
-      const input = screen.getByLabelText(/api key/i)
+      const input = screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
       await user.type(input, '550e8400-e29b-41d4-a716-446655440000')
 
       const validateButton = screen.getByRole('button', { name: /validate/i })

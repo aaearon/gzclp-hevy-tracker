@@ -10,14 +10,49 @@
 
 import { useCallback, useMemo } from 'react'
 import { useLocalStorage } from './useLocalStorage'
-import { STORAGE_KEYS } from '@/lib/constants'
+import { STORAGE_KEYS, MAX_HISTORY_ENTRIES_PER_EXERCISE } from '@/lib/constants'
 import { recordProgressionHistory } from '@/lib/history-recorder'
 import type { HistoryState } from '@/types/storage'
+import { isHistoryState } from '@/types/storage'
 import type {
   ExerciseHistory,
   PendingChange,
   ExerciseConfig,
 } from '@/types/state'
+
+// =============================================================================
+// History Pruning
+// =============================================================================
+
+/**
+ * Prune history entries to stay within the limit per exercise.
+ * Removes oldest entries when limit exceeded.
+ */
+function pruneHistory(
+  history: Record<string, ExerciseHistory>
+): Record<string, ExerciseHistory> {
+  const pruned: Record<string, ExerciseHistory> = {}
+  let totalPruned = 0
+
+  for (const [key, exerciseHistory] of Object.entries(history)) {
+    if (exerciseHistory.entries.length > MAX_HISTORY_ENTRIES_PER_EXERCISE) {
+      const excessCount = exerciseHistory.entries.length - MAX_HISTORY_ENTRIES_PER_EXERCISE
+      totalPruned += excessCount
+      pruned[key] = {
+        ...exerciseHistory,
+        entries: exerciseHistory.entries.slice(excessCount),
+      }
+    } else {
+      pruned[key] = exerciseHistory
+    }
+  }
+
+  if (totalPruned > 0) {
+    console.info(`Pruned ${String(totalPruned)} old history entries to stay within storage limits`)
+  }
+
+  return pruned
+}
 
 // =============================================================================
 // Default Values
@@ -57,7 +92,8 @@ export interface UseHistoryStorageResult {
 export function useHistoryStorage(): UseHistoryStorageResult {
   const [rawHistory, setRawHistory, removeHistory] = useLocalStorage<HistoryState>(
     STORAGE_KEYS.HISTORY,
-    createDefaultHistoryState()
+    createDefaultHistoryState(),
+    { validator: isHistoryState }
   )
 
   // Ensure history has all required fields
@@ -72,21 +108,28 @@ export function useHistoryStorage(): UseHistoryStorageResult {
   // History Management
   const setProgressionHistory = useCallback(
     (progressionHistory: Record<string, ExerciseHistory>) => {
-      setRawHistory((prev) => ({ ...prev, progressionHistory }))
+      // Prune before storing to prevent unbounded growth
+      const prunedHistory = pruneHistory(progressionHistory)
+      setRawHistory((prev) => ({ ...prev, progressionHistory: prunedHistory }))
     },
     [setRawHistory]
   )
 
   const recordHistoryEntry = useCallback(
     (change: PendingChange, exercises: Record<string, ExerciseConfig>) => {
-      setRawHistory((prev) => ({
-        ...prev,
-        progressionHistory: recordProgressionHistory(
+      setRawHistory((prev) => {
+        const newHistory = recordProgressionHistory(
           prev.progressionHistory,
           change,
           exercises
-        ),
-      }))
+        )
+        // Prune after recording to prevent unbounded growth
+        const prunedHistory = pruneHistory(newHistory)
+        return {
+          ...prev,
+          progressionHistory: prunedHistory,
+        }
+      })
     },
     [setRawHistory]
   )
@@ -112,7 +155,9 @@ export function useHistoryStorage(): UseHistoryStorageResult {
 
   const importHistory = useCallback(
     (newHistory: HistoryState) => {
-      setRawHistory(newHistory)
+      // Prune imported history to prevent oversized imports
+      const prunedHistory = pruneHistory(newHistory.progressionHistory)
+      setRawHistory({ ...newHistory, progressionHistory: prunedHistory })
     },
     [setRawHistory]
   )

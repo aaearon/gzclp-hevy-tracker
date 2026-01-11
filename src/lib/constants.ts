@@ -184,6 +184,36 @@ export const STORAGE_KEYS = {
 } as const
 
 // =============================================================================
+// Weight Limits
+// =============================================================================
+
+/**
+ * Maximum weight limits for validation.
+ * 500kg / 1100lbs is a reasonable upper bound for human lifters.
+ */
+export const MAX_WEIGHT_LIMITS: Record<WeightUnit, number> = {
+  kg: 500,
+  lbs: 1100,
+}
+
+// =============================================================================
+// Storage Limits
+// =============================================================================
+
+/**
+ * Maximum history entries per exercise to prevent unbounded storage growth.
+ * 200 entries = ~2 years of history at 2x/week per exercise.
+ */
+export const MAX_HISTORY_ENTRIES_PER_EXERCISE = 200
+
+/**
+ * Storage warning threshold (80% of estimated limit).
+ * localStorage limit varies by browser: Safari ~5MB, Chrome/FF ~10MB.
+ * Using 4MB as conservative warning threshold.
+ */
+export const STORAGE_WARNING_THRESHOLD_BYTES = 4 * 1024 * 1024
+
+// =============================================================================
 // Initial T3 Schedule
 // =============================================================================
 

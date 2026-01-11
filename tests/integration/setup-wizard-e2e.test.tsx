@@ -81,12 +81,12 @@ describe('E2E: Full Import Flow', () => {
     const { rerender } = render(<SetupWizard onComplete={mockOnComplete} />)
 
     // Step 1: Verify welcome step with API key input
-    expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')).toBeInTheDocument()
     expect(screen.getByText('GZCLP Hevy Tracker')).toBeInTheDocument()
 
     // Enter valid API key and validate
     const validApiKey = '12345678-1234-1234-1234-123456789012'
-    const apiKeyInput = screen.getByLabelText(/api key/i)
+    const apiKeyInput = screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     fireEvent.change(apiKeyInput, { target: { value: validApiKey } })
     fireEvent.click(screen.getByRole('button', { name: /validate/i }))
 
@@ -206,11 +206,11 @@ describe('E2E: Full Create Flow', () => {
     const { rerender } = render(<SetupWizard onComplete={mockOnComplete} />)
 
     // Verify welcome step
-    expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')).toBeInTheDocument()
 
     // Enter API key and validate
     const validApiKey = '12345678-1234-1234-1234-123456789012'
-    fireEvent.change(screen.getByLabelText(/api key/i), { target: { value: validApiKey } })
+    fireEvent.change(screen.getByPlaceholderText('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'), { target: { value: validApiKey } })
     fireEvent.click(screen.getByRole('button', { name: /validate/i }))
 
     await waitFor(() => {

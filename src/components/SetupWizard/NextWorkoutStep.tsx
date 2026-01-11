@@ -26,8 +26,8 @@ export function NextWorkoutStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">Which Workout Is Next?</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Which Workout Is Next?</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           GZCLP uses a 4-day rotation: A1 → B1 → A2 → B2 → A1... Select which workout you&apos;ll
           do next.
         </p>
@@ -54,16 +54,16 @@ export function NextWorkoutStep({
                 ${
                   isSelected
                     ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'bg-white border-gray-200 text-gray-900 hover:border-blue-300'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white hover:border-blue-300 dark:hover:border-blue-500'
                 }
               `}
             >
               <span className="text-2xl font-bold">{day}</span>
               <div className="mt-2 text-xs text-center">
-                <div className={isSelected ? 'text-blue-100' : 'text-gray-500'}>
+                <div className={isSelected ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}>
                   {t1Name} (T1)
                 </div>
-                <div className={isSelected ? 'text-blue-100' : 'text-gray-500'}>
+                <div className={isSelected ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}>
                   {t2Name} (T2)
                 </div>
               </div>
@@ -73,11 +73,11 @@ export function NextWorkoutStep({
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 min-h-[44px]"
+          className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 min-h-[44px]"
         >
           Back
         </button>

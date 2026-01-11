@@ -2,8 +2,8 @@
  * QuickStats Component
  *
  * Displays program statistics in a 3-column grid:
- * - Current Week
- * - Total Workouts
+ * - Current Week (with day of training week)
+ * - Total Workouts (with program start date)
  * - Days Since Last Workout (with contextual date info)
  *
  * [REQ-DASH-003] Quick stats dashboard display
@@ -11,10 +11,12 @@
 
 import {
   calculateCurrentWeek,
+  calculateDayOfWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
   getLastWorkoutDate,
   formatLastWorkoutDisplay,
+  formatProgramStartDate,
 } from '@/utils/stats'
 import type { GZCLPState } from '@/types/state'
 
@@ -44,16 +46,26 @@ function StatCard({ label, value, subtitle, warning }: StatCardProps) {
 export function QuickStats({ state }: QuickStatsProps) {
   const workouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
   const currentWeek = calculateCurrentWeek(workouts, state.program.workoutsPerWeek)
+  const dayOfWeek = calculateDayOfWeek(workouts, state.program.workoutsPerWeek)
   const daysSince = calculateDaysSinceLastWorkout(state.progression, state.mostRecentWorkoutDate)
   const lastWorkoutDate = getLastWorkoutDate(state.progression, state.mostRecentWorkoutDate)
   const lastWorkoutDisplay = formatLastWorkoutDisplay(lastWorkoutDate, daysSince)
+  const programStartDate = formatProgramStartDate(state.program.createdAt)
 
   return (
     <div className="mb-6 grid grid-cols-3 gap-4">
-      <StatCard label="Current Week" value={currentWeek} />
-      <StatCard label="Total Workouts" value={workouts} />
       <StatCard
-        label="Days Since Last"
+        label="Current Week"
+        value={currentWeek}
+        subtitle={`${String(dayOfWeek.completed)} of ${String(dayOfWeek.total)} complete`}
+      />
+      <StatCard
+        label="Total Workouts"
+        value={workouts}
+        subtitle={`Started ${programStartDate}`}
+      />
+      <StatCard
+        label="Days Since Last Workout"
         value={lastWorkoutDisplay.value}
         subtitle={lastWorkoutDisplay.subtitle}
         warning={daysSince !== null && daysSince > 7}

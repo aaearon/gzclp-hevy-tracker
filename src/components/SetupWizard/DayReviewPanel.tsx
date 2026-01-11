@@ -40,8 +40,10 @@ interface TierCardProps {
 function TierCard({ tier, exercise, onWeightChange, unit }: TierCardProps) {
   const isT1 = tier === 'T1'
   const borderColor = isT1 ? 'border-l-red-500' : 'border-l-blue-500'
-  const bgColor = isT1 ? 'bg-red-50' : 'bg-blue-50'
-  const badgeColor = isT1 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+  const bgColor = isT1 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-blue-50 dark:bg-blue-900/20'
+  const badgeColor = isT1
+    ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
 
   const currentWeight = exercise.userWeight ?? exercise.detectedWeight
 
@@ -62,13 +64,13 @@ function TierCard({ tier, exercise, onWeightChange, unit }: TierCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className={`rounded px-2 py-0.5 text-xs font-semibold ${badgeColor}`}>{tier}</span>
-          <span className="font-medium text-gray-900">{exercise.name}</span>
+          <span className="font-medium text-gray-900 dark:text-white">{exercise.name}</span>
         </div>
-        <span className="font-mono text-sm text-gray-600">{exercise.originalRepScheme}</span>
+        <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{exercise.originalRepScheme}</span>
       </div>
 
       <div className="mt-3">
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {tier} weight
         </label>
         <div className="mt-1 flex items-center gap-2">
@@ -79,11 +81,12 @@ function TierCard({ tier, exercise, onWeightChange, unit }: TierCardProps) {
             onChange={handleChange}
             step="0.5"
             min="0"
-            className="w-24 rounded-md border border-gray-300 px-3 py-2 text-sm
+            className="w-24 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                        focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
                        min-h-[44px]"
           />
-          <span className="text-sm text-gray-600">{unit}</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">{unit}</span>
         </div>
       </div>
     </div>
@@ -112,10 +115,10 @@ function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProp
   )
 
   return (
-    <li className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
+    <li className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
       <div className="flex items-center gap-3">
-        <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">T3</span>
-        <span className="text-gray-900">{exercise.name}</span>
+        <span className="rounded bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-800 dark:text-green-300">T3</span>
+        <span className="text-gray-900 dark:text-white">{exercise.name}</span>
       </div>
       <div className="flex items-center gap-2">
         {/* T3 weight input */}
@@ -130,16 +133,17 @@ function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProp
           step="0.5"
           min="0"
           aria-label={`${exercise.name} weight`}
-          className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm
+          className="w-20 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm
+                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
                      min-h-[36px]"
         />
-        <span className="text-sm text-gray-600">{unit}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">{unit}</span>
         <button
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${exercise.name}`}
-          className="rounded-md px-3 py-1 text-sm text-red-600 hover:bg-red-50
+          className="rounded-md px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
                      min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           Remove
@@ -151,7 +155,7 @@ function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProp
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+    <div className="rounded-md border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
       {text}
     </div>
   )
@@ -204,7 +208,7 @@ export function DayReviewPanel({
     <div className="space-y-6">
       {/* T1 Section */}
       <section>
-        <h3 className="mb-3 text-lg font-medium text-gray-900">T1 - Main Lift</h3>
+        <h3 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">T1 - Main Lift</h3>
         {dayData.t1 ? (
           t1HasAnalysis ? (
             <ExerciseAnalysisCard
@@ -229,7 +233,7 @@ export function DayReviewPanel({
 
       {/* T2 Section */}
       <section>
-        <h3 className="mb-3 text-lg font-medium text-gray-900">T2 - Secondary Lift</h3>
+        <h3 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">T2 - Secondary Lift</h3>
         {dayData.t2 ? (
           t2HasAnalysis ? (
             <ExerciseAnalysisCard
@@ -254,7 +258,7 @@ export function DayReviewPanel({
 
       {/* T3 Section */}
       <section>
-        <h3 className="mb-3 text-lg font-medium text-gray-900">T3 - Accessories</h3>
+        <h3 className="mb-3 text-lg font-medium text-gray-900 dark:text-white">T3 - Accessories</h3>
         {dayData.t3s.length > 0 ? (
           <ul className="space-y-2">
             {dayData.t3s.map((t3, index) => (
@@ -280,7 +284,7 @@ export function DayReviewPanel({
                       type="button"
                       onClick={() => { onT3Remove(index) }}
                       aria-label={`Remove ${t3.name}`}
-                      className="absolute right-2 top-2 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      className="absolute right-2 top-2 rounded-md px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       Remove
                     </button>

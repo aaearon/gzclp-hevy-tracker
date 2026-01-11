@@ -268,5 +268,86 @@ describe('useDataPersistence', () => {
       expect(mockProgressionStorage.importProgression).toHaveBeenCalledTimes(1)
       expect(mockHistoryStorage.importHistory).toHaveBeenCalledTimes(1)
     })
+
+    it('should return success result on successful import', () => {
+      const mockConfigStorage = createMockConfigStorage()
+      const mockProgressionStorage = createMockProgressionStorage()
+      const mockHistoryStorage = createMockHistoryStorage()
+
+      const { result } = renderHook(() =>
+        useDataPersistence({
+          configStorage: mockConfigStorage,
+          progressionStorage: mockProgressionStorage,
+          historyStorage: mockHistoryStorage,
+        })
+      )
+
+      let importResult: { success: boolean; error?: string }
+      act(() => {
+        importResult = result.current.importState(sampleState)
+      })
+
+      expect(importResult!.success).toBe(true)
+      expect(importResult!.error).toBeUndefined()
+    })
+
+    it('should rollback config if progression import fails', () => {
+      const mockConfigStorage = createMockConfigStorage()
+      const mockProgressionStorage = createMockProgressionStorage()
+      const mockHistoryStorage = createMockHistoryStorage()
+
+      // Make progression import throw an error
+      mockProgressionStorage.importProgression = vi.fn().mockImplementation(() => {
+        throw new Error('Storage quota exceeded')
+      })
+
+      const { result } = renderHook(() =>
+        useDataPersistence({
+          configStorage: mockConfigStorage,
+          progressionStorage: mockProgressionStorage,
+          historyStorage: mockHistoryStorage,
+        })
+      )
+
+      let importResult: { success: boolean; error?: string }
+      act(() => {
+        importResult = result.current.importState(sampleState)
+      })
+
+      expect(importResult!.success).toBe(false)
+      expect(importResult!.error).toContain('Storage quota exceeded')
+      // Should have called importConfig to restore original config
+      expect(mockConfigStorage.importConfig).toHaveBeenCalledTimes(2)
+    })
+
+    it('should rollback config and progression if history import fails', () => {
+      const mockConfigStorage = createMockConfigStorage()
+      const mockProgressionStorage = createMockProgressionStorage()
+      const mockHistoryStorage = createMockHistoryStorage()
+
+      // Make history import throw an error
+      mockHistoryStorage.importHistory = vi.fn().mockImplementation(() => {
+        throw new Error('Storage quota exceeded')
+      })
+
+      const { result } = renderHook(() =>
+        useDataPersistence({
+          configStorage: mockConfigStorage,
+          progressionStorage: mockProgressionStorage,
+          historyStorage: mockHistoryStorage,
+        })
+      )
+
+      let importResult: { success: boolean; error?: string }
+      act(() => {
+        importResult = result.current.importState(sampleState)
+      })
+
+      expect(importResult!.success).toBe(false)
+      expect(importResult!.error).toContain('Storage quota exceeded')
+      // Should have called importConfig and importProgression to restore
+      expect(mockConfigStorage.importConfig).toHaveBeenCalledTimes(2)
+      expect(mockProgressionStorage.importProgression).toHaveBeenCalledTimes(2)
+    })
   })
 })

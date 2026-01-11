@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   calculateWeeksOnProgram,
   calculateCurrentWeek,
+  calculateDayOfWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
 } from '@/utils/stats'
@@ -48,6 +49,24 @@ describe('calculateCurrentWeek', () => {
     [8, 4, 3],  // 8 workouts at 4/week = week 3
   ])('returns correct week for %d workouts at %d/week', (workouts, perWeek, expected) => {
     expect(calculateCurrentWeek(workouts, perWeek)).toBe(expected)
+  })
+})
+
+describe('calculateDayOfWeek', () => {
+  it.each([
+    [0, 3, 0],  // 0 workouts at 3/week = 0 complete this week
+    [1, 3, 1],  // 1 workout at 3/week = 1 complete this week
+    [2, 3, 2],  // 2 workouts at 3/week = 2 complete this week
+    [3, 3, 0],  // 3 workouts at 3/week = new week, 0 complete
+    [5, 3, 2],  // 5 workouts at 3/week = 2 complete this week
+    [6, 3, 0],  // 6 workouts at 3/week = new week, 0 complete
+    [0, 4, 0],  // 0 workouts at 4/week = 0 complete this week
+    [4, 4, 0],  // 4 workouts at 4/week = new week, 0 complete
+    [7, 4, 3],  // 7 workouts at 4/week = 3 complete this week
+  ])('returns %d completed for %d workouts at %d/week', (workouts, perWeek, expected) => {
+    const result = calculateDayOfWeek(workouts, perWeek)
+    expect(result.completed).toBe(expected)
+    expect(result.total).toBe(perWeek)
   })
 })
 

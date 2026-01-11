@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { useLocalStorage } from './useLocalStorage'
 import { STORAGE_KEYS, CURRENT_STATE_VERSION, INITIAL_T3_SCHEDULE, WEIGHT_INCREMENTS } from '@/lib/constants'
 import type { ConfigState } from '@/types/storage'
+import { isConfigState } from '@/types/storage'
 import type {
   ExerciseConfig,
   GZCLPDay,
@@ -102,7 +103,8 @@ export interface UseConfigStorageResult {
 export function useConfigStorage(): UseConfigStorageResult {
   const [rawConfig, setRawConfig, removeConfig] = useLocalStorage<ConfigState>(
     STORAGE_KEYS.CONFIG,
-    createDefaultConfigState()
+    createDefaultConfigState(),
+    { validator: isConfigState }
   )
 
   // Ensure config has all required fields (handle partial stored state)

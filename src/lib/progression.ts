@@ -524,7 +524,10 @@ export function createPendingChangesFromAnalysis(
       ? progressionResult.amrapReps
       : undefined
 
-    // Create pending change
+    // Create pending change - conditionally include newAmrapRecord only when defined
+    const summaryFields = newAmrapRecord !== undefined
+      ? { setsCompleted, setsTarget, newPR, newAmrapRecord }
+      : { setsCompleted, setsTarget, newPR }
     const pendingChange = createPendingChange(
       exercise,
       exerciseProgression, // Use original progression for currentWeight display
@@ -532,7 +535,7 @@ export function createPendingChangesFromAnalysis(
       result.workoutId,
       result.workoutDate,
       day,
-      { setsCompleted, setsTarget, newPR, newAmrapRecord }
+      summaryFields
     )
 
     pendingChanges.push(pendingChange)

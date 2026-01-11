@@ -33,6 +33,23 @@ export function calculateCurrentWeek(totalWorkouts: number, workoutsPerWeek = 3)
 }
 
 /**
+ * Calculate how many workouts have been completed in the current training week.
+ * @param totalWorkouts Total number of completed workouts
+ * @param workoutsPerWeek Number of workouts per week (default 3)
+ * @returns Object with completed count and total workouts per week
+ */
+export function calculateDayOfWeek(
+  totalWorkouts: number,
+  workoutsPerWeek = 3
+): { completed: number; total: number } {
+  const completedInWeek = totalWorkouts % workoutsPerWeek
+  return {
+    completed: completedInWeek,
+    total: workoutsPerWeek,
+  }
+}
+
+/**
  * Calculate total unique workouts from progression data.
  * Uses storedTotal if provided and > 0, otherwise falls back to counting
  * unique workout IDs from progression.
@@ -95,6 +112,10 @@ export function getLastWorkoutDate(
  * Calculate days since the most recent workout.
  * Uses storedDate if provided, otherwise falls back to progression data.
  *
+ * Uses calendar day comparison to avoid ±1 day errors from:
+ * - Timezone changes (user traveling)
+ * - DST transitions (23 or 25 hour days)
+ *
  * @param progression Record of exercise progression states
  * @param storedDate Optional stored date from state (from Hevy API)
  * @returns Number of days since last workout, or null if no workouts
@@ -107,8 +128,17 @@ export function calculateDaysSinceLastWorkout(
 
   if (!latestDate) return null
 
+  // Use UTC calendar days to avoid timezone/DST issues
+  const today = new Date()
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  const lastWorkoutUTC = Date.UTC(
+    latestDate.getFullYear(),
+    latestDate.getMonth(),
+    latestDate.getDate()
+  )
+
   const msPerDay = 24 * 60 * 60 * 1000
-  return Math.floor((Date.now() - latestDate.getTime()) / msPerDay)
+  return Math.round((todayUTC - lastWorkoutUTC) / msPerDay)
 }
 
 /**
@@ -154,4 +184,22 @@ export function formatLastWorkoutDisplay(
     day: 'numeric',
   })
   return { value: String(daysSince), subtitle: dateStr }
+}
+
+/**
+ * Format the program start date for display.
+ * @param createdAt ISO date string when program was created
+ * @returns Formatted date string (e.g., "Jan 15, 2024")
+ */
+export function formatProgramStartDate(createdAt: string | null): string {
+  if (!createdAt) {
+    return 'Not started'
+  }
+
+  const date = new Date(createdAt)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }

@@ -125,28 +125,34 @@ export function ImportReviewStep({
   const handleRetryApiCheck = useCallback(async () => {
     setIsCheckingApi(true)
     setApiError(null)
-    const reachable = await checkHevyConnection()
-    if (!reachable) {
-      setApiError('Hevy API is still unavailable. Please try again later.')
+    try {
+      const reachable = await checkHevyConnection()
+      if (!reachable) {
+        setApiError('Hevy API is still unavailable. Please try again later.')
+      }
+    } catch (error) {
+      setApiError('Failed to check API connection. Please try again.')
+      console.error('API check failed:', error)
+    } finally {
+      setIsCheckingApi(false)
     }
-    setIsCheckingApi(false)
   }, [checkHevyConnection])
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">Review Imported Exercises</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Review Imported Exercises</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Review each day's exercises. Verify T1 and T2 weights for each workout day.
         </p>
       </div>
 
       {/* API Error Section */}
       {apiError && (
-        <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div role="alert" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <span className="text-red-500 mt-0.5">
+            <span className="text-red-500 dark:text-red-400 mt-0.5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
@@ -161,13 +167,13 @@ export function ImportReviewStep({
               </svg>
             </span>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">Connection Error</h3>
-              <p className="mt-1 text-sm text-red-700">{apiError}</p>
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Connection Error</h3>
+              <p className="mt-1 text-sm text-red-700 dark:text-red-400">{apiError}</p>
               <button
                 type="button"
                 onClick={() => void handleRetryApiCheck()}
                 disabled={isCheckingApi}
-                className="mt-2 text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
+                className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 disabled:opacity-50"
               >
                 {isCheckingApi ? 'Checking...' : 'Retry'}
               </button>
@@ -178,9 +184,9 @@ export function ImportReviewStep({
 
       {/* Warnings Section */}
       {warnings.length > 0 && (
-        <div role="alert" className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div role="alert" className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <span data-testid="warning-icon" className="text-amber-500 mt-0.5">
+            <span data-testid="warning-icon" className="text-amber-500 dark:text-amber-400 mt-0.5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
@@ -195,8 +201,8 @@ export function ImportReviewStep({
               </svg>
             </span>
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-amber-800">Import Warnings</h3>
-              <ul className="mt-2 text-sm text-amber-700 space-y-1">
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Import Warnings</h3>
+              <ul className="mt-2 text-sm text-amber-700 dark:text-amber-400 space-y-1">
                 {warnings.map((warning, index) => (
                   <li key={String(index)}>{warning.message}</li>
                 ))}
@@ -227,17 +233,17 @@ export function ImportReviewStep({
 
       {/* Validation Message */}
       {!allDaysValidated && (
-        <div className="text-sm text-amber-600">
+        <div className="text-sm text-amber-600 dark:text-amber-400">
           All days must have T1 and T2 exercises assigned before continuing.
         </div>
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-4 border-t">
+      <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 min-h-[44px]"
+          className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 min-h-[44px]"
         >
           Back
         </button>
@@ -246,7 +252,7 @@ export function ImportReviewStep({
           onClick={onNext}
           disabled={!canContinue}
           className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium
-                     hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed
+                     hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed
                      min-h-[44px]"
         >
           Continue

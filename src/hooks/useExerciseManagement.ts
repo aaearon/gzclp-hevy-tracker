@@ -15,7 +15,31 @@ import { useCallback } from 'react'
 import { generateId } from '@/utils/id'
 import type { UseConfigStorageResult } from './useConfigStorage'
 import type { UseProgressionStorageResult } from './useProgressionStorage'
-import type { ExerciseConfig } from '@/types/state'
+import type { ExerciseConfig, ExerciseRole } from '@/types/state'
+
+// =============================================================================
+// Role Helpers
+// =============================================================================
+
+/** Main lift roles that use role-based progression keys (squat-T1, squat-T2) */
+const MAIN_LIFT_ROLES: ExerciseRole[] = ['squat', 'bench', 'ohp', 'deadlift']
+
+function isMainLiftRole(role: ExerciseRole | undefined): boolean {
+  return role !== undefined && MAIN_LIFT_ROLES.includes(role)
+}
+
+/**
+ * Get progression keys for an exercise based on its role.
+ * - Main lifts use: ${role}-T1, ${role}-T2
+ * - T3 exercises use: ${exerciseId}
+ */
+function getProgressionKeysForRole(exerciseId: string, role: ExerciseRole | undefined): string[] {
+  if (!role) return []
+  if (isMainLiftRole(role)) {
+    return [`${role}-T1`, `${role}-T2`]
+  }
+  return [exerciseId]
+}
 
 /**
  * Parameters for useExerciseManagement hook.
@@ -122,13 +146,39 @@ export function useExerciseManagement({
 
   /**
    * Update an existing exercise's config.
-   * Does NOT modify progression state - only config is updated.
+   * If the role changes, cleans up old progression keys and creates new ones.
    */
   const updateExercise = useCallback(
     (id: string, updates: Partial<ExerciseConfig>) => {
+      const existingExercise = configStorage.config.exercises[id]
+      if (!existingExercise) return
+
+      const oldRole = existingExercise.role
+      const newRole = updates.role
+
+      // Handle role change - clean up old progression keys and create new ones
+      if (newRole !== undefined && newRole !== oldRole) {
+        // Get keys to remove (from old role)
+        const oldKeys = getProgressionKeysForRole(id, oldRole)
+
+        // Get keys to create (for new role)
+        const newKeys = getProgressionKeysForRole(id, newRole)
+
+        // Remove old progression keys
+        for (const key of oldKeys) {
+          progressionStorage.removeProgression(key)
+        }
+
+        // Create new progression entries with default values
+        for (const key of newKeys) {
+          progressionStorage.setProgressionByKey(key, id, 0, 0)
+        }
+      }
+
+      // Update the exercise config
       configStorage.updateExercise(id, updates)
     },
-    [configStorage]
+    [configStorage, progressionStorage]
   )
 
   /**
@@ -137,10 +187,18 @@ export function useExerciseManagement({
    */
   const removeExercise = useCallback(
     (id: string) => {
+      const exercise = configStorage.config.exercises[id]
+
+      // Remove all progression keys associated with this exercise's role
+      if (exercise) {
+        const keysToRemove = getProgressionKeysForRole(id, exercise.role)
+        for (const key of keysToRemove) {
+          progressionStorage.removeProgression(key)
+        }
+      }
+
       // Remove from config
       configStorage.removeExercise(id)
-      // Remove from progression
-      progressionStorage.removeProgression(id)
     },
     [configStorage, progressionStorage]
   )

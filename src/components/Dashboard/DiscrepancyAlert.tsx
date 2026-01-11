@@ -39,7 +39,7 @@ export function DiscrepancyAlert({
   return (
     <div
       role="alert"
-      className="rounded-md bg-yellow-50 border border-yellow-200 p-4"
+      className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4"
     >
       <div className="flex items-start">
         <svg
@@ -57,10 +57,10 @@ export function DiscrepancyAlert({
         </svg>
 
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-yellow-800">
+          <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
             Weight Discrepancy Detected
           </h3>
-          <p className="mt-1 text-sm text-yellow-700">
+          <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-400">
             The following exercises have different weights than expected.
             Choose how to proceed for each:
           </p>
@@ -69,7 +69,9 @@ export function DiscrepancyAlert({
             {discrepancies.map((discrepancy) => {
               const isHigher = discrepancy.actualWeight > discrepancy.storedWeight
               const arrow = isHigher ? '\u2191' : '\u2193'
-              const actualColorClass = isHigher ? 'text-green-600' : 'text-amber-600'
+              const actualColorClass = isHigher
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-amber-600 dark:text-amber-400'
               const formattedDate = new Intl.DateTimeFormat('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -78,19 +80,19 @@ export function DiscrepancyAlert({
               return (
                 <li
                   key={`${discrepancy.exerciseId}-${discrepancy.workoutId}`}
-                  className="bg-white rounded-md p-3 border border-yellow-100"
+                  className="bg-white dark:bg-gray-800 rounded-md p-3 border border-yellow-100 dark:border-yellow-900"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-gray-900 dark:text-white">
                           {discrepancy.exerciseName} ({discrepancy.tier})
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           from {formattedDate}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         Hevy shows{' '}
                         <span className={actualColorClass}>
                           {arrow} {discrepancy.actualWeight}
@@ -112,14 +114,14 @@ export function DiscrepancyAlert({
                           onClick={() => {
                             onUseActualWeight(discrepancy.exerciseId, discrepancy.actualWeight, discrepancy.tier)
                           }}
-                          className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100
-                                     hover:bg-green-200 rounded-md min-h-[44px]
+                          className="px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30
+                                     hover:bg-green-200 dark:hover:bg-green-900/50 rounded-md min-h-[44px]
                                      transition-colors"
                         >
                           Use {discrepancy.actualWeight}
                           {unit}
                         </button>
-                        <span className="text-xs text-gray-500 mt-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Update progression
                         </span>
                       </div>
@@ -127,14 +129,14 @@ export function DiscrepancyAlert({
                         <button
                           type="button"
                           onClick={() => { onKeepStoredWeight(discrepancy.exerciseId, discrepancy.actualWeight, discrepancy.tier) }}
-                          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100
-                                     hover:bg-gray-200 rounded-md min-h-[44px]
+                          className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700
+                                     hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md min-h-[44px]
                                      transition-colors"
                         >
                           Keep {discrepancy.storedWeight}
                           {unit}
                         </button>
-                        <span className="text-xs text-gray-500 mt-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Keep current value
                         </span>
                       </div>
@@ -150,7 +152,7 @@ export function DiscrepancyAlert({
               <button
                 type="button"
                 onClick={onDismiss}
-                className="text-sm font-medium text-yellow-800 hover:text-yellow-900
+                className="text-sm font-medium text-yellow-800 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-200
                            underline min-h-[44px]"
               >
                 Dismiss all

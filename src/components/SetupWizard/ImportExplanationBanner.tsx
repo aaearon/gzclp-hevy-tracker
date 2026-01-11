@@ -31,7 +31,7 @@ export function ImportExplanationBanner({ routineSummary }: ImportExplanationBan
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50">
+    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
       {/* Header with toggle */}
       <button
         type="button"
@@ -48,7 +48,7 @@ export function ImportExplanationBanner({ routineSummary }: ImportExplanationBan
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
             fill="currentColor"
-            className="h-5 w-5 text-blue-500"
+            className="h-5 w-5 text-blue-500 dark:text-blue-400"
             aria-hidden="true"
           >
             <path
@@ -57,14 +57,14 @@ export function ImportExplanationBanner({ routineSummary }: ImportExplanationBan
               clipRule="evenodd"
             />
           </svg>
-          <span className="font-medium text-blue-800">How Import Works</span>
+          <span className="font-medium text-blue-800 dark:text-blue-300">How Import Works</span>
         </div>
         {/* Chevron Icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`h-5 w-5 text-blue-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 text-blue-500 dark:text-blue-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           aria-hidden="true"
         >
           <path
@@ -77,7 +77,7 @@ export function ImportExplanationBanner({ routineSummary }: ImportExplanationBan
 
       {/* Collapsible Content */}
       {isExpanded && (
-        <div id="import-explanation-content" className="px-4 pb-4 text-sm text-blue-700">
+        <div id="import-explanation-content" className="px-4 pb-4 text-sm text-blue-700 dark:text-blue-400">
           <p className="mb-3">
             We pulled data from your most recent workout for each routine:
           </p>
@@ -90,8 +90,8 @@ export function ImportExplanationBanner({ routineSummary }: ImportExplanationBan
 
           {/* Routine Summary (if provided) */}
           {routineSummary && routineSummary.length > 0 && (
-            <div className="mt-4 border-t border-blue-200 pt-3">
-              <p className="mb-2 font-medium text-blue-800">Routine mapping:</p>
+            <div className="mt-4 border-t border-blue-200 dark:border-blue-800 pt-3">
+              <p className="mb-2 font-medium text-blue-800 dark:text-blue-300">Routine mapping:</p>
               <ul className="list-inside list-disc space-y-1">
                 {routineSummary.map((routine) => (
                   <li key={routine.day}>
