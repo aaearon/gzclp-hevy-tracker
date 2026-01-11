@@ -38,15 +38,6 @@ function getScheduledDays(exerciseId: string, t3Schedule: Record<GZCLPDay, strin
   return days
 }
 
-/**
- * Format the schedule display string.
- */
-function formatSchedule(days: GZCLPDay[]): string {
-  if (days.length === 4) return 'All days'
-  if (days.length === 0) return 'Not scheduled'
-  return days.join(', ')
-}
-
 export function T3Overview({
   exercises,
   progression,
@@ -107,9 +98,6 @@ export function T3Overview({
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate" title={exercise.name}>
                   {exercise.name}
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {formatSchedule(scheduledDays)}
-                </p>
               </div>
               <div className="text-right shrink-0">
                 <span className="text-lg font-bold text-green-700 dark:text-green-300">
