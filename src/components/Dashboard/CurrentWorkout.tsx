@@ -185,7 +185,7 @@ export function CurrentWorkout({
                     key={exercise.id}
                     className="flex flex-col rounded bg-white/60 dark:bg-gray-800/60 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-3 sm:py-2"
                   >
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base sm:mr-2">{exercise.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:truncate sm:text-base sm:mr-2">{exercise.name}</span>
                     <div className="flex items-center gap-1 text-xs sm:gap-2 sm:text-sm shrink-0">
                       <span className="font-mono text-gray-500 dark:text-gray-400">{scheme.display}</span>
                       <span className="font-bold text-green-700 dark:text-green-400">
