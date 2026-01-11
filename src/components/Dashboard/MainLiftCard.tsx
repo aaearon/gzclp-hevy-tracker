@@ -81,33 +81,27 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
         ${isActiveToday ? 'ring-2 ring-amber-400 ring-offset-1' : ''}
       `}
     >
-      <div className="flex items-center justify-between gap-2">
-        {/* Tier badge */}
-        <div className="flex items-center gap-2">
-          <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
-            {tier}
+      {/* Tier badge row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
+          {tier}
+        </span>
+        {isActiveToday && (
+          <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+            Today
           </span>
-          {isActiveToday && (
-            <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
-              Today
-            </span>
-          )}
-        </div>
-
-        {/* Stage indicator */}
-        <span className={`rounded px-2 py-0.5 text-xs font-medium ${stageColors[progression.stage]}`}>
+        )}
+        <span className={`ml-auto rounded px-2 py-0.5 text-xs font-medium ${stageColors[progression.stage]}`}>
           {stageLabel}
         </span>
       </div>
 
-      <div className="mt-2 flex items-baseline justify-between">
-        {/* Weight (stored in kg, converted to user's unit for display) */}
+      {/* Weight and scheme row */}
+      <div className="mt-2 flex items-center justify-between">
         <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
           {displayWeight(progression.currentWeight, weightUnit)}
         </span>
-
-        {/* Rep scheme */}
-        <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{scheme.display}</span>
+        <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
       </div>
 
       {/* Warmup Sets - T1 only */}

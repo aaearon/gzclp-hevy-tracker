@@ -39,30 +39,30 @@ export function ExerciseCard({
         ${hasPendingChange ? 'ring-2 ring-amber-400' : ''}
       `}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">{exercise.name}</h3>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {displayWeight(progression.currentWeight, weightUnit)}
-          </p>
-        </div>
+      {/* Name row with tier badge */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{exercise.name}</h3>
         <span
           className={`
-            rounded-md border px-2 py-1 text-xs font-semibold
+            rounded-md border px-2 py-0.5 text-xs font-semibold
             ${tierColors[tier] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}
           `}
         >
           {tier}
         </span>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <span className="font-mono text-gray-600 dark:text-gray-400">{scheme.display}</span>
         {progression.amrapRecord > 0 && (
-          <span className="text-gray-500 dark:text-gray-400">
+          <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
             PR: {progression.amrapRecord} reps
           </span>
         )}
+      </div>
+
+      {/* Weight and scheme row */}
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {displayWeight(progression.currentWeight, weightUnit)}
+        </span>
+        <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
       </div>
 
       {hasPendingChange && (

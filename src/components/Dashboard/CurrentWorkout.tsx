@@ -109,24 +109,26 @@ export function CurrentWorkout({
             {/* T1 Exercise with warmup pills */}
             {t1Data && (
               <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4">
-                <div className="mb-2 flex items-center gap-2">
+                {/* Name row with badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t1Data.exercise.name}</h3>
                   <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white sm:hidden">
                     {day}
                   </span>
                   <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                     T1
                   </span>
-                  <span className="text-xs font-medium text-red-700 dark:text-red-400">Main Lift</span>
                   <span className="ml-auto rounded-full bg-yellow-100 dark:bg-yellow-900/50 px-2 py-0.5 text-xs font-semibold text-yellow-800 dark:text-yellow-300">
                     AMRAP
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t1Data.exercise.name}</h3>
+
+                {/* Weight and scheme row */}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{t1Data.scheme.display}</span>
                   <span className="text-xl font-bold text-red-700 dark:text-red-400">
                     {displayWeight(t1Data.progression.currentWeight, weightUnit)}
                   </span>
+                  <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{t1Data.scheme.display}</span>
                 </div>
 
                 {/* Warmup Sets - Pills at bottom */}
@@ -151,18 +153,20 @@ export function CurrentWorkout({
             {/* T2 Exercise */}
             {t2Data && (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-4">
-                <div className="mb-2 flex items-center gap-2">
+                {/* Name row with badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t2Data.exercise.name}</h3>
                   <span className="rounded bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
                     T2
                   </span>
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Secondary Lift</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t2Data.exercise.name}</h3>
+
+                {/* Weight and scheme row */}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{t2Data.scheme.display}</span>
                   <span className="text-xl font-bold text-blue-700 dark:text-blue-400">
                     {displayWeight(t2Data.progression.currentWeight, weightUnit)}
                   </span>
+                  <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{t2Data.scheme.display}</span>
                 </div>
               </div>
             )}
@@ -183,14 +187,18 @@ export function CurrentWorkout({
                 {t3Data.map(({ exercise, progression: prog, scheme }) => (
                   <div
                     key={exercise.id}
-                    className="flex flex-col rounded bg-white/60 dark:bg-gray-800/60 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-3 sm:py-2"
+                    className="rounded bg-white/60 dark:bg-gray-800/60 px-3 py-2"
                   >
-                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:truncate sm:text-base sm:mr-2">{exercise.name}</span>
-                    <div className="flex items-center gap-1 text-xs sm:gap-2 sm:text-sm shrink-0">
-                      <span className="font-mono text-gray-500 dark:text-gray-400">{scheme.display}</span>
-                      <span className="font-bold text-green-700 dark:text-green-400">
+                    {/* Name row */}
+                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                      {exercise.name}
+                    </div>
+                    {/* Weight and scheme row */}
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xl font-bold text-green-700 dark:text-green-400">
                         {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
                       </span>
+                      <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
                     </div>
                   </div>
                 ))}
