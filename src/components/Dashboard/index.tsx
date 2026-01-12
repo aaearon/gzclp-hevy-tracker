@@ -2,9 +2,12 @@
  * Dashboard Component
  *
  * Main dashboard displaying all exercises, progression state, and pending changes.
- * Integrates sync functionality, discrepancy handling, review modal, and Hevy updates.
+ * Integrates sync functionality, review modal, and Hevy updates.
  *
- * [T057] Sync functionality and discrepancy handling
+ * Note: Discrepancy handling has been consolidated into ReviewModal -
+ * discrepancy info is now shown inline on pending change cards.
+ *
+ * [T057] Sync functionality
  * [T067] ReviewModal integration with pending changes indicator
  * [T077] Hevy update functionality
  * [Task 3.1] Component decomposition - extracted DashboardHeader, DashboardAlerts, DashboardContent
@@ -16,7 +19,9 @@ import { useSyncFlow } from '@/hooks/useSyncFlow'
 import { usePendingChanges } from '@/hooks/usePendingChanges'
 import { usePushDialog } from '@/hooks/usePushDialog'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
+import { DAY_CYCLE } from '@/lib/constants'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -34,19 +39,23 @@ export function Dashboard() {
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
-    acknowledgeDiscrepancy,
     setTotalWorkouts,
     setMostRecentWorkoutDate,
+    addPendingChange,
+    clearPendingChanges,
   } = useProgram()
   const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
-  // Fallback for pre-migration states that don't have acknowledgedDiscrepancies
-  const acknowledgedDiscrepancies = state.acknowledgedDiscrepancies ?? []
+
+  // Toast notifications for visual feedback
+  const { showToast } = useToast()
 
   // Local state for modals
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
+  // Track previous syncing state for "all caught up" detection
+  const wasSyncing = useRef(false)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -63,9 +72,9 @@ export function Dashboard() {
     isSyncing,
     syncError,
     syncPendingChanges,
-    discrepancies,
     handleSync,
     clearError,
+    clearSyncPendingChanges,
   } = useSyncFlow({
     apiKey,
     exercises,
@@ -112,11 +121,58 @@ export function Dashboard() {
     return [...storedPendingChanges, ...newFromSync]
   }, [storedPendingChanges, syncPendingChanges])
 
-  // Track seen changes to avoid re-processing on future syncs
+  // Persist new sync changes to localStorage and show toast notification
+  // This ensures pending changes survive page refresh
   useEffect(() => {
     if (syncPendingChanges.length === 0) return
+
+    // Find changes that are new (not already seen and not in stored)
+    const storedIds = new Set(storedPendingChanges.map((c) => c.id))
+    const newChanges = syncPendingChanges.filter(
+      (c) => !previousChangeIds.current.has(c.id) && !storedIds.has(c.id)
+    )
+
+    if (newChanges.length > 0) {
+      // Persist new changes to localStorage
+      for (const change of newChanges) {
+        addPendingChange(change)
+      }
+
+      // Show toast notification for new workout detected
+      showToast({
+        type: 'info',
+        message: `Found ${String(newChanges.length)} exercise${newChanges.length > 1 ? 's' : ''} to progress`,
+        action: {
+          label: 'Review',
+          onClick: () => { setIsReviewModalOpen(true) },
+        },
+      })
+    }
+
+    // Track all seen changes
     syncPendingChanges.forEach((c) => previousChangeIds.current.add(c.id))
-  }, [syncPendingChanges])
+  }, [syncPendingChanges, storedPendingChanges, addPendingChange, showToast])
+
+  // Show "all caught up" toast when sync completes with no new changes
+  useEffect(() => {
+    // Detect sync completion: was syncing, now not syncing
+    if (wasSyncing.current && !isSyncing && !syncError) {
+      // Check if there are no pending changes after sync
+      if (syncPendingChanges.length === 0 && storedPendingChanges.length === 0) {
+        showToast({
+          type: 'success',
+          message: 'All caught up! No new workouts found.',
+        })
+      }
+    }
+    wasSyncing.current = isSyncing
+  }, [isSyncing, syncError, syncPendingChanges.length, storedPendingChanges.length, showToast])
+
+  // Callback when all changes are applied (either via applyAll or last individual apply)
+  const handleAllChangesApplied = useCallback(() => {
+    clearPendingChanges() // Clear from localStorage
+    clearSyncPendingChanges() // Clear sync state to prevent re-population
+  }, [clearPendingChanges, clearSyncPendingChanges])
 
   // Use pending changes hook
   const {
@@ -135,7 +191,20 @@ export function Dashboard() {
     onDayAdvance: handleDayAdvance,
     onRecordHistory: recordHistoryEntry,
     onWorkoutComplete: handleWorkoutComplete,
+    onAllChangesApplied: handleAllChangesApplied,
   })
+
+  // Wrap applyAllChanges to show success toast
+  // Note: Cleanup (clearing localStorage and sync state) is handled by onAllChangesApplied callback
+  const handleApplyAllChanges = useCallback(() => {
+    const nextDay = DAY_CYCLE[program.currentDay]
+    applyAllChanges()
+    showToast({
+      type: 'success',
+      message: `Changes applied! Next workout: ${nextDay}`,
+    })
+    setIsReviewModalOpen(false)
+  }, [applyAllChanges, program.currentDay, showToast])
 
   // Create Hevy client
   const hevyClient = useMemo(() => {
@@ -169,52 +238,8 @@ export function Dashboard() {
     onNeedsPushUpdate: setNeedsPush,
   })
 
-  // Handle discrepancy resolution - use actual weight
-  const handleUseActualWeight = useCallback(
-    (exerciseId: string, actualWeight: number, tier: import('@/types/state').Tier) => {
-      const existingProgression = progression[exerciseId]
-      if (existingProgression) {
-        updateProgressionBatch({
-          ...progression,
-          [exerciseId]: {
-            ...existingProgression,
-            currentWeight: actualWeight,
-            baseWeight: actualWeight,
-          },
-        })
-      }
-      acknowledgeDiscrepancy(exerciseId, actualWeight, tier)
-    },
-    [progression, updateProgressionBatch, acknowledgeDiscrepancy]
-  )
-
-  // Handle discrepancy resolution - keep stored weight
-  const handleKeepStoredWeight = useCallback(
-    (exerciseId: string, actualWeight: number, tier: import('@/types/state').Tier) => {
-      acknowledgeDiscrepancy(exerciseId, actualWeight, tier)
-    },
-    [acknowledgeDiscrepancy]
-  )
-
-  // Handle dismissing all discrepancies
-  const handleDismissDiscrepancies = useCallback(() => {
-    for (const d of discrepancies) {
-      acknowledgeDiscrepancy(d.exerciseId, d.actualWeight, d.tier)
-    }
-  }, [discrepancies, acknowledgeDiscrepancy])
-
-  // Filter out acknowledged discrepancies
-  const unresolvedDiscrepancies = useMemo(() => {
-    return discrepancies.filter((d) => {
-      const isAcknowledged = acknowledgedDiscrepancies.some(
-        (ack) =>
-          ack.exerciseId === d.exerciseId &&
-          ack.acknowledgedWeight === d.actualWeight &&
-          ack.tier === d.tier
-      )
-      return !isAcknowledged
-    })
-  }, [discrepancies, acknowledgedDiscrepancies])
+  // Note: Discrepancy handling has been moved to ReviewModal
+  // Discrepancy info is now shown inline on pending change cards
 
   // Disable sync/update when offline
   const isOffline = !isOnline || !isHevyReachable
@@ -248,12 +273,7 @@ export function Dashboard() {
       <DashboardAlerts
         updateError={updateError}
         updateSuccess={updateSuccess}
-        discrepancies={unresolvedDiscrepancies}
-        weightUnit={settings.weightUnit}
         onDismissUpdate={handleDismissUpdateStatus}
-        onUseActualWeight={handleUseActualWeight}
-        onKeepStoredWeight={handleKeepStoredWeight}
-        onDismissDiscrepancies={handleDismissDiscrepancies}
       />
 
       {/* Main Content */}
@@ -265,7 +285,7 @@ export function Dashboard() {
         pendingChanges={pendingChanges}
         unit={settings.weightUnit}
         onApply={applyChange}
-        onApplyAll={applyAllChanges}
+        onApplyAll={handleApplyAllChanges}
         onReject={rejectChange}
         onModify={modifyChange}
         onClose={() => { setIsReviewModalOpen(false) }}

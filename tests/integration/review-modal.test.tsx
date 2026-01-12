@@ -115,7 +115,7 @@ describe('[US3] Review Modal Flow', () => {
         />
       )
 
-      expect(screen.getByText(/progress/i)).toBeInTheDocument()
+      expect(screen.getByText(/weight.*increase/i)).toBeInTheDocument()
       expect(screen.getByText(/stage.*change/i)).toBeInTheDocument()
     })
 

@@ -80,6 +80,10 @@ export interface UseProgramResult {
   acknowledgeDiscrepancy: (exerciseId: string, acknowledgedWeight: number, tier: Tier) => void
   clearAcknowledgedDiscrepancies: () => void
 
+  // Pending changes (for persisting sync results)
+  addPendingChange: (change: PendingChange) => void
+  clearPendingChanges: () => void
+
   // Full state management
   resetState: () => void
   importState: (state: GZCLPState) => ImportResult
@@ -124,6 +128,8 @@ export function useProgram(): UseProgramResult {
     setNeedsPush,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
+    addPendingChange,
+    clearPendingChanges,
   } = useProgressionManager({ progressionStorage })
 
   const historyStorage = useHistoryStorage()
@@ -190,6 +196,8 @@ export function useProgram(): UseProgramResult {
     recordHistoryEntry,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
+    addPendingChange,
+    clearPendingChanges,
     resetState,
     importState,
   }

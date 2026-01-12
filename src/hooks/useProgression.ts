@@ -74,11 +74,18 @@ export interface UseProgressionResult {
 /**
  * Find the GZCLP day that matches a workout's routine ID.
  * Returns null if the routine ID doesn't match any imported routine.
+ *
+ * IMPORTANT: Returns null for null/undefined routineId to prevent
+ * false matches when a workout has no routine (e.g., "Just Workout" in Hevy)
+ * and a GZCLP day hasn't been configured yet (null === null bug fix).
  */
 function findDayByRoutineId(
-  routineId: string,
+  routineId: string | null | undefined,
   hevyRoutineIds: UseProgressionProps['hevyRoutineIds']
 ): GZCLPDay | null {
+  // Guard: workouts without a routine (null/undefined) should never match
+  if (!routineId) return null
+
   if (hevyRoutineIds.A1 === routineId) return 'A1'
   if (hevyRoutineIds.B1 === routineId) return 'B1'
   if (hevyRoutineIds.A2 === routineId) return 'A2'

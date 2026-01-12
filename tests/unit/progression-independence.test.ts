@@ -323,4 +323,93 @@ describe('[US1] T1/T2 Progression Independence', () => {
       expect(results[0]?.discrepancy).toBeUndefined() // Matches bench-T2 at 50kg
     })
   })
+
+  describe('Null day handling (Bug fix: null === null matching)', () => {
+    it('when day is undefined, main lifts should be skipped (not default to T1)', () => {
+      const progression: Record<string, ProgressionState> = {
+        'bench-T1': {
+          exerciseId: 'bench',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 40,
+          lastWorkoutId: null,
+          lastWorkoutDate: null,
+          amrapRecord: 0,
+        },
+        'bench-T2': {
+          exerciseId: 'bench',
+          currentWeight: 42.5,
+          stage: 0,
+          baseWeight: 28,
+          lastWorkoutId: null,
+          lastWorkoutDate: null,
+          amrapRecord: 0,
+        },
+      }
+
+      // Bench 3x10 - should be T2 rep scheme, but with undefined day
+      const workout = createWorkout('hevy-bench', [
+        { reps: 10, weight: 42.5 },
+        { reps: 10, weight: 42.5 },
+        { reps: 10, weight: 42.5 },
+      ])
+
+      // When day is undefined, main lifts should be SKIPPED to prevent
+      // incorrect tier assignment (defense-in-depth for null === null bug fix)
+      const results = analyzeWorkout(workout, mockExercises, progression, undefined)
+
+      // FIXED: Main lifts without day context are now skipped
+      // This prevents bench T2 workouts from incorrectly affecting T1 state
+      expect(results).toHaveLength(0)
+    })
+
+    it('bench 3x10 on A1 should generate T2 progress, not T1 stage change', () => {
+      const progression: Record<string, ProgressionState> = {
+        'bench-T1': {
+          exerciseId: 'bench',
+          currentWeight: 60,
+          stage: 0,
+          baseWeight: 40,
+          lastWorkoutId: null,
+          lastWorkoutDate: null,
+          amrapRecord: 0,
+        },
+        'bench-T2': {
+          exerciseId: 'bench',
+          currentWeight: 42.5,
+          stage: 0,
+          baseWeight: 28,
+          lastWorkoutId: null,
+          lastWorkoutDate: null,
+          amrapRecord: 0,
+        },
+      }
+
+      // Bench 3x10 at T2 weight on A1 (where bench is T2)
+      const workout = createWorkout('hevy-bench', [
+        { reps: 10, weight: 42.5 },
+        { reps: 10, weight: 42.5 },
+        { reps: 10, weight: 42.5 },
+      ])
+
+      // With correct day A1, bench is T2
+      const results = analyzeWorkout(workout, mockExercises, progression, 'A1')
+      const changes = createPendingChangesFromAnalysis(
+        results,
+        mockExercises,
+        progression,
+        'kg',
+        'A1'
+      )
+
+      expect(results).toHaveLength(1)
+      expect(results[0]?.tier).toBe('T2')
+
+      expect(changes).toHaveLength(1)
+      expect(changes[0]?.tier).toBe('T2')
+      expect(changes[0]?.type).toBe('progress') // Should progress, not stage_change
+      expect(changes[0]?.progressionKey).toBe('bench-T2')
+      expect(changes[0]?.newWeight).toBe(45) // 42.5 + 2.5kg (upper body increment)
+    })
+  })
 })

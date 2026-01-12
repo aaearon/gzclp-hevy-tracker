@@ -25,6 +25,8 @@ export interface UsePendingChangesProps {
   onRecordHistory?: (change: PendingChange) => void
   /** Callback when a workout is completed (for updating stats) */
   onWorkoutComplete?: (workoutDate: string) => void
+  /** Callback when all pending changes have been applied (for cleanup) */
+  onAllChangesApplied?: () => void
 }
 
 export interface UsePendingChangesResult {
@@ -43,8 +45,17 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
+
+  // Sync local state when external sources are cleared
+  // This ensures that when storedPendingChanges and syncPendingChanges are both cleared,
+  // the local state also becomes empty (handles component remount edge cases)
+  useEffect(() => {
+    if (initialChanges.length === 0 && pendingChanges.length > 0) {
+      setPendingChanges([])
+    }
+  }, [initialChanges.length, pendingChanges.length])
 
   // Undo state [Task 4.2]
   const [recentlyRejected, setRecentlyRejected] = useState<PendingChange | null>(null)
@@ -61,6 +72,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
   /**
    * Apply a single change to the progression state.
+   * When this is the last pending change, also advance the day and update stats.
    */
   const applyChange = useCallback(
     (change: PendingChange) => {
@@ -71,10 +83,22 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
       // Record to history for charts
       onRecordHistory?.(change)
 
+      // Check if this is the last pending change
+      const remainingChanges = pendingChanges.filter((c) => c.id !== change.id)
+      const isLastChange = remainingChanges.length === 0
+
       // Remove the applied change from pending
-      setPendingChanges((prev) => prev.filter((c) => c.id !== change.id))
+      setPendingChanges(remainingChanges)
+
+      // When the last change is applied, advance day, update stats, and cleanup
+      if (isLastChange) {
+        const nextDay = DAY_CYCLE[currentDay]
+        onDayAdvance(nextDay)
+        onWorkoutComplete?.(change.workoutDate)
+        onAllChangesApplied?.()
+      }
     },
-    [progression, onProgressionUpdate, onRecordHistory]
+    [progression, onProgressionUpdate, onRecordHistory, pendingChanges, currentDay, onDayAdvance, onWorkoutComplete, onAllChangesApplied]
   )
 
   /**
@@ -139,7 +163,10 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     if (mostRecentDate) {
       onWorkoutComplete?.(mostRecentDate)
     }
-  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete])
+
+    // Notify that all changes have been applied (for cleanup)
+    onAllChangesApplied?.()
+  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied])
 
   /**
    * Clear all pending changes without applying.

@@ -12,7 +12,7 @@
 
 import { useCallback } from 'react'
 import type { UseProgressionStorageResult } from './useProgressionStorage'
-import type { ProgressionState, Stage, Tier } from '@/types/state'
+import type { PendingChange, ProgressionState, Stage, Tier } from '@/types/state'
 
 /**
  * Parameters for useProgressionManager hook.
@@ -64,6 +64,12 @@ export interface UseProgressionManagerResult {
 
   /** Clear all acknowledged discrepancies */
   clearAcknowledgedDiscrepancies: () => void
+
+  /** Add a pending change to storage (for persisting sync results) */
+  addPendingChange: (change: PendingChange) => void
+
+  /** Clear all pending changes from storage */
+  clearPendingChanges: () => void
 }
 
 /**
@@ -175,6 +181,17 @@ export function useProgressionManager({
     progressionStorage.clearAcknowledgedDiscrepancies()
   }, [progressionStorage])
 
+  const addPendingChange = useCallback(
+    (change: PendingChange) => {
+      progressionStorage.addPendingChange(change)
+    },
+    [progressionStorage]
+  )
+
+  const clearPendingChanges = useCallback(() => {
+    progressionStorage.clearPendingChanges()
+  }, [progressionStorage])
+
   return {
     setInitialWeight,
     setProgressionByKey,
@@ -186,5 +203,7 @@ export function useProgressionManager({
     setNeedsPush,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
+    addPendingChange,
+    clearPendingChanges,
   }
 }

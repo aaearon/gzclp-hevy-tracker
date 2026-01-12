@@ -51,7 +51,8 @@ describe('createPendingChange', () => {
       },
       'workout-123',
       '2024-01-15T10:00:00Z',
-      'A1' // day parameter - squat is T1 on A1
+      'T1', // tier parameter
+      'A1' // day parameter
     )
 
     expect(result.id).toBeDefined()
@@ -70,6 +71,7 @@ describe('createPendingChange', () => {
     expect(result.workoutId).toBe('workout-123')
     expect(result.workoutDate).toBe('2024-01-15T10:00:00Z')
     expect(result.createdAt).toBeDefined()
+    expect(result.day).toBe('A1')
   })
 
   it('should create a PendingChange for T1 stage change', () => {
@@ -85,6 +87,7 @@ describe('createPendingChange', () => {
       },
       'workout-456',
       '2024-01-16T10:00:00Z',
+      'T1',
       'A1'
     )
 
@@ -113,6 +116,7 @@ describe('createPendingChange', () => {
       },
       'workout-789',
       '2024-01-17T10:00:00Z',
+      'T1',
       'A1'
     )
 
@@ -152,7 +156,8 @@ describe('createPendingChange', () => {
       },
       'workout-t3',
       '2024-01-18T10:00:00Z',
-      'A1' // day doesn't matter for t3 - always T3
+      'T3', // T3 exercises always T3
+      'A1'
     )
 
     expect(result.type).toBe('repeat')
@@ -173,6 +178,7 @@ describe('createPendingChange', () => {
       },
       'workout-1',
       '2024-01-15T10:00:00Z',
+      'T1',
       'A1'
     )
 
@@ -188,6 +194,7 @@ describe('createPendingChange', () => {
       },
       'workout-2',
       '2024-01-16T10:00:00Z',
+      'T1',
       'A1'
     )
 
@@ -343,7 +350,7 @@ describe('createPendingChangesFromAnalysis', () => {
     expect(changes[0].newScheme).toBe('6x2+')
   })
 
-  it('should handle T3 repeat when below threshold', () => {
+  it('should NOT generate pending change for T3 repeat (below threshold)', () => {
     const analysisResults: WorkoutAnalysisResult[] = [
       {
         exerciseId: 'ex-lat',
@@ -364,9 +371,9 @@ describe('createPendingChangesFromAnalysis', () => {
       'A1'
     )
 
-    expect(changes).toHaveLength(1)
-    expect(changes[0].type).toBe('repeat')
-    expect(changes[0].newWeight).toBe(40)
+    // 'repeat' type changes are now filtered out - nothing actually changes
+    // so user doesn't need to review them
+    expect(changes).toHaveLength(0)
   })
 
   it('should skip exercises not found in config', () => {

@@ -39,6 +39,8 @@ export interface UseSyncFlowReturn {
   discrepancies: DiscrepancyInfo[]
   handleSync: () => Promise<void>
   clearError: () => void
+  /** Clear sync pending changes after they've been applied */
+  clearSyncPendingChanges: () => void
 }
 
 // =============================================================================
@@ -71,6 +73,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     discrepancies,
     syncWorkouts,
     clearError,
+    clearPendingChanges: clearSyncPendingChanges,
   } = useProgression({
     apiKey,
     exercises,
@@ -122,5 +125,6 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     discrepancies,
     handleSync,
     clearError,
+    clearSyncPendingChanges,
   }
 }

@@ -33,17 +33,6 @@ function getMuscleGroupForRole(role: ExerciseRole | undefined): MuscleGroupCateg
   return 'upper'
 }
 
-/**
- * Derive tier from exercise role and optional day.
- * For main lifts, tier depends on day. For T3/warmup/cooldown, always T3.
- */
-function deriveTierFromRole(role: ExerciseRole | undefined, day?: GZCLPDay): Tier {
-  if (!role) return 'T3'
-  if (!isMainLiftRole(role)) return 'T3'
-  if (!day) return 'T1' // Default to T1 if day not provided
-  return getTierForDay(role, day) ?? 'T3'
-}
-
 // =============================================================================
 // Constants
 // =============================================================================
@@ -416,8 +405,10 @@ export interface PendingChangeSummaryFields {
  * @param result - The calculated progression result (weight/stage changes)
  * @param workoutId - ID of the workout that triggered this change
  * @param workoutDate - ISO date string of the workout
- * @param day - Optional GZCLP day for tier derivation (A1/B1/A2/B2)
+ * @param tier - The tier for this exercise (T1/T2/T3)
+ * @param day - Optional GZCLP day this change came from
  * @param summaryFields - Optional summary fields for post-workout panel
+ * @param discrepancy - Optional weight discrepancy info when actual weight differs from expected
  * @returns A PendingChange object with tier-specific progressionKey for main lifts
  */
 export function createPendingChange(
@@ -426,11 +417,11 @@ export function createPendingChange(
   result: ProgressionResult,
   workoutId: string,
   workoutDate: string,
+  tier: Tier,
   day?: GZCLPDay,
-  summaryFields?: PendingChangeSummaryFields
+  summaryFields?: PendingChangeSummaryFields,
+  discrepancy?: { storedWeight: number; actualWeight: number }
 ): PendingChange {
-  // Derive tier from role + day
-  const tier = deriveTierFromRole(exercise.role, day)
 
   // For main lifts, include tier prefix in exercise name (T039)
   const exerciseName = isMainLiftRole(exercise.role) && (tier === 'T1' || tier === 'T2')
@@ -457,6 +448,8 @@ export function createPendingChange(
     workoutDate,
     createdAt: new Date().toISOString(),
     success: result.success,
+    day,
+    discrepancy,
   }
 
   // Add optional summary fields only when defined
@@ -484,7 +477,7 @@ export function createPendingChangesFromAnalysis(
   exercises: Record<string, ExerciseConfig>,
   progression: Record<string, ProgressionState>,
   unit: WeightUnit,
-  day?: GZCLPDay
+  _day?: GZCLPDay // Note: day context now comes from result.day in analysisResults
 ): PendingChange[] {
   const pendingChanges: PendingChange[] = []
 
@@ -501,8 +494,9 @@ export function createPendingChangesFromAnalysis(
       continue
     }
 
-    // Derive tier and muscle group from role
-    const tier = deriveTierFromRole(exercise.role, day)
+    // Use tier from analysis result (already correctly derived with day context)
+    // Don't re-derive here as day may not be available
+    const tier = result.tier
     const muscleGroup = getMuscleGroupForRole(exercise.role)
 
     // Get the progression key (role-tier for main lifts, exerciseId for T3)
@@ -531,6 +525,12 @@ export function createPendingChangesFromAnalysis(
       unit
     )
 
+    // Skip 'repeat' type changes - nothing actually changes and user doesn't need to review
+    // This happens when T3 exercises don't hit the 25+ AMRAP threshold
+    if (progressionResult.type === 'repeat') {
+      continue
+    }
+
     // Calculate summary fields
     const setsCompleted = result.reps.length
     const setsTarget = tier === 'T1'
@@ -554,8 +554,10 @@ export function createPendingChangesFromAnalysis(
       progressionResult,
       result.workoutId,
       result.workoutDate,
-      day,
-      summaryFields
+      tier, // Use tier from analysis result
+      result.day, // Use day from analysis result
+      summaryFields,
+      result.discrepancy // Pass discrepancy info for display in ReviewModal
     )
 
     pendingChanges.push(pendingChange)

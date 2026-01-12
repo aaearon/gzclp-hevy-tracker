@@ -26,6 +26,8 @@ export interface WorkoutAnalysisResult {
   workoutId: string
   workoutDate: string
   discrepancy?: WeightDiscrepancy | undefined
+  /** The GZCLP day this result came from */
+  day?: GZCLPDay
 }
 
 export interface ExerciseMatch {
@@ -100,11 +102,16 @@ export function extractWorkingWeight(sets: WorkoutSet[]): number {
 
 /**
  * Derive tier from exercise role and optional day.
+ *
+ * Returns null for main lifts when day is unknown to prevent incorrect
+ * tier assignment that could corrupt progression state.
  */
-function deriveTier(role: ExerciseConfig['role'], day?: GZCLPDay): Tier {
+function deriveTier(role: ExerciseConfig['role'], day?: GZCLPDay): Tier | null {
   if (!role) return 'T3'
   if (!isMainLiftRole(role)) return 'T3'
-  if (!day) return 'T1' // Default to T1 if day not provided
+  // SAFETY: Don't guess tier for main lifts without day context
+  // This prevents incorrect T1/T2 assignment that could trigger wrong stage changes
+  if (!day) return null
   return getTierForDay(role, day) ?? 'T3'
 }
 
@@ -128,11 +135,16 @@ export function analyzeWorkout(
       continue
     }
 
-    const reps = extractRepsFromSets(workoutExercise.sets)
-    const weight = extractWorkingWeight(workoutExercise.sets)
-
     // Derive tier from role + day
     const tier = deriveTier(exerciseConfig.role, day)
+
+    // Skip main lifts without day context (prevents incorrect tier assignment)
+    if (tier === null) {
+      continue
+    }
+
+    const reps = extractRepsFromSets(workoutExercise.sets)
+    const weight = extractWorkingWeight(workoutExercise.sets)
 
     // Get the progression key (role-tier for main lifts, exerciseId for T3)
     const progressionKey = getProgressionKey(exerciseId, exerciseConfig.role, tier)
@@ -156,6 +168,7 @@ export function analyzeWorkout(
       workoutId: workout.id,
       workoutDate: workout.start_time,
       discrepancy,
+      day,
     })
   }
 

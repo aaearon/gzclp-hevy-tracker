@@ -1,48 +1,32 @@
 /**
  * DashboardAlerts Component
  *
- * Displays update status messages and discrepancy alerts.
+ * Displays update status messages.
+ * Note: Weight discrepancy alerts are now shown in the Review Modal
+ * as part of the consolidated UX (feature/consolidate-discrepancy-ui).
  *
  * [Task 3.1] Extracted from Dashboard/index.tsx
  */
 
-import type { WeightUnit, Tier } from '@/types/state'
 import { UpdateStatus } from './UpdateStatus'
-import { DiscrepancyAlert, type DiscrepancyInfo } from './DiscrepancyAlert'
 
 export interface DashboardAlertsProps {
   /** Update error message, if any */
   updateError: string | null
   /** Whether the last update was successful */
   updateSuccess: boolean
-  /** List of weight discrepancies to display */
-  discrepancies: DiscrepancyInfo[]
-  /** Weight unit for display */
-  weightUnit: WeightUnit
   /** Callback to dismiss update status */
   onDismissUpdate: () => void
-  /** Callback when user chooses to use actual weight from Hevy */
-  onUseActualWeight: (exerciseId: string, actualWeight: number, tier: Tier) => void
-  /** Callback when user chooses to keep stored weight */
-  onKeepStoredWeight: (exerciseId: string, actualWeight: number, tier: Tier) => void
-  /** Callback to dismiss all discrepancies */
-  onDismissDiscrepancies: () => void
 }
 
 export function DashboardAlerts({
   updateError,
   updateSuccess,
-  discrepancies,
-  weightUnit,
   onDismissUpdate,
-  onUseActualWeight,
-  onKeepStoredWeight,
-  onDismissDiscrepancies,
 }: DashboardAlertsProps) {
   const hasUpdateAlert = updateError !== null || updateSuccess
-  const hasDiscrepancies = discrepancies.length > 0
 
-  if (!hasUpdateAlert && !hasDiscrepancies) {
+  if (!hasUpdateAlert) {
     return null
   }
 
@@ -54,17 +38,6 @@ export function DashboardAlerts({
           status={updateError ? 'error' : updateSuccess ? 'success' : 'idle'}
           error={updateError}
           onDismiss={onDismissUpdate}
-        />
-      )}
-
-      {/* Discrepancy Alert */}
-      {hasDiscrepancies && (
-        <DiscrepancyAlert
-          discrepancies={discrepancies}
-          unit={weightUnit}
-          onUseActualWeight={onUseActualWeight}
-          onKeepStoredWeight={onKeepStoredWeight}
-          onDismiss={onDismissDiscrepancies}
         />
       )}
     </div>
