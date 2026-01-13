@@ -105,6 +105,8 @@ export interface ExerciseConfig {
   name: string
   /** Exercise role - the new simplified role system */
   role?: ExerciseRole
+  /** Custom weight increment for T3 exercises (stored in kg). Falls back to global increment if not set. */
+  customIncrementKg?: number
 }
 
 // =============================================================================
@@ -416,6 +418,9 @@ export interface ImportedExercise {
   /** User overrides set during review */
   userWeight?: number
   userStage?: Stage
+
+  /** Custom weight increment for T3 exercises (stored in kg). Falls back to global increment if not set. */
+  customIncrementKg?: number
 
   /** Progression analysis from workout history (populated during import) */
   analysis?: import('./import').ImportAnalysis

@@ -322,16 +322,19 @@ export function isT3Success(reps: number[]): boolean {
 /**
  * Calculate T3 progression based on workout performance.
  * Per GZCLP spec, progression is triggered when AMRAP (last) set >= 25 reps.
+ *
+ * @param customIncrementKg - Optional custom increment in kg. If provided, overrides default increment.
  */
 export function calculateT3Progression(
   current: ProgressionState,
   reps: number[],
   muscleGroup: MuscleGroupCategory,
-  unit: WeightUnit
+  unit: WeightUnit,
+  customIncrementKg?: number
 ): ProgressionResult {
   const amrapReps = reps.length > 0 ? (reps[reps.length - 1] ?? 0) : 0
   const success = isT3Success(reps)
-  const increment = getIncrementKg(muscleGroup, unit)
+  const increment = customIncrementKg ?? getIncrementKg(muscleGroup, unit)
 
   if (success) {
     return {
@@ -363,13 +366,16 @@ export function calculateT3Progression(
 
 /**
  * Calculate progression for any tier.
+ *
+ * @param customIncrementKg - Optional custom increment in kg (only used for T3 exercises)
  */
 export function calculateProgression(
   tier: Tier,
   current: ProgressionState,
   reps: number[],
   muscleGroup: MuscleGroupCategory,
-  unit: WeightUnit
+  unit: WeightUnit,
+  customIncrementKg?: number
 ): ProgressionResult {
   switch (tier) {
     case 'T1':
@@ -377,7 +383,7 @@ export function calculateProgression(
     case 'T2':
       return calculateT2Progression(current, reps, muscleGroup, unit)
     case 'T3':
-      return calculateT3Progression(current, reps, muscleGroup, unit)
+      return calculateT3Progression(current, reps, muscleGroup, unit, customIncrementKg)
   }
 }
 
@@ -522,12 +528,15 @@ export function createPendingChangesFromAnalysis(
     }
 
     // Calculate progression based on workout performance
+    // For T3 exercises, use custom increment if available
+    const customIncrementKg = tier === 'T3' ? exercise.customIncrementKg : undefined
     const progressionResult = calculateProgression(
       tier,
       progressionForCalc,
       result.reps,
       muscleGroup,
-      unit
+      unit,
+      customIncrementKg
     )
 
     // Skip 'repeat' type changes - nothing actually changes and user doesn't need to review

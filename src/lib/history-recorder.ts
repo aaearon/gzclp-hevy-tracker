@@ -18,7 +18,7 @@ export function createHistoryEntryFromChange(change: PendingChange): Progression
   const entry: ProgressionHistoryEntry = {
     date: change.workoutDate,
     workoutId: change.workoutId,
-    weight: change.currentWeight,
+    weight: change.discrepancy?.actualWeight ?? change.currentWeight,
     stage: change.currentStage,
     tier: change.tier,
     success: change.success ?? false,

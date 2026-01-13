@@ -15,6 +15,7 @@ import type {
   WeightUnit,
   MainLiftWeights,
   MainLiftRole,
+  Stage,
 } from '@/types/state'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { DayTabBar } from './DayTabBar'
@@ -26,6 +27,7 @@ const GZCLP_DAYS: GZCLPDay[] = ['A1', 'B1', 'A2', 'B2']
 export interface ImportReviewStepProps {
   importResult: ImportResult
   onDayExerciseUpdate: (day: GZCLPDay, position: 'T1' | 'T2', updates: Partial<ImportedExercise>) => void
+  onDayT3Update: (day: GZCLPDay, index: number, updates: Partial<ImportedExercise>) => void
   onDayT3Remove: (day: GZCLPDay, index: number) => void
   onNext: () => void
   onBack: () => void
@@ -42,6 +44,7 @@ export interface ImportReviewStepProps {
 export function ImportReviewStep({
   importResult,
   onDayExerciseUpdate,
+  onDayT3Update,
   onDayT3Remove,
   onNext,
   onBack,
@@ -119,6 +122,36 @@ export function ImportReviewStep({
       onDayT3Remove(activeDay, index)
     },
     [activeDay, onDayT3Remove]
+  )
+
+  const handleT3WeightUpdate = useCallback(
+    (templateId: string, weight: number) => {
+      const t3Index = currentDayData.t3s.findIndex(t3 => t3.templateId === templateId)
+      if (t3Index !== -1) {
+        onDayT3Update(activeDay, t3Index, { userWeight: weight })
+      }
+    },
+    [activeDay, currentDayData.t3s, onDayT3Update]
+  )
+
+  const handleT3StageUpdate = useCallback(
+    (templateId: string, stage: Stage) => {
+      const t3Index = currentDayData.t3s.findIndex(t3 => t3.templateId === templateId)
+      if (t3Index !== -1) {
+        onDayT3Update(activeDay, t3Index, { userStage: stage })
+      }
+    },
+    [activeDay, currentDayData.t3s, onDayT3Update]
+  )
+
+  const handleT3IncrementUpdate = useCallback(
+    (templateId: string, increment: number) => {
+      const t3Index = currentDayData.t3s.findIndex(t3 => t3.templateId === templateId)
+      if (t3Index !== -1) {
+        onDayT3Update(activeDay, t3Index, { customIncrementKg: increment })
+      }
+    },
+    [activeDay, currentDayData.t3s, onDayT3Update]
   )
 
   // Handle retry API check
@@ -228,6 +261,9 @@ export function ImportReviewStep({
         onT1Update={handleT1Update}
         onT2Update={handleT2Update}
         onT3Remove={handleT3Remove}
+        onT3WeightUpdate={handleT3WeightUpdate}
+        onT3StageUpdate={handleT3StageUpdate}
+        onT3IncrementUpdate={handleT3IncrementUpdate}
         unit={unit}
       />
 

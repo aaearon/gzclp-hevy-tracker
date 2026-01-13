@@ -26,6 +26,8 @@ export interface DayReviewPanelProps {
   onT3WeightUpdate?: (templateId: string, weight: number) => void
   /** Callback when T3 stage is updated */
   onT3StageUpdate?: (templateId: string, stage: Stage) => void
+  /** Callback when T3 increment is updated */
+  onT3IncrementUpdate?: (templateId: string, increment: number) => void
   /** Weight unit for display */
   unit: WeightUnit
 }
@@ -97,12 +99,15 @@ interface T3ListItemProps {
   exercise: ImportedExercise
   onRemove: () => void
   onWeightChange?: ((weight: number) => void) | undefined
+  onIncrementChange?: ((increment: number) => void) | undefined
   unit: WeightUnit
 }
 
-function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProps) {
+function T3ListItem({ exercise, onRemove, onWeightChange, onIncrementChange, unit }: T3ListItemProps) {
   const currentWeight = exercise.userWeight ?? exercise.detectedWeight
+  const currentIncrement = exercise.customIncrementKg ?? 2.5
   const inputId = `t3-weight-${exercise.templateId}`
+  const incrementId = `t3-increment-${exercise.templateId}`
 
   const handleWeightChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,40 +119,73 @@ function T3ListItem({ exercise, onRemove, onWeightChange, unit }: T3ListItemProp
     [onWeightChange]
   )
 
+  const handleIncrementChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value)
+      if (!isNaN(value) && value >= 0.5 && value <= 10 && onIncrementChange) {
+        onIncrementChange(value)
+      }
+    },
+    [onIncrementChange]
+  )
+
   return (
-    <li className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-      <div className="flex items-center gap-3">
-        <span className="rounded bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-800 dark:text-green-300">T3</span>
-        <span className="text-gray-900 dark:text-white">{exercise.name}</span>
+    <li className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="rounded bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-800 dark:text-green-300">T3</span>
+          <span className="text-gray-900 dark:text-white">{exercise.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* T3 weight input */}
+          <label htmlFor={inputId} className="sr-only">
+            {exercise.name} weight
+          </label>
+          <input
+            id={inputId}
+            type="number"
+            value={currentWeight}
+            onChange={handleWeightChange}
+            step="0.5"
+            min="0"
+            aria-label={`${exercise.name} weight`}
+            className="w-20 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
+                       min-h-[36px]"
+          />
+          <span className="text-sm text-gray-600 dark:text-gray-400">{unit}</span>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Remove ${exercise.name}`}
+            className="rounded-md px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
+                       min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            Remove
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        {/* T3 weight input */}
-        <label htmlFor={inputId} className="sr-only">
-          {exercise.name} weight
+      {/* Increment input row */}
+      <div className="flex items-center gap-2 mt-2 pl-16">
+        <label htmlFor={incrementId} className="text-sm text-gray-600 dark:text-gray-400">
+          Increment:
         </label>
         <input
-          id={inputId}
+          id={incrementId}
           type="number"
-          value={currentWeight}
-          onChange={handleWeightChange}
           step="0.5"
-          min="0"
-          aria-label={`${exercise.name} weight`}
+          min="0.5"
+          max="10"
+          value={currentIncrement}
+          onChange={handleIncrementChange}
+          aria-label={`${exercise.name} increment`}
           className="w-20 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
                      min-h-[36px]"
         />
-        <span className="text-sm text-gray-600 dark:text-gray-400">{unit}</span>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove ${exercise.name}`}
-          className="rounded-md px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
-                     min-h-[44px] min-w-[44px] flex items-center justify-center"
-        >
-          Remove
-        </button>
+        <span className="text-sm text-gray-500 dark:text-gray-400">kg</span>
       </div>
     </li>
   )
@@ -168,6 +206,7 @@ export function DayReviewPanel({
   onT3Remove,
   onT3WeightUpdate,
   onT3StageUpdate,
+  onT3IncrementUpdate,
   unit,
 }: DayReviewPanelProps) {
   // T1 handlers
@@ -278,6 +317,11 @@ export function DayReviewPanel({
                           onT3StageUpdate(t3.templateId, stage)
                         }
                       }}
+                      onIncrementChange={
+                        onT3IncrementUpdate
+                          ? ((increment: number) => { onT3IncrementUpdate(t3.templateId, increment) })
+                          : (undefined as ((increment: number) => void) | undefined)
+                      }
                       unit={unit}
                     />
                     <button
@@ -298,6 +342,11 @@ export function DayReviewPanel({
                   onWeightChange={
                     onT3WeightUpdate
                       ? (weight: number) => { onT3WeightUpdate(t3.templateId, weight) }
+                      : undefined
+                  }
+                  onIncrementChange={
+                    onT3IncrementUpdate
+                      ? (increment: number) => { onT3IncrementUpdate(t3.templateId, increment) }
                       : undefined
                   }
                   unit={unit}

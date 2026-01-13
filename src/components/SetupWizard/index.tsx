@@ -410,6 +410,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             <ImportReviewStep
               importResult={routineImport.importResult}
               onDayExerciseUpdate={handleDayExerciseUpdate}
+              onDayT3Update={routineImport.updateDayT3}
               onDayT3Remove={handleDayT3Remove}
               onNext={handleImportReviewNext}
               onBack={handleImportReviewBack}

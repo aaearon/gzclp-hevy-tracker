@@ -17,6 +17,7 @@ export interface ExerciseAnalysisCardProps {
   tier: Tier
   onWeightChange: (weight: number) => void
   onStageChange: (stage: Stage) => void
+  onIncrementChange?: ((increment: number) => void) | undefined
   unit: WeightUnit
 }
 
@@ -138,6 +139,7 @@ export function ExerciseAnalysisCard({
   tier,
   onWeightChange,
   onStageChange,
+  onIncrementChange,
   unit,
 }: ExerciseAnalysisCardProps) {
   const analysis = exercise.analysis
@@ -152,9 +154,11 @@ export function ExerciseAnalysisCard({
   // Current effective values (user override or suggested or detected)
   const effectiveWeight = exercise.userWeight ?? suggestion?.suggestedWeight ?? exercise.detectedWeight
   const effectiveStage = exercise.userStage ?? suggestion?.suggestedStage ?? exercise.detectedStage
+  const currentIncrement = exercise.customIncrementKg ?? 2.5
 
   const inputId = `analysis-weight-${exercise.templateId}`
   const stageId = `analysis-stage-${exercise.templateId}`
+  const incrementId = `analysis-increment-${exercise.templateId}`
   const increment = unit === 'kg' ? 2.5 : 5
 
   const handleWeightChange = useCallback(
@@ -177,6 +181,16 @@ export function ExerciseAnalysisCard({
       onStageChange(value)
     },
     [onStageChange]
+  )
+
+  const handleIncrementChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value)
+      if (!isNaN(value) && value >= 0.5 && value <= 10 && onIncrementChange) {
+        onIncrementChange(value)
+      }
+    },
+    [onIncrementChange]
   )
 
   const showStageDropdown = suggestion?.type === 'stage_change'
@@ -298,6 +312,30 @@ export function ExerciseAnalysisCard({
             <span className="text-sm text-gray-500 dark:text-gray-400">
               (was {exercise.originalRepScheme})
             </span>
+          </div>
+        )}
+
+        {/* T3 increment input */}
+        {tier === 'T3' && onIncrementChange && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+            <label htmlFor={incrementId} className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Increment:
+            </label>
+            <input
+              id={incrementId}
+              type="number"
+              step="0.5"
+              min="0.5"
+              max="10"
+              value={currentIncrement}
+              onChange={handleIncrementChange}
+              aria-label="Weight increment"
+              className="w-20 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                         focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
+                         min-h-[36px]"
+            />
+            <span className="text-sm text-gray-500 dark:text-gray-400">kg</span>
           </div>
         )}
       </div>

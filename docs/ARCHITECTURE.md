@@ -1,7 +1,7 @@
 # GZCLP Hevy Tracker - Technical Architecture Documentation
 
-**Version:** 2.4.0
-**Last Updated:** 2026-01-11
+**Version:** 2.5.0
+**Last Updated:** 2026-01-13
 **Target Audience:** LLM assistants and developers working on the codebase
 
 ---
@@ -617,10 +617,12 @@ export function CollapsibleSection({ title, children, defaultOpen = true }) {
 
 **ExerciseManager Component:**
 - Lists all exercises with role dropdowns
-- Shows T3 increment input for T3 exercises only
+- Shows T3 custom increment input for T3 exercises only
 - Responsive design (mobile stacked cards, desktop table)
 - Validates increment range (0.5-10 kg)
+- Stores in kg (internal convention)
 - Auto-saves changes via `updateExercise()` hook
+- Displays fallback note when increment not set (uses global default)
 
 ---
 
@@ -699,7 +701,7 @@ function calculateT3Progression(
   reps: number[],
   muscleGroup: MuscleGroupCategory,
   unit: WeightUnit,
-  customIncrementKg?: number  // NEW: Per-exercise custom increment
+  customIncrementKg?: number  // Per-exercise custom increment override
 ): ProgressionResult
 ```
 
@@ -711,11 +713,30 @@ Failure: AMRAP set < 25 reps
   → Repeat same weight (no deload for T3)
 ```
 
-**Custom Increments:**
-- T3 exercises can have custom weight increments (0.5 kg - 10 kg)
-- Managed via Settings > Exercise Manager UI
-- Stored in `ExerciseConfig.customIncrementKg` (in kg)
-- Falls back to global default (2.5 kg) if not set
+**Custom Increments Feature:**
+
+T3 exercises support custom weight increments for fine-grained progression control:
+
+- **Per-exercise configuration:** Each T3 exercise can have its own increment override
+- **Storage:** Stored in `ExerciseConfig.customIncrementKg` (stored in kg, matching internal convention)
+- **Range:** 0.5 kg to 10 kg (validated in UI)
+- **Fallback behavior:** Falls back to global default (2.5 kg/5 lbs) if not set
+- **Configuration points:**
+  - **Import Wizard:** Can be set during initial exercise setup
+  - **Settings Page:** Exercise Manager component allows editing T3 custom increments
+  - **Auto-detect:** Import analysis auto-detects custom increments from workout history patterns
+
+**Example:**
+```typescript
+// Dumbbell exercises might use smaller increments (1 kg)
+exercises['uuid-dumbbell-row'].customIncrementKg = 1.0
+
+// Machine exercises might use larger increments (5 kg)
+exercises['uuid-leg-press'].customIncrementKg = 5.0
+
+// Standard accessories use default (2.5 kg)
+exercises['uuid-lat-pulldown'].customIncrementKg = undefined // → uses 2.5 kg
+```
 
 ### 6.2 Workout Analysis
 
@@ -805,7 +826,59 @@ Week 8, Workout #23
 Last updated: 2024-01-15
 ```
 
-### 6.4 Import Analysis
+### 6.4 History Recorder and Discrepancy Handling
+
+**File:** `src/lib/history-recorder.ts`
+
+Converts pending changes into historical progression entries for chart visualization.
+
+**Discrepancy-aware recording:**
+
+When a discrepancy exists (logged workout weight ≠ stored progression weight), the history recorder **uses the actual workout weight** from Hevy instead of the stored progression weight:
+
+```typescript
+export function createHistoryEntry(
+  change: PendingChange,
+  workoutExercises: WorkoutExercise[]
+): ProgressionHistoryEntry {
+  // Find actual weight from workout
+  const workoutExercise = findMatchingWorkoutExercise(change.exerciseId, workoutExercises)
+  const actualWeight = workoutExercise?.sets[0]?.weight_kg ?? change.currentWeight
+
+  // Use actual weight in history, not stored progression weight
+  return {
+    workoutId: change.workoutId,
+    weight: actualWeight,  // ← Actual logged weight
+    reps: extractRepsFromWorkout(workoutExercise),
+    date: change.workoutDate,
+    stage: change.newStage,
+    type: change.type
+  }
+}
+```
+
+**Why this matters:**
+
+- **Chart accuracy:** Charts show the actual weights lifted, not what the app thought was the working weight
+- **Recovery after discrepancy:** If a user corrected a logged weight in Hevy, the history reflects the correction
+- **Validation:** Provides a single source of truth (Hevy workout) vs (local progression storage)
+
+**Example scenario:**
+
+```
+User logs squat at 100kg in Hevy
+App stored progression at 95kg (bug or manual correction)
+Discrepancy detected: 100kg ≠ 95kg
+
+Pending change calculated:
+  currentWeight: 95kg (from storage)
+  newWeight: 100kg (calculated progression)
+
+History entry recorded:
+  weight: 100kg ← Uses actual workout weight, not 95kg
+```
+
+### 6.5 Import Analysis
 
 **File:** `src/lib/import-analysis.ts`
 
@@ -1347,7 +1420,7 @@ export interface ExerciseConfig {
   hevyTemplateId: string
   name: string
   role?: ExerciseRole
-  customIncrementKg?: number  // T3 custom increment (stored in kg, defaults to 2.5 kg)
+  customIncrementKg?: number  // T3 custom increment override (stored in kg, optional)
 }
 
 // Current progression state
@@ -2087,8 +2160,8 @@ Currently requires online access for sync/push operations.
 
 ---
 
-**Document Version:** 2.4
-**Last Updated:** 2026-01-11
+**Document Version:** 2.5.0
+**Last Updated:** 2026-01-13
 **Maintained By:** LLM-assisted development
 **Next Review:** When major architectural changes are made
 
