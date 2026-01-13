@@ -27,7 +27,7 @@ export interface WorkoutAnalysisResult {
   workoutDate: string
   discrepancy?: WeightDiscrepancy | undefined
   /** The GZCLP day this result came from */
-  day?: GZCLPDay
+  day?: GZCLPDay | undefined
 }
 
 export interface ExerciseMatch {

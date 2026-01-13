@@ -214,7 +214,7 @@ export interface PendingChange {
   createdAt: string
 
   /** The GZCLP day this change came from (A1/B1/A2/B2) */
-  day?: GZCLPDay
+  day?: GZCLPDay | undefined
 
   /** Weight discrepancy info when actual weight differs from expected */
   discrepancy?: {
@@ -222,7 +222,7 @@ export interface PendingChange {
     storedWeight: number
     /** Weight actually used in the workout */
     actualWeight: number
-  }
+  } | undefined
 
   // Summary fields (for Post-Workout Summary panel)
   /** Number of sets completed in workout */

@@ -40,7 +40,7 @@ export interface UseProgressionProps {
     B2: string | null
   }
   /** IDs of workouts that have already been processed (prevents reprocessing) */
-  processedWorkoutIds?: string[]
+  processedWorkoutIds?: string[] | undefined
 }
 
 export interface DiscrepancyInfo {

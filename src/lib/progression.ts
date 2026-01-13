@@ -16,7 +16,7 @@ import {
   WEIGHT_INCREMENTS,
   WEIGHT_ROUNDING,
 } from './constants'
-import { getTierForDay, isMainLiftRole, getProgressionKey } from './role-utils'
+import { isMainLiftRole, getProgressionKey } from './role-utils'
 
 // =============================================================================
 // Role-Based Utilities

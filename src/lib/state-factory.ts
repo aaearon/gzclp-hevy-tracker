@@ -118,6 +118,7 @@ export function createInitialState(unit: WeightUnit = 'kg'): GZCLPState {
     progressionHistory: {},
     acknowledgedDiscrepancies: [],
     needsPush: false,
+    processedWorkoutIds: [],
   }
 }
 
