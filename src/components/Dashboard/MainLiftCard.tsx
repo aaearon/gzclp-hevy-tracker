@@ -12,6 +12,7 @@
 import type { GZCLPDay, MainLiftRole, ProgressionState, Stage, WeightUnit } from '@/types/state'
 import { getRepScheme, ROLE_DISPLAY, STAGE_DISPLAY } from '@/lib/constants'
 import { displayWeight } from '@/utils/formatting'
+import { WeightDisplay } from '@/components/common/WeightDisplay'
 import { getTierForDay, getProgressionKey } from '@/lib/role-utils'
 import { calculateWarmupSets } from '@/lib/warmup'
 
@@ -98,9 +99,10 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
 
       {/* Weight and scheme row */}
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          {displayWeight(progression.currentWeight, weightUnit)}
-        </span>
+        <WeightDisplay
+          weight={progression.currentWeight}
+          unit={weightUnit}
+        />
         <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
       </div>
 

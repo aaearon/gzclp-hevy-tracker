@@ -6,7 +6,7 @@
 
 import type { ExerciseConfig, ProgressionState, Tier, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { displayWeight } from '@/utils/formatting'
+import { WeightDisplay } from '@/components/common/WeightDisplay'
 
 interface ExerciseCardProps {
   exercise: ExerciseConfig
@@ -59,9 +59,10 @@ export function ExerciseCard({
 
       {/* Weight and scheme row */}
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          {displayWeight(progression.currentWeight, weightUnit)}
-        </span>
+        <WeightDisplay
+          weight={progression.currentWeight}
+          unit={weightUnit}
+        />
         <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
       </div>
 

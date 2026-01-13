@@ -11,6 +11,7 @@ import { useMemo } from 'react'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
 import { displayWeight } from '@/utils/formatting'
+import { WeightDisplay } from '@/components/common/WeightDisplay'
 import { getExercisesForDay, getProgressionKey } from '@/lib/role-utils'
 import { calculateWarmupSets } from '@/lib/warmup'
 
@@ -122,9 +123,11 @@ export function CurrentWorkout({
 
                 {/* Weight and scheme row */}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xl font-bold text-red-700 dark:text-red-400">
-                    {displayWeight(t1Data.progression.currentWeight, weightUnit)}
-                  </span>
+                  <WeightDisplay
+                    weight={t1Data.progression.currentWeight}
+                    unit={weightUnit}
+                    colorClass="text-red-700 dark:text-red-400"
+                  />
                   <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{t1Data.scheme.display}</span>
                 </div>
 
@@ -160,9 +163,11 @@ export function CurrentWorkout({
 
                 {/* Weight and scheme row */}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xl font-bold text-blue-700 dark:text-blue-400">
-                    {displayWeight(t2Data.progression.currentWeight, weightUnit)}
-                  </span>
+                  <WeightDisplay
+                    weight={t2Data.progression.currentWeight}
+                    unit={weightUnit}
+                    colorClass="text-blue-700 dark:text-blue-400"
+                  />
                   <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{t2Data.scheme.display}</span>
                 </div>
               </div>
@@ -195,9 +200,15 @@ export function CurrentWorkout({
                     </div>
                     {/* Weight and scheme row */}
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xl font-bold text-green-700 dark:text-green-400">
-                        {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
-                      </span>
+                      {prog ? (
+                        <WeightDisplay
+                          weight={prog.currentWeight}
+                          unit={weightUnit}
+                          colorClass="text-green-700 dark:text-green-400"
+                        />
+                      ) : (
+                        <span className="text-xl font-bold text-green-700 dark:text-green-400">TBD</span>
+                      )}
                       <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
                     </div>
                   </div>

@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import type { ExerciseConfig, GZCLPDay, ProgressionState, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
-import { displayWeight } from '@/utils/formatting'
+import { WeightDisplay } from '@/components/common/WeightDisplay'
 
 interface T3OverviewProps {
   exercises: Record<string, ExerciseConfig>
@@ -110,9 +110,15 @@ export function T3Overview({
 
             {/* Weight and scheme row */}
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-xl font-bold text-green-700 dark:text-green-300">
-                {prog ? displayWeight(prog.currentWeight, weightUnit) : 'TBD'}
-              </span>
+              {prog ? (
+                <WeightDisplay
+                  weight={prog.currentWeight}
+                  unit={weightUnit}
+                  colorClass="text-green-700 dark:text-green-300"
+                />
+              ) : (
+                <span className="text-xl font-bold text-green-700 dark:text-green-300">TBD</span>
+              )}
               <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{scheme.display}</span>
             </div>
             {/* PR indicator */}
