@@ -22,6 +22,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
+import { calculateCurrentWeek, calculateDayOfWeek, calculateTotalWorkouts } from '@/utils/stats'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -251,6 +252,11 @@ export function Dashboard() {
   // Note: Discrepancy handling has been moved to ReviewModal
   // Discrepancy info is now shown inline on pending change cards
 
+  // Calculate week stats for header
+  const totalWorkouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
+  const currentWeek = calculateCurrentWeek(totalWorkouts, state.program.workoutsPerWeek)
+  const dayOfWeek = calculateDayOfWeek(totalWorkouts, state.program.workoutsPerWeek)
+
   // Disable sync/update when offline
   const isOffline = !isOnline || !isHevyReachable
 
@@ -273,6 +279,9 @@ export function Dashboard() {
         isOffline={isOffline}
         hasApiKey={!!apiKey}
         needsPush={state.needsPush}
+        currentWeek={currentWeek}
+        weekCompleted={dayOfWeek.completed}
+        weekTotal={dayOfWeek.total}
         onSync={() => { void handleSync() }}
         onPush={() => { void handleOpenPushDialog() }}
         onOpenReviewModal={() => { setIsReviewModalOpen(true) }}

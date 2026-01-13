@@ -20,6 +20,9 @@ describe('DashboardHeader', () => {
     isOffline: false,
     hasApiKey: true,
     needsPush: false,
+    currentWeek: 3,
+    weekCompleted: 2,
+    weekTotal: 4,
     onSync: vi.fn(),
     onPush: vi.fn(),
     onOpenReviewModal: vi.fn(),
@@ -31,6 +34,12 @@ describe('DashboardHeader', () => {
       render(<DashboardHeader {...defaultProps} />)
 
       expect(screen.getByText('GZCLP Tracker')).toBeInTheDocument()
+    })
+
+    it('renders week progress badge', () => {
+      render(<DashboardHeader {...defaultProps} currentWeek={5} weekCompleted={3} weekTotal={4} />)
+
+      expect(screen.getByText('Week 5 - 3/4')).toBeInTheDocument()
     })
 
     it('renders sync status with last sync time', () => {

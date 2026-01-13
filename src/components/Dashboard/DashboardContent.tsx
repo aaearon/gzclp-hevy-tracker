@@ -12,7 +12,6 @@
 import { lazy, Suspense, useDeferredValue } from 'react'
 import type { GZCLPState } from '@/types/state'
 import { MAIN_LIFT_ROLES } from '@/types/state'
-import { QuickStats } from './QuickStats'
 import { CurrentWorkout } from './CurrentWorkout'
 import { MainLiftCard } from './MainLiftCard'
 import { T3Overview } from './T3Overview'
@@ -39,11 +38,8 @@ export function DashboardContent({ state }: DashboardContentProps) {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      {/* Quick Stats [REQ-DASH-003] */}
-      <QuickStats state={state} />
-
       <div className="space-y-8">
-        {/* Current Workout - Prominent display at top */}
+        {/* Current Workout - Prominent display at top (most important: "what do I do today?") */}
         <CurrentWorkout
           day={program.currentDay}
           exercises={exercises}

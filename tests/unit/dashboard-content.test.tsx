@@ -49,14 +49,6 @@ describe('DashboardContent', () => {
   }
 
   describe('rendering', () => {
-    it('renders QuickStats section', () => {
-      render(<DashboardContent {...defaultProps} />)
-
-      expect(screen.getByText('Current Week')).toBeInTheDocument()
-      expect(screen.getByText('Total Workouts')).toBeInTheDocument()
-      expect(screen.getByText('Days Since Last Workout')).toBeInTheDocument()
-    })
-
     it('renders CurrentWorkout section', () => {
       render(<DashboardContent {...defaultProps} />)
 

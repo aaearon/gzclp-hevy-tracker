@@ -29,6 +29,12 @@ export interface DashboardHeaderProps {
   hasApiKey: boolean
   /** Whether local progression needs to be pushed to Hevy */
   needsPush: boolean
+  /** Current training week number */
+  currentWeek: number
+  /** Workouts completed this week */
+  weekCompleted: number
+  /** Workouts per week target */
+  weekTotal: number
   /** Callback to trigger a sync (fetch from Hevy) */
   onSync: () => void
   /** Callback to trigger a push (open push dialog) */
@@ -48,6 +54,9 @@ export function DashboardHeader({
   isOffline,
   hasApiKey,
   needsPush,
+  currentWeek,
+  weekCompleted,
+  weekTotal,
   onSync,
   onPush,
   onOpenReviewModal,
@@ -57,7 +66,12 @@ export function DashboardHeader({
     <header className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
       <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-4">
         <div className="min-w-0 flex-shrink">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">GZCLP Tracker</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">GZCLP Tracker</h1>
+            <span className="rounded-full bg-indigo-100 dark:bg-indigo-900/50 px-3 py-1 text-sm font-medium text-indigo-700 dark:text-indigo-300">
+              Week {currentWeek} - {weekCompleted}/{weekTotal}
+            </span>
+          </div>
           <SyncStatus lastSyncTime={lastSync} error={syncError} onDismissError={onDismissError} />
         </div>
 
