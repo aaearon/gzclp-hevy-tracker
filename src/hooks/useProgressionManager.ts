@@ -68,8 +68,14 @@ export interface UseProgressionManagerResult {
   /** Add a pending change to storage (for persisting sync results) */
   addPendingChange: (change: PendingChange) => void
 
+  /** Remove a single pending change from storage (when rejected) */
+  removePendingChange: (id: string) => void
+
   /** Clear all pending changes from storage */
   clearPendingChanges: () => void
+
+  /** Add workout IDs to the processed set (prevents reprocessing) */
+  addProcessedWorkoutIds: (workoutIds: string[]) => void
 }
 
 /**
@@ -188,9 +194,23 @@ export function useProgressionManager({
     [progressionStorage]
   )
 
+  const removePendingChange = useCallback(
+    (id: string) => {
+      progressionStorage.removePendingChange(id)
+    },
+    [progressionStorage]
+  )
+
   const clearPendingChanges = useCallback(() => {
     progressionStorage.clearPendingChanges()
   }, [progressionStorage])
+
+  const addProcessedWorkoutIds = useCallback(
+    (workoutIds: string[]) => {
+      progressionStorage.addProcessedWorkoutIds(workoutIds)
+    },
+    [progressionStorage]
+  )
 
   return {
     setInitialWeight,
@@ -204,6 +224,8 @@ export function useProgressionManager({
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
     addPendingChange,
+    removePendingChange,
     clearPendingChanges,
+    addProcessedWorkoutIds,
   }
 }

@@ -349,6 +349,9 @@ export interface GZCLPState {
 
   /** Whether local progression differs from Hevy and needs to be pushed */
   needsPush: boolean
+
+  /** IDs of workouts that have been processed (prevents reprocessing on future syncs) */
+  processedWorkoutIds: string[]
 }
 
 // =============================================================================

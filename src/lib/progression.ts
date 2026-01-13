@@ -505,6 +505,11 @@ export function createPendingChangesFromAnalysis(
 
     // Skip if progression not found
     if (!exerciseProgression) {
+      console.warn(
+        `[createPendingChanges] Skipping "${exercise.name}" (${tier}): ` +
+        `progression key "${progressionKey}" not found. ` +
+        `Available keys: [${Object.keys(progression).join(', ')}]`
+      )
       continue
     }
 
@@ -560,6 +565,10 @@ export function createPendingChangesFromAnalysis(
       result.discrepancy // Pass discrepancy info for display in ReviewModal
     )
 
+    console.debug(
+      `[createPendingChanges] Created change for "${exercise.name}" (${tier}): ` +
+      `progressionKey="${progressionKey}", workoutId="${result.workoutId}", type="${progressionResult.type}"`
+    )
     pendingChanges.push(pendingChange)
   }
 

@@ -30,6 +30,8 @@ export interface UseSyncFlowOptions {
   onLastSyncUpdate: (timestamp: string) => void
   /** Called to record each workout to progression history for charts */
   onRecordHistory?: (change: PendingChange) => void
+  /** IDs of workouts that have already been processed (prevents reprocessing) */
+  processedWorkoutIds?: string[]
 }
 
 export interface UseSyncFlowReturn {
@@ -58,6 +60,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     isOnline,
     onLastSyncUpdate,
     onRecordHistory,
+    processedWorkoutIds,
   } = options
 
   // Track whether auto-sync has already been triggered
@@ -81,6 +84,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     settings,
     lastSync,
     hevyRoutineIds,
+    processedWorkoutIds,
   })
 
   // Auto-sync on mount when conditions are met

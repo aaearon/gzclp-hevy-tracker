@@ -27,6 +27,10 @@ export interface UsePendingChangesProps {
   onWorkoutComplete?: (workoutDate: string) => void
   /** Callback when all pending changes have been applied (for cleanup) */
   onAllChangesApplied?: () => void
+  /** Callback to mark workout IDs as processed (prevents reprocessing on next sync) */
+  onAddProcessedWorkoutIds?: (workoutIds: string[]) => void
+  /** Callback when a change is rejected (to remove from localStorage) */
+  onRejectChange?: (changeId: string, workoutId: string) => void
 }
 
 export interface UsePendingChangesResult {
@@ -45,17 +49,44 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied, onAddProcessedWorkoutIds, onRejectChange } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
 
-  // Sync local state when external sources are cleared
-  // This ensures that when storedPendingChanges and syncPendingChanges are both cleared,
-  // the local state also becomes empty (handles component remount edge cases)
+  // Track which change IDs we've "seen" from initialChanges to avoid re-adding rejected items
+  const seenChangeIds = useRef(new Set(initialChanges.map((c) => c.id)))
+
+  // Sync local state when external sources change
+  // - When cleared: reset local state to empty (also reset seen IDs)
+  // - When new changes arrive: merge them into local state (but not if user already rejected them)
+  // This ensures pending changes from sync are immediately visible in ReviewModal
+  // Uses functional state update to avoid stale closure issues
   useEffect(() => {
-    if (initialChanges.length === 0 && pendingChanges.length > 0) {
-      setPendingChanges([])
+    if (initialChanges.length === 0) {
+      // External sources cleared - reset local state and seen tracking
+      setPendingChanges((currentPending) => {
+        if (currentPending.length > 0) {
+          seenChangeIds.current.clear()
+          return []
+        }
+        return currentPending
+      })
+    } else {
+      // Find truly NEW changes using functional update to access latest state
+      setPendingChanges((currentPending) => {
+        const existingIds = new Set(currentPending.map((c) => c.id))
+        const newChanges = initialChanges.filter(
+          (c) => !existingIds.has(c.id) && !seenChangeIds.current.has(c.id)
+        )
+
+        if (newChanges.length > 0) {
+          // Mark new changes as seen
+          newChanges.forEach((c) => seenChangeIds.current.add(c.id))
+          return [...currentPending, ...newChanges]
+        }
+        return currentPending
+      })
     }
-  }, [initialChanges.length, pendingChanges.length])
+  }, [initialChanges])
 
   // Undo state [Task 4.2]
   const [recentlyRejected, setRecentlyRejected] = useState<PendingChange | null>(null)
@@ -76,9 +107,19 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
    */
   const applyChange = useCallback(
     (change: PendingChange) => {
+      // Collect OLD lastWorkoutId that will be replaced (to prevent it from being "orphaned")
+      const existingProgression = progression[change.progressionKey]
+      const oldLastWorkoutId = existingProgression?.lastWorkoutId
+
       // Apply the change to progression
       const updatedProgression = applyPendingChange(progression, change)
       onProgressionUpdate(updatedProgression)
+
+      // Mark both old and new workout IDs as processed to prevent reprocessing on future syncs
+      const workoutIdsToAdd = oldLastWorkoutId
+        ? [oldLastWorkoutId, change.workoutId]
+        : [change.workoutId]
+      onAddProcessedWorkoutIds?.(workoutIdsToAdd)
 
       // Record to history for charts
       onRecordHistory?.(change)
@@ -98,7 +139,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
         onAllChangesApplied?.()
       }
     },
-    [progression, onProgressionUpdate, onRecordHistory, pendingChanges, currentDay, onDayAdvance, onWorkoutComplete, onAllChangesApplied]
+    [progression, onProgressionUpdate, onAddProcessedWorkoutIds, onRecordHistory, pendingChanges, currentDay, onDayAdvance, onWorkoutComplete, onAllChangesApplied]
   )
 
   /**
@@ -108,6 +149,11 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
     setPendingChanges((prev) => {
       const change = prev.find((c) => c.id === changeId)
       if (change) {
+        // Remove from localStorage and mark workout as processed to prevent re-appearance
+        onRejectChange?.(changeId, change.workoutId)
+        // Also add to processedWorkoutIds so this workout won't be re-synced
+        onAddProcessedWorkoutIds?.([change.workoutId])
+
         // Store for undo
         setRecentlyRejected(change)
 
@@ -123,7 +169,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
       }
       return prev.filter((c) => c.id !== changeId)
     })
-  }, [])
+  }, [onRejectChange, onAddProcessedWorkoutIds])
 
   /**
    * Modify the weight of a pending change.
@@ -142,17 +188,33 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
     let currentProgression = progression
     let mostRecentDate: string | null = null
+    const workoutIds = new Set<string>()
+
+    // Collect OLD lastWorkoutIds that will be replaced - these need to be marked as processed
+    // to prevent them from being "orphaned" when overwritten with newer workout IDs
+    for (const change of pendingChanges) {
+      const existingProgression = progression[change.progressionKey]
+      if (existingProgression?.lastWorkoutId) {
+        workoutIds.add(existingProgression.lastWorkoutId)
+      }
+    }
 
     for (const change of pendingChanges) {
       currentProgression = applyPendingChange(currentProgression, change)
       // Record each change to history for charts
       onRecordHistory?.(change)
+      // Collect new workout IDs
+      workoutIds.add(change.workoutId)
       // Track the most recent workout date
       if (!mostRecentDate || change.workoutDate > mostRecentDate) {
         mostRecentDate = change.workoutDate
       }
     }
     onProgressionUpdate(currentProgression)
+
+    // Mark all workouts (old AND new) as processed to prevent reprocessing on future syncs
+    onAddProcessedWorkoutIds?.([...workoutIds])
+
     setPendingChanges([])
 
     // Advance to the next day in the GZCLP rotation
@@ -166,7 +228,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
     // Notify that all changes have been applied (for cleanup)
     onAllChangesApplied?.()
-  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied])
+  }, [pendingChanges, progression, onProgressionUpdate, onAddProcessedWorkoutIds, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied])
 
   /**
    * Clear all pending changes without applying.

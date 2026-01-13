@@ -39,6 +39,8 @@ export interface UseProgressionProps {
     A2: string | null
     B2: string | null
   }
+  /** IDs of workouts that have already been processed (prevents reprocessing) */
+  processedWorkoutIds?: string[]
 }
 
 export interface DiscrepancyInfo {
@@ -94,7 +96,7 @@ function findDayByRoutineId(
 }
 
 export function useProgression(props: UseProgressionProps): UseProgressionResult {
-  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds } = props
+  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds, processedWorkoutIds = [] } = props
 
   // State
   const [isSyncing, setIsSyncing] = useState(false)
@@ -163,18 +165,34 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         return matchedDay !== null
       })
 
-      // Build set of already-processed workout IDs from progression state
-      // This prevents false discrepancies for workouts analyzed during import
-      const processedWorkoutIds = new Set<string>()
-      for (const prog of Object.values(progression)) {
+      // Build set of already-processed workout IDs from:
+      // 1. The global processedWorkoutIds array (persisted, prevents reprocessing after lastWorkoutId updates)
+      // 2. Current lastWorkoutId values (backwards compatibility for existing users)
+      const processedWorkoutIdSet = new Set<string>(processedWorkoutIds)
+      for (const [key, prog] of Object.entries(progression)) {
         if (prog.lastWorkoutId) {
-          processedWorkoutIds.add(prog.lastWorkoutId)
+          processedWorkoutIdSet.add(prog.lastWorkoutId)
+          // Debug: log which progression entries have lastWorkoutId set
+          console.debug(`[syncWorkouts] Progression "${key}" has lastWorkoutId: ${prog.lastWorkoutId}`)
         }
       }
 
       // Filter out already-processed workouts
       const unprocessedWorkouts = relevantWorkouts.filter(
-        (workout) => !processedWorkoutIds.has(workout.id)
+        (workout) => !processedWorkoutIdSet.has(workout.id)
+      )
+
+      // Debug: log filtering results
+      if (relevantWorkouts.length !== unprocessedWorkouts.length) {
+        const filtered = relevantWorkouts.filter((w) => processedWorkoutIdSet.has(w.id))
+        console.debug(
+          `[syncWorkouts] Filtered out ${String(filtered.length)} already-processed workouts:`,
+          filtered.map((w) => ({ id: w.id, title: w.title }))
+        )
+      }
+      console.debug(
+        `[syncWorkouts] Processing ${String(unprocessedWorkouts.length)} unprocessed workouts:`,
+        unprocessedWorkouts.map((w) => ({ id: w.id, title: w.title }))
       )
 
       // Analyze each workout with its matched day for accurate tier derivation
@@ -238,7 +256,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         setIsSyncing(false)
       }
     }
-  }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds])
+  }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds, processedWorkoutIds])
 
   /**
    * Clear sync error.

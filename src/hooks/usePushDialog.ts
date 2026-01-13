@@ -227,6 +227,11 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
         settings.weightUnit
       )
       setPreview(builtPreview)
+
+      // If there's nothing to sync, clear the needsPush flag
+      if (builtPreview.pushCount === 0 && builtPreview.pullCount === 0) {
+        onNeedsPushUpdate(false)
+      }
     } catch (error) {
       if (error instanceof Error) {
         setPreviewError(error.message)
@@ -236,7 +241,7 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
     } finally {
       setIsLoading(false)
     }
-  }, [hevyClient, hevyRoutineIds, exercises, progression, t3Schedule, settings.weightUnit])
+  }, [hevyClient, hevyRoutineIds, exercises, progression, t3Schedule, settings.weightUnit, onNeedsPushUpdate])
 
   // Close dialog and reset state
   const close = useCallback(() => {
@@ -268,6 +273,8 @@ export function usePushDialog(options: UsePushDialogOptions): UsePushDialogRetur
     }
 
     if (preview.pushCount === 0 && preview.pullCount === 0) {
+      // Nothing to push or pull - clear the needsPush flag since we're in sync
+      onNeedsPushUpdate(false)
       close()
       return
     }

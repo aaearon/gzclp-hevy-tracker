@@ -31,8 +31,15 @@ export function applyPendingChange(
   const key = change.progressionKey
   const exerciseProgression = progression[key]
 
-  // If progression entry not found, return original state
+  // If progression entry not found, warn and return original state
+  // This could indicate a key mismatch between sync and apply
   if (!exerciseProgression) {
+    console.warn(
+      `[applyPendingChange] Progression key not found: "${key}". ` +
+      `Available keys: [${Object.keys(progression).join(', ')}]. ` +
+      `Exercise: ${change.exerciseName}, Tier: ${change.tier}. ` +
+      `lastWorkoutId will NOT be set - workout may be reprocessed on next sync.`
+    )
     return progression
   }
 
@@ -43,6 +50,12 @@ export function applyPendingChange(
     lastWorkoutId: change.workoutId,
     lastWorkoutDate: change.workoutDate,
   }
+
+  console.debug(
+    `[applyPendingChange] Applied change for "${change.exerciseName}" (${change.tier}): ` +
+    `progressionKey="${key}", lastWorkoutId="${change.workoutId}", ` +
+    `weight: ${String(exerciseProgression.currentWeight)} -> ${String(change.newWeight)}`
+  )
 
   // Update baseWeight on deload
   if (change.type === 'deload') {

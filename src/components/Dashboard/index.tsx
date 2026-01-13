@@ -42,9 +42,11 @@ export function Dashboard() {
     setTotalWorkouts,
     setMostRecentWorkoutDate,
     addPendingChange,
+    removePendingChange,
     clearPendingChanges,
+    addProcessedWorkoutIds,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, processedWorkoutIds } = state
 
   // Toast notifications for visual feedback
   const { showToast } = useToast()
@@ -85,6 +87,7 @@ export function Dashboard() {
     isOnline,
     onLastSyncUpdate: setLastSync,
     onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
+    processedWorkoutIds,
   })
 
   // Handle progression updates from pending changes
@@ -174,6 +177,11 @@ export function Dashboard() {
     clearSyncPendingChanges() // Clear sync state to prevent re-population
   }, [clearPendingChanges, clearSyncPendingChanges])
 
+  // Callback when a change is rejected - remove from localStorage
+  const handleRejectChange = useCallback((changeId: string, _workoutId: string) => {
+    removePendingChange(changeId)
+  }, [removePendingChange])
+
   // Use pending changes hook
   const {
     pendingChanges,
@@ -192,6 +200,8 @@ export function Dashboard() {
     onRecordHistory: recordHistoryEntry,
     onWorkoutComplete: handleWorkoutComplete,
     onAllChangesApplied: handleAllChangesApplied,
+    onAddProcessedWorkoutIds: addProcessedWorkoutIds,
+    onRejectChange: handleRejectChange,
   })
 
   // Wrap applyAllChanges to show success toast
