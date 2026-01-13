@@ -604,6 +604,24 @@ export function CollapsibleSection({ title, children, defaultOpen = true }) {
 - Historical data with stage color coding
 - Event markers (PR, deload, stage change)
 
+#### Settings
+**File:** `src/components/Settings/index.tsx`
+**Responsibility:** Application configuration and data management
+**Features:**
+- Exercise role management (via ExerciseManager)
+- T3 custom increment configuration (per exercise, 0.5-10 kg)
+- Theme selection (light/dark/system)
+- Weight unit preference (kg/lbs)
+- Data export/import (JSON backup)
+- Data reset functionality
+
+**ExerciseManager Component:**
+- Lists all exercises with role dropdowns
+- Shows T3 increment input for T3 exercises only
+- Responsive design (mobile stacked cards, desktop table)
+- Validates increment range (0.5-10 kg)
+- Auto-saves changes via `updateExercise()` hook
+
 ---
 
 ## 6. Business Logic
@@ -680,17 +698,24 @@ function calculateT3Progression(
   current: ProgressionState,
   reps: number[],
   muscleGroup: MuscleGroupCategory,
-  unit: WeightUnit
+  unit: WeightUnit,
+  customIncrementKg?: number  // NEW: Per-exercise custom increment
 ): ProgressionResult
 ```
 
 **Logic:**
 ```
 Success: AMRAP set (last set) >= 25 reps
-  → Add increment
+  → Add increment (uses customIncrementKg if set, else defaults to 2.5 kg)
 Failure: AMRAP set < 25 reps
   → Repeat same weight (no deload for T3)
 ```
+
+**Custom Increments:**
+- T3 exercises can have custom weight increments (0.5 kg - 10 kg)
+- Managed via Settings > Exercise Manager UI
+- Stored in `ExerciseConfig.customIncrementKg` (in kg)
+- Falls back to global default (2.5 kg) if not set
 
 ### 6.2 Workout Analysis
 
@@ -1158,7 +1183,7 @@ gzclp-hevy-tracker/
 │   │   │
 │   │   ├── Settings/             # Settings panel
 │   │   │   ├── index.tsx
-│   │   │   ├── ExerciseManager.tsx
+│   │   │   ├── ExerciseManager.tsx     # Exercise roles & T3 increments
 │   │   │   ├── ImportButton.tsx
 │   │   │   ├── ExportButton.tsx
 │   │   │   ├── DeleteDataButton.tsx
@@ -1322,6 +1347,7 @@ export interface ExerciseConfig {
   hevyTemplateId: string
   name: string
   role?: ExerciseRole
+  customIncrementKg?: number  // T3 custom increment (stored in kg, defaults to 2.5 kg)
 }
 
 // Current progression state

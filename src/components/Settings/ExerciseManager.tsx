@@ -145,6 +145,27 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
                   className="w-full"
                   showPlaceholder={false}
                 />
+                {exercise.role === 't3' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Increment:</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      max="10"
+                      value={exercise.customIncrementKg ?? 2.5}
+                      onChange={(e) => {
+                        const value = Number(e.target.value)
+                        if (value >= 0.5 && value <= 10) {
+                          updateExercise(exercise.id, { customIncrementKg: value })
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      aria-label={`Increment for ${exercise.name}`}
+                    />
+                    <span className="text-xs text-gray-400">kg</span>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -166,6 +187,12 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
                   Role
+                </th>
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
+                  T3 Increment
                 </th>
               </tr>
             </thead>
@@ -207,6 +234,30 @@ export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
                         className="w-48"
                         showPlaceholder={false}
                       />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {exercise.role === 't3' ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            max="10"
+                            value={exercise.customIncrementKg ?? 2.5}
+                            onChange={(e) => {
+                              const value = Number(e.target.value)
+                              if (value >= 0.5 && value <= 10) {
+                                updateExercise(exercise.id, { customIncrementKg: value })
+                              }
+                            }}
+                            className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            aria-label={`Increment for ${exercise.name}`}
+                          />
+                          <span className="text-xs text-gray-400">kg</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
+                      )}
                     </td>
                   </tr>
                 )
