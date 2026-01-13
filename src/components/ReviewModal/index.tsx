@@ -9,6 +9,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { PendingChange, WeightUnit } from '@/types/state'
+import { TierBadge } from '@/components/common/TierBadge'
+import { DayBadge } from '@/components/common/DayBadge'
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -105,16 +107,10 @@ function PendingChangeCard({
             </span>
 
             {/* Day badge */}
-            {change.day && (
-              <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                {change.day}
-              </span>
-            )}
+            {change.day && <DayBadge day={change.day} />}
 
             {/* Tier badge */}
-            <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-              {change.tier}
-            </span>
+            <TierBadge tier={change.tier} />
           </div>
         </div>
       </div>

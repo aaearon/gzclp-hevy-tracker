@@ -12,9 +12,10 @@ import type {
   SelectableExerciseDiff,
   SyncAction,
 } from '@/lib/push-preview'
-import type { WeightUnit } from '@/types/state'
+import type { Tier, WeightUnit } from '@/types/state'
 import { formatWeight } from '@/utils/formatting'
 import { getRepScheme } from '@/lib/constants'
+import { TierBadge } from '@/components/common/TierBadge'
 
 // =============================================================================
 // Types
@@ -141,12 +142,6 @@ function ExerciseRow({
   weightUnit: WeightUnit
   onActionChange: (progressionKey: string, action: SyncAction) => void
 }) {
-  const tierColors = {
-    T1: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-    T2: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-    T3: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  }
-
   // Get rep scheme display for T1/T2
   const schemeDisplay = diff.stage !== null ? getRepScheme(diff.tier as 'T1' | 'T2', diff.stage).display : null
 
@@ -163,11 +158,7 @@ function ExerciseRow({
     <div className={`flex flex-col gap-2 py-2 px-3 rounded ${rowBg} sm:flex-row sm:items-center sm:justify-between`}>
       {/* Exercise name and tier */}
       <div className="flex items-center gap-2 min-w-0">
-        <span
-          className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium shrink-0 ${tierColors[diff.tier]}`}
-        >
-          {diff.tier}
-        </span>
+        <TierBadge tier={diff.tier as Tier} />
         <span className={`text-sm truncate ${diff.isChanged ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
           {diff.name}
         </span>

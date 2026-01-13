@@ -7,6 +7,7 @@
 import type { ExerciseConfig, ProgressionState, Tier, WeightUnit } from '@/types/state'
 import { getRepScheme } from '@/lib/constants'
 import { WeightDisplay } from '@/components/common/WeightDisplay'
+import { TierBadge } from '@/components/common/TierBadge'
 
 interface ExerciseCardProps {
   exercise: ExerciseConfig
@@ -14,12 +15,6 @@ interface ExerciseCardProps {
   weightUnit: WeightUnit
   tier: Tier
   hasPendingChange?: boolean
-}
-
-const tierColors: Record<string, string> = {
-  T1: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
-  T2: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  T3: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
 }
 
 export function ExerciseCard({
@@ -42,14 +37,7 @@ export function ExerciseCard({
       {/* Name row with tier badge */}
       <div className="flex items-center gap-2 flex-wrap">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">{exercise.name}</h3>
-        <span
-          className={`
-            rounded-md border px-2 py-0.5 text-xs font-semibold
-            ${tierColors[tier] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}
-          `}
-        >
-          {tier}
-        </span>
+        <TierBadge tier={tier} />
         {progression.amrapRecord > 0 && (
           <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
             PR: {progression.amrapRecord} reps

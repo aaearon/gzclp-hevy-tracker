@@ -9,10 +9,12 @@
  * [T038] Highlight current day's focus lifts
  */
 
-import type { GZCLPDay, MainLiftRole, ProgressionState, Stage, WeightUnit } from '@/types/state'
-import { getRepScheme, ROLE_DISPLAY, STAGE_DISPLAY } from '@/lib/constants'
+import type { GZCLPDay, MainLiftRole, ProgressionState, WeightUnit } from '@/types/state'
+import { getRepScheme, ROLE_DISPLAY } from '@/lib/constants'
 import { displayWeight } from '@/utils/formatting'
 import { WeightDisplay } from '@/components/common/WeightDisplay'
+import { TierBadge } from '@/components/common/TierBadge'
+import { StageBadge } from '@/components/common/StageBadge'
 import { getTierForDay, getProgressionKey } from '@/lib/role-utils'
 import { calculateWarmupSets } from '@/lib/warmup'
 
@@ -27,22 +29,14 @@ export interface MainLiftCardProps {
   currentDay: GZCLPDay
 }
 
-const stageColors: Record<Stage, string> = {
-  0: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
-  1: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300',
-  2: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300',
-}
-
 const tierRowStyles = {
   T1: {
     bg: 'bg-red-50 dark:bg-red-900/20',
     border: 'border-l-red-500',
-    badge: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
   },
   T2: {
     bg: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-l-blue-500',
-    badge: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800',
   },
 }
 
@@ -60,9 +54,7 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
     return (
       <div className={`rounded-md border-l-4 ${styles.border} ${styles.bg} p-3 opacity-50`}>
         <div className="flex items-center justify-between">
-          <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
-            {tier}
-          </span>
+          <TierBadge tier={tier} />
           <span className="text-sm text-gray-500 dark:text-gray-400">Not configured</span>
         </div>
       </div>
@@ -70,7 +62,6 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
   }
 
   const scheme = getRepScheme(tier, progression.stage)
-  const stageLabel = STAGE_DISPLAY[progression.stage]
   const warmupSets = tier === 'T1' ? calculateWarmupSets(progression.currentWeight) : []
 
   return (
@@ -84,17 +75,13 @@ function TierRow({ tier, progression, weightUnit, isActiveToday }: TierRowProps)
     >
       {/* Tier badge row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${styles.badge}`}>
-          {tier}
-        </span>
+        <TierBadge tier={tier} />
         {isActiveToday && (
           <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
             Today
           </span>
         )}
-        <span className={`ml-auto rounded px-2 py-0.5 text-xs font-medium ${stageColors[progression.stage]}`}>
-          {stageLabel}
-        </span>
+        <StageBadge stage={progression.stage} className="ml-auto" />
       </div>
 
       {/* Weight and scheme row */}
