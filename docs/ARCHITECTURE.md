@@ -624,6 +624,37 @@ export function CollapsibleSection({ title, children, defaultOpen = true }) {
 - Auto-saves changes via `updateExercise()` hook
 - Displays fallback note when increment not set (uses global default)
 
+### 5.4 Common Components
+
+Reusable UI components in `src/components/common/`:
+
+#### WeightDisplay
+**File:** `src/components/common/WeightDisplay.tsx`
+**Purpose:** Consistent weight formatting with unit conversion
+**Props:**
+- `weight: number` - Weight in kg (internal format)
+- `unit: WeightUnit` - User's display preference
+- `size?: 'sm' | 'md' | 'lg'` - Size variant (default: 'md')
+- `colorClass?: string` - Optional override for weight color
+- `showUnit?: boolean` - Whether to show unit suffix (default: true)
+
+#### Badge Components
+**Files:** `TierBadge.tsx`, `StageBadge.tsx`, `DayBadge.tsx`
+**Purpose:** Consistent badge styling for tier, stage, and day indicators
+**Color Definitions:** Centralized in `src/lib/tier-colors.ts`
+- TierBadge: T1 (red), T2 (blue), T3 (green)
+- StageBadge: Stage 0 (green), Stage 1 (yellow), Stage 2 (red)
+- DayBadge: A days (indigo), B days (purple)
+
+#### SettingsTabs
+**File:** `src/components/Settings/SettingsTabs.tsx`
+**Purpose:** Tab navigation for Settings page
+**Features:**
+- URL hash persistence (#preferences, #exercises, #data, #about)
+- Keyboard navigation (ArrowLeft/Right, Home, End)
+- Uses CSS `hidden` attribute to preserve component state across tab switches
+- ARIA-compliant tablist/tab/tabpanel roles
+
 ---
 
 ## 6. Business Logic
