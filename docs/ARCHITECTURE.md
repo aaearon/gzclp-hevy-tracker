@@ -1,7 +1,7 @@
 # GZCLP Hevy Tracker - Technical Architecture Documentation
 
-**Version:** 2.5.0
-**Last Updated:** 2026-01-13
+**Version:** 2.6.0
+**Last Updated:** 2026-01-14
 **Target Audience:** LLM assistants and developers working on the codebase
 
 ---
@@ -382,9 +382,11 @@ const setValue = useCallback((value) => {
 - **Maintainability**: 462 lines → 196 lines in facade (57% reduction)
 - **Single instantiation**: Storage hooks created once, shared via DI
 
-### 4.3 React Context for Read-Only Access
+### 4.3 React Context Architecture
 
-**ProgramContext** eliminates prop drilling for frequently-accessed data:
+#### ProgramContext (Read-Only Legacy)
+
+**ProgramContext** provides read-only access for frequently-accessed data:
 
 ```typescript
 // src/contexts/ProgramContext.tsx
@@ -401,7 +403,42 @@ export interface ProgramContextValue {
 const { weightUnit, exercises } = useProgramContext()
 ```
 
-**Important:** Context is **read-only**. State mutations happen via `useProgram()` methods passed down as callbacks.
+**Important:** Context is **read-only**. State mutations happen via `useProgram()` methods.
+
+#### Granular Contexts (v2.5.0+)
+
+To improve re-render performance, granular contexts were added that provide both read and write access:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  GranularProviders (router.tsx)                             │
+│                                                             │
+│  ConfigProvider        ← No dependencies                    │
+│    └── ProgressionProvider  ← Independent                   │
+│          └── HistoryProvider  ← Depends on ConfigContext    │
+│                └── PersistenceProvider  ← Depends on ALL    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| Context | Purpose | State Frequency |
+|---------|---------|-----------------|
+| `ConfigContext` | API key, exercises, settings, program config | Low (setup/settings) |
+| `ProgressionContext` | Progression, pending changes, sync metadata | High (every workout) |
+| `HistoryContext` | Chart history data | Append-only |
+| `PersistenceContext` | Reset, import operations | Rare |
+
+**Migration Strategy:**
+- `useProgram()` remains the primary hook (backwards compatible)
+- Components can migrate to granular contexts for performance gains
+- Example: `ExerciseManager` uses `useConfigContext` instead of `useProgram`
+
+```typescript
+// Before: Re-renders on ANY state change
+const { state, updateExercise } = useProgram()
+
+// After: Only re-renders on config changes
+const { exercises, updateExercise } = useConfigContext()
+```
 
 ### 4.4 Progression Key System
 
@@ -1308,7 +1345,11 @@ gzclp-hevy-tracker/
 │   │   └── ErrorBoundary.tsx     # Top-level error boundary
 │   │
 │   ├── contexts/                 # React Context providers
-│   │   ├── ProgramContext.tsx    # Read-only program state context
+│   │   ├── ProgramContext.tsx    # Read-only program state context (legacy)
+│   │   ├── ConfigContext.tsx     # Config state + mutations
+│   │   ├── ProgressionContext.tsx # Progression state + mutations
+│   │   ├── HistoryContext.tsx    # History state + mutations
+│   │   ├── PersistenceContext.tsx # Reset/import operations
 │   │   └── ToastContext.tsx      # Toast notifications
 │   │
 │   ├── hooks/                    # Custom React hooks

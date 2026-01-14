@@ -55,8 +55,15 @@
 
 ## Phase 2: Architecture Refactors (3-5 days each)
 
-### Task 2.1: Split useProgram into Granular Contexts
+### Task 2.1: Split useProgram into Granular Contexts - COMPLETE
 **Priority:** CRITICAL | **Effort:** 3 days | **Impact:** Fixes re-render performance
+
+**Completed:** 2026-01-14
+- Created ConfigContext, ProgressionContext, HistoryContext, PersistenceContext
+- Added GranularProviders in router.tsx
+- Migrated ExerciseManager to ConfigContext (targeted refactor)
+- useProgram kept unchanged for backwards compatibility
+- Documentation updated in ARCHITECTURE.md
 
 **Problem:**
 `useProgram` is a "God Hook" returning 25+ methods. Every state change triggers re-renders in all consuming components.

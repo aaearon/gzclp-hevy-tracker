@@ -10,6 +10,10 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ProgramProvider } from '@/contexts/ProgramContext'
+import { ConfigProvider } from '@/contexts/ConfigContext'
+import { ProgressionProvider } from '@/contexts/ProgressionContext'
+import { HistoryProvider } from '@/contexts/HistoryContext'
+import { PersistenceProvider } from '@/contexts/PersistenceContext'
 import { PageSkeleton } from '@/components/common/PageSkeleton'
 import { StorageErrorBanner } from '@/components/common/StorageErrorBanner'
 import { DataRecoveryDialog } from '@/components/common/DataRecoveryDialog'
@@ -31,9 +35,30 @@ const ProgressionChart = lazy(() =>
 )
 
 /**
+ * Granular context providers component.
+ * Provides the new granular contexts (Config, Progression, History, Persistence).
+ * These are nested inside AppProviders for incremental migration.
+ */
+function GranularProviders({ children }: { children: ReactNode }) {
+  return (
+    <ConfigProvider>
+      <ProgressionProvider>
+        <HistoryProvider>
+          <PersistenceProvider>
+            {children}
+          </PersistenceProvider>
+        </HistoryProvider>
+      </ProgressionProvider>
+    </ConfigProvider>
+  )
+}
+
+/**
  * App providers component
  * Provides program state via ProgramContext and runs data maintenance tasks.
  * Must be inside RootLayout (after useProgram hook can run).
+ *
+ * Also wraps children with granular contexts for incremental migration.
  */
 function AppProviders({ children }: { children: ReactNode }) {
   const { state, updateProgressionBatch, setProgressionHistory } = useProgram()
@@ -50,6 +75,7 @@ function AppProviders({ children }: { children: ReactNode }) {
   })
 
   // Provide read-only program state to all components (H2 fix)
+  // Also wrap with granular contexts for incremental migration
   return (
     <ProgramProvider
       weightUnit={state.settings.weightUnit}
@@ -59,7 +85,9 @@ function AppProviders({ children }: { children: ReactNode }) {
       currentDay={state.program.currentDay}
       increments={state.settings.increments}
     >
-      {children}
+      <GranularProviders>
+        {children}
+      </GranularProviders>
     </ProgramProvider>
   )
 }

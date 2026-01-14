@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { RoleDropdown } from '@/components/common/RoleDropdown'
-import { useProgram } from '@/hooks/useProgram'
+import { useConfigContext } from '@/contexts/ConfigContext'
 import { ROLE_DISPLAY } from '@/lib/constants'
 import { MAIN_LIFT_ROLES } from '@/types/state'
 import type { ExerciseConfig, ExerciseRole, MainLiftRole } from '@/types/state'
@@ -25,13 +25,14 @@ export interface ExerciseManagerProps {
 }
 
 export function ExerciseManager({ onRoleChange }: ExerciseManagerProps) {
-  const { state, updateExercise } = useProgram()
+  // Use granular ConfigContext instead of useProgram for better re-render performance
+  const { exercises: exercisesMap, updateExercise } = useConfigContext()
   const [swapConflict, setSwapConflict] = useState<SwapConflict | null>(null)
 
   // Convert exercises object to sorted array
   const exercises = useMemo(() => {
-    return Object.values(state.exercises).sort((a, b) => a.name.localeCompare(b.name))
-  }, [state.exercises])
+    return Object.values(exercisesMap).sort((a, b) => a.name.localeCompare(b.name))
+  }, [exercisesMap])
 
   // Note: We don't exclude already-assigned roles from the dropdown.
   // Instead, we allow selection and show a conflict dialog for swapping.

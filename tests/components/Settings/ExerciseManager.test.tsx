@@ -6,99 +6,47 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ExerciseManager } from '@/components/Settings/ExerciseManager'
-import { useProgram } from '@/hooks/useProgram'
-import type { GZCLPState } from '@/types/state'
+import * as ConfigContext from '@/contexts/ConfigContext'
+import type { ExerciseConfig } from '@/types/state'
 
-// Mock useProgram hook
-vi.mock('@/hooks/useProgram')
+// Mock useConfigContext hook
+vi.mock('@/contexts/ConfigContext', () => ({
+  useConfigContext: vi.fn(),
+}))
+
+const mockUseConfigContext = vi.mocked(ConfigContext.useConfigContext)
 
 describe('ExerciseManager - T3 Custom Increments', () => {
   const mockUpdateExercise = vi.fn()
 
-  const mockState: GZCLPState = {
-    version: '1.0.0',
-    apiKey: 'test-key',
-    program: {
-      name: 'Test Program',
-      createdAt: '2025-01-01T00:00:00.000Z',
-      workoutsPerWeek: 3,
-      hevyRoutineIds: { A1: null, B1: null, A2: null, B2: null },
-      currentDay: 'A1',
+  const mockExercises: Record<string, ExerciseConfig> = {
+    'ex1': {
+      id: 'ex1',
+      hevyTemplateId: 'tpl1',
+      name: 'Squat',
+      role: 'squat',
     },
-    exercises: {
-      'ex1': {
-        id: 'ex1',
-        hevyTemplateId: 'tpl1',
-        name: 'Squat',
-        role: 'squat',
-      },
-      'ex2': {
-        id: 'ex2',
-        hevyTemplateId: 'tpl2',
-        name: 'Lat Pulldown',
-        role: 't3',
-      },
-      'ex3': {
-        id: 'ex3',
-        hevyTemplateId: 'tpl3',
-        name: 'Bicep Curl',
-        role: 't3',
-        customIncrementKg: 1.5,
-      },
+    'ex2': {
+      id: 'ex2',
+      hevyTemplateId: 'tpl2',
+      name: 'Lat Pulldown',
+      role: 't3',
     },
-    progression: {},
-    pendingChanges: [],
-    settings: {
-      weightUnit: 'kg',
-      increments: { upper: 2.5, lower: 5 },
-      restTimers: { t1: 180, t2: 120, t3: 60 },
+    'ex3': {
+      id: 'ex3',
+      hevyTemplateId: 'tpl3',
+      name: 'Bicep Curl',
+      role: 't3',
+      customIncrementKg: 1.5,
     },
-    lastSync: null,
-    t3Schedule: { A1: [], B1: [], A2: [], B2: [] },
-    totalWorkouts: 0,
-    mostRecentWorkoutDate: null,
-    progressionHistory: {},
-    acknowledgedDiscrepancies: [],
-    needsPush: false,
-    processedWorkoutIds: [],
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useProgram).mockReturnValue({
-      state: mockState,
+    mockUseConfigContext.mockReturnValue({
+      exercises: mockExercises,
       updateExercise: mockUpdateExercise,
-      isSetupRequired: false,
-      setApiKey: vi.fn(),
-      setWeightUnit: vi.fn(),
-      addExercise: vi.fn(),
-      removeExercise: vi.fn(),
-      setInitialWeight: vi.fn(),
-      setProgressionByKey: vi.fn(),
-      updateProgression: vi.fn(),
-      updateProgressionBatch: vi.fn(),
-      setHevyRoutineId: vi.fn(),
-      setHevyRoutineIds: vi.fn(),
-      setRoutineIds: vi.fn(),
-      setCurrentDay: vi.fn(),
-      setProgramCreatedAt: vi.fn(),
-      setWorkoutsPerWeek: vi.fn(),
-      setT3Schedule: vi.fn(),
-      setTotalWorkouts: vi.fn(),
-      setMostRecentWorkoutDate: vi.fn(),
-      setLastSync: vi.fn(),
-      setNeedsPush: vi.fn(),
-      setProgressionHistory: vi.fn(),
-      recordHistoryEntry: vi.fn(),
-      acknowledgeDiscrepancy: vi.fn(),
-      clearAcknowledgedDiscrepancies: vi.fn(),
-      addPendingChange: vi.fn(),
-      removePendingChange: vi.fn(),
-      clearPendingChanges: vi.fn(),
-      addProcessedWorkoutIds: vi.fn(),
-      resetState: vi.fn(),
-      importState: vi.fn(),
-    })
+    } as any)
   })
 
   it('should not show increment input for non-T3 exercises', () => {

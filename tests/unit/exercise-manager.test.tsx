@@ -9,21 +9,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ExerciseManager } from '@/components/Settings/ExerciseManager'
-import * as useProgramHook from '@/hooks/useProgram'
-import type { GZCLPState, ExerciseConfig } from '@/types/state'
-import { createInitialState } from '@/lib/state-factory'
+import * as ConfigContext from '@/contexts/ConfigContext'
+import type { ExerciseConfig } from '@/types/state'
 
-// Mock the useProgram hook
-vi.mock('@/hooks/useProgram', () => ({
-  useProgram: vi.fn(),
+// Mock the useConfigContext hook
+vi.mock('@/contexts/ConfigContext', () => ({
+  useConfigContext: vi.fn(),
 }))
 
-const mockUseProgram = vi.mocked(useProgramHook.useProgram)
-
-const createMockState = (exercises: Record<string, ExerciseConfig> = {}): GZCLPState => ({
-  ...createInitialState(),
-  exercises,
-})
+const mockUseConfigContext = vi.mocked(ConfigContext.useConfigContext)
 
 describe('ExerciseManager', () => {
   const mockUpdateExercise = vi.fn()
@@ -34,8 +28,8 @@ describe('ExerciseManager', () => {
 
   describe('empty state', () => {
     it('shows empty message when no exercises exist', () => {
-      mockUseProgram.mockReturnValue({
-        state: createMockState(),
+      mockUseConfigContext.mockReturnValue({
+        exercises: {},
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -68,8 +62,8 @@ describe('ExerciseManager', () => {
     }
 
     beforeEach(() => {
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
     })
@@ -127,8 +121,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -157,8 +151,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -194,8 +188,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -233,8 +227,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -271,8 +265,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -311,8 +305,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
 
@@ -343,8 +337,8 @@ describe('ExerciseManager', () => {
         },
       }
 
-      mockUseProgram.mockReturnValue({
-        state: createMockState(mockExercises),
+      mockUseConfigContext.mockReturnValue({
+        exercises: mockExercises,
         updateExercise: mockUpdateExercise,
       } as any)
     })
