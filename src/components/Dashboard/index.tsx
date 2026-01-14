@@ -22,6 +22,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
+import { deduplicatePendingChanges } from '@/lib/discrepancy-utils'
 import { calculateCurrentWeek, calculateDayOfWeek, calculateTotalWorkouts } from '@/utils/stats'
 import type { GZCLPDay, ProgressionState } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
@@ -57,8 +58,6 @@ export function Dashboard() {
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
-  // Track previous syncing state for "all caught up" detection
-  const wasSyncing = useRef(false)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -119,21 +118,23 @@ export function Dashboard() {
   )
 
   // Merge stored pending changes with sync-generated ones
+  // Deduplicate by progressionKey to prevent duplicates when sync runs multiple times
   const mergedPendingChanges = useMemo(() => {
-    const existingIds = new Set(storedPendingChanges.map((c) => c.id))
-    const newFromSync = syncPendingChanges.filter((c) => !existingIds.has(c.id))
-    return [...storedPendingChanges, ...newFromSync]
+    const combined = [...storedPendingChanges, ...syncPendingChanges]
+    return deduplicatePendingChanges(combined)
   }, [storedPendingChanges, syncPendingChanges])
 
-  // Persist new sync changes to localStorage and show toast notification
+  // Persist new sync changes to localStorage
   // This ensures pending changes survive page refresh
+  // Note: No toast here - the header "Review changes" button already indicates pending changes
   useEffect(() => {
     if (syncPendingChanges.length === 0) return
 
-    // Find changes that are new (not already seen and not in stored)
-    const storedIds = new Set(storedPendingChanges.map((c) => c.id))
+    // Find changes that are new (not already in stored by progressionKey)
+    // Using progressionKey for deduplication prevents duplicates when sync runs multiple times
+    const storedProgressionKeys = new Set(storedPendingChanges.map((c) => c.progressionKey))
     const newChanges = syncPendingChanges.filter(
-      (c) => !previousChangeIds.current.has(c.id) && !storedIds.has(c.id)
+      (c) => !storedProgressionKeys.has(c.progressionKey) && !previousChangeIds.current.has(c.id)
     )
 
     if (newChanges.length > 0) {
@@ -141,36 +142,11 @@ export function Dashboard() {
       for (const change of newChanges) {
         addPendingChange(change)
       }
-
-      // Show toast notification for new workout detected
-      showToast({
-        type: 'info',
-        message: `Found ${String(newChanges.length)} exercise${newChanges.length > 1 ? 's' : ''} to progress`,
-        action: {
-          label: 'Review',
-          onClick: () => { setIsReviewModalOpen(true) },
-        },
-      })
     }
 
-    // Track all seen changes
+    // Track all seen changes by ID (for reference tracking)
     syncPendingChanges.forEach((c) => previousChangeIds.current.add(c.id))
-  }, [syncPendingChanges, storedPendingChanges, addPendingChange, showToast])
-
-  // Show "all caught up" toast when sync completes with no new changes
-  useEffect(() => {
-    // Detect sync completion: was syncing, now not syncing
-    if (wasSyncing.current && !isSyncing && !syncError) {
-      // Check if there are no pending changes after sync
-      if (syncPendingChanges.length === 0 && storedPendingChanges.length === 0) {
-        showToast({
-          type: 'success',
-          message: 'All caught up! No new workouts found.',
-        })
-      }
-    }
-    wasSyncing.current = isSyncing
-  }, [isSyncing, syncError, syncPendingChanges.length, storedPendingChanges.length, showToast])
+  }, [syncPendingChanges, storedPendingChanges, addPendingChange])
 
   // Callback when all changes are applied (either via applyAll or last individual apply)
   const handleAllChangesApplied = useCallback(() => {
