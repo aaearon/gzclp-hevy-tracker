@@ -98,7 +98,7 @@ describe('usePendingChanges', () => {
       expect(onWorkoutComplete).not.toHaveBeenCalled()
     })
 
-    it('should still advance day even without onWorkoutComplete callback', () => {
+    it('should not advance day when applying changes (day advancement now happens on sync)', () => {
       const onProgressionUpdate = vi.fn()
       const onDayAdvance = vi.fn()
 
@@ -111,7 +111,6 @@ describe('usePendingChanges', () => {
           onProgressionUpdate,
           currentDay: 'A1',
           onDayAdvance,
-          // onWorkoutComplete is optional
         })
       )
 
@@ -119,7 +118,8 @@ describe('usePendingChanges', () => {
         result.current.applyAllChanges()
       })
 
-      expect(onDayAdvance).toHaveBeenCalledWith('B1')
+      // Day advancement now happens in useSyncFlow, not in usePendingChanges
+      expect(onDayAdvance).not.toHaveBeenCalled()
     })
   })
 })

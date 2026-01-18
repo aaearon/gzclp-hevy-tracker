@@ -7,6 +7,7 @@
 
 import { useRef, useCallback, useEffect } from 'react'
 import { useProgression, type DiscrepancyInfo } from './useProgression'
+import { DAY_CYCLE } from '@/lib/constants'
 import type {
   ExerciseConfig,
   GZCLPDay,
@@ -32,6 +33,10 @@ export interface UseSyncFlowOptions {
   onRecordHistory?: (change: PendingChange) => void
   /** IDs of workouts that have already been processed (prevents reprocessing) */
   processedWorkoutIds?: string[]
+  /** Called to advance to the next day when a workout is detected */
+  onDayAdvance?: (nextDay: GZCLPDay) => void
+  /** Current day in the app state - used for day mismatch detection */
+  currentDay?: GZCLPDay | undefined
 }
 
 export interface UseSyncFlowReturn {
@@ -61,12 +66,16 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     onLastSyncUpdate,
     onRecordHistory,
     processedWorkoutIds,
+    onDayAdvance,
+    currentDay,
   } = options
 
   // Track whether auto-sync has already been triggered
   const hasAutoSynced = useRef(false)
   // Track which changes have been recorded to history
   const recordedChangeIds = useRef(new Set<string>())
+  // Track whether we've already advanced for the current detected day
+  const lastAdvancedDay = useRef<GZCLPDay | null>(null)
 
   // Use the progression hook for actual sync functionality
   const {
@@ -74,6 +83,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     syncError,
     pendingChanges: syncPendingChanges,
     discrepancies,
+    detectedWorkoutDay,
     syncWorkouts,
     clearError,
     clearPendingChanges: clearSyncPendingChanges,
@@ -85,6 +95,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     lastSync,
     hevyRoutineIds,
     processedWorkoutIds,
+    currentDay,
   })
 
   // Auto-sync on mount when conditions are met
@@ -95,6 +106,19 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-advance day when a new workout is detected
+  // This decouples day advancement from applying pending changes
+  useEffect(() => {
+    if (!detectedWorkoutDay || !onDayAdvance) return
+    // Only advance if this is a new detection (not the same day we already advanced for)
+    if (lastAdvancedDay.current === detectedWorkoutDay) return
+
+    const nextDay = DAY_CYCLE[detectedWorkoutDay]
+    console.debug(`[useSyncFlow] Auto-advancing day: ${detectedWorkoutDay} -> ${nextDay}`)
+    lastAdvancedDay.current = detectedWorkoutDay
+    onDayAdvance(nextDay)
+  }, [detectedWorkoutDay, onDayAdvance])
 
   // Record sync results to progression history for charts
   // This runs whenever new pending changes come from sync

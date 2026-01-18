@@ -41,6 +41,8 @@ export interface UseProgressionProps {
   }
   /** IDs of workouts that have already been processed (prevents reprocessing) */
   processedWorkoutIds?: string[] | undefined
+  /** Current day in the app state - used for day mismatch detection */
+  currentDay?: GZCLPDay | undefined
 }
 
 export interface DiscrepancyInfo {
@@ -62,6 +64,8 @@ export interface UseProgressionResult {
   pendingChanges: PendingChange[]
   discrepancies: DiscrepancyInfo[]
   analysisResults: WorkoutAnalysisResult[]
+  /** The most recent unprocessed workout day detected during sync (for auto day advancement) */
+  detectedWorkoutDay: GZCLPDay | null
 
   // Actions
   syncWorkouts: () => Promise<void>
@@ -96,7 +100,7 @@ function findDayByRoutineId(
 }
 
 export function useProgression(props: UseProgressionProps): UseProgressionResult {
-  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds, processedWorkoutIds = [] } = props
+  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds, processedWorkoutIds = [], currentDay } = props
 
   // State
   const [isSyncing, setIsSyncing] = useState(false)
@@ -105,6 +109,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([])
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyInfo[]>([])
   const [analysisResults, setAnalysisResults] = useState<WorkoutAnalysisResult[]>([])
+  const [detectedWorkoutDay, setDetectedWorkoutDay] = useState<GZCLPDay | null>(null)
 
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true)
@@ -195,6 +200,39 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         unprocessedWorkouts.map((w) => ({ id: w.id, title: w.title }))
       )
 
+      // Find the most recent workout day for auto day advancement
+      // This handles two cases:
+      // 1. New unprocessed workouts - advance based on the workout
+      // 2. All workouts processed but day not advanced (bug recovery) - detect mismatch and fix
+      let mostRecentWorkoutDay: GZCLPDay | null = null
+
+      if (unprocessedWorkouts.length > 0) {
+        // Case 1: New unprocessed workouts - use the most recent one
+        const sortedByRecent = [...unprocessedWorkouts].sort(
+          (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        )
+        const mostRecent = sortedByRecent[0]
+        if (mostRecent) {
+          mostRecentWorkoutDay = findDayByRoutineId(mostRecent.routine_id, hevyRoutineIds)
+          console.debug(`[syncWorkouts] Most recent unprocessed workout day: ${mostRecentWorkoutDay}`)
+        }
+      } else if (relevantWorkouts.length > 0 && currentDay) {
+        // Case 2: All workouts already processed - check if day needs correction
+        // Find the most recent relevant workout (already processed)
+        const sortedByRecent = [...relevantWorkouts].sort(
+          (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        )
+        const mostRecent = sortedByRecent[0]
+        const mostRecentProcessedDay = mostRecent ? findDayByRoutineId(mostRecent.routine_id, hevyRoutineIds) : null
+
+        // If currentDay matches the most recent workout's day, it means day wasn't advanced
+        // This happens due to the previous bug where day advancement was tied to pending changes
+        if (mostRecentProcessedDay && currentDay === mostRecentProcessedDay) {
+          console.debug(`[syncWorkouts] Day mismatch detected: currentDay=${currentDay} matches last workout day. Triggering advancement.`)
+          mostRecentWorkoutDay = mostRecentProcessedDay
+        }
+      }
+
       // Analyze each workout with its matched day for accurate tier derivation
       const allAnalysisResults: WorkoutAnalysisResult[] = []
       const allDiscrepancies: DiscrepancyInfo[] = []
@@ -236,6 +274,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       setDiscrepancies(deduplicateDiscrepancies(allDiscrepancies))
       setPendingChanges(changes)
       setLastSyncTime(new Date().toISOString())
+      setDetectedWorkoutDay(mostRecentWorkoutDay)
 
     } catch (error) {
       // Don't update state if unmounted or request was cancelled
@@ -281,6 +320,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
     pendingChanges,
     discrepancies,
     analysisResults,
+    detectedWorkoutDay,
     syncWorkouts,
     clearError,
     clearPendingChanges,

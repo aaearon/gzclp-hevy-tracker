@@ -88,6 +88,8 @@ export function Dashboard() {
     onLastSyncUpdate: setLastSync,
     onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
     processedWorkoutIds,
+    onDayAdvance: setCurrentDay, // Auto-advance day when workout is detected
+    currentDay: program.currentDay, // For day mismatch detection
   })
 
   // Handle progression updates from pending changes

@@ -8,7 +8,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { GZCLPDay, PendingChange, ProgressionState } from '@/types/state'
 import { applyPendingChange, modifyPendingChangeWeight } from '@/lib/apply-changes'
-import { DAY_CYCLE } from '@/lib/constants'
 
 /** How long to keep rejected change available for undo (ms) */
 const UNDO_TIMEOUT_MS = 5000
@@ -131,10 +130,9 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
       // Remove the applied change from pending
       setPendingChanges(remainingChanges)
 
-      // When the last change is applied, advance day, update stats, and cleanup
+      // When the last change is applied, update stats and cleanup
+      // Note: Day advancement now happens automatically in useSyncFlow when workout is detected
       if (isLastChange) {
-        const nextDay = DAY_CYCLE[currentDay]
-        onDayAdvance(nextDay)
         onWorkoutComplete?.(change.workoutDate)
         onAllChangesApplied?.()
       }
@@ -217,9 +215,8 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
     setPendingChanges([])
 
-    // Advance to the next day in the GZCLP rotation
-    const nextDay = DAY_CYCLE[currentDay]
-    onDayAdvance(nextDay)
+    // Note: Day advancement now happens automatically in useSyncFlow when workout is detected
+    // No need to advance here - it would cause double advancement
 
     // Update workout stats
     if (mostRecentDate) {
