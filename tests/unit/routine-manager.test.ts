@@ -49,8 +49,6 @@ describe('[US4] Routine Manager', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ex-bench-t2': {
@@ -58,8 +56,6 @@ describe('[US4] Routine Manager', () => {
       currentWeight: 60,
       stage: 0,
       baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   }

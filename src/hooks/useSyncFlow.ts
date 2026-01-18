@@ -5,11 +5,12 @@
  * [Task 3.2] Extracted from Dashboard/index.tsx to reduce component size.
  */
 
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import { useProgression, type DiscrepancyInfo } from './useProgression'
 import { DAY_CYCLE } from '@/lib/constants'
 import type {
   ExerciseConfig,
+  ExerciseHistory,
   GZCLPDay,
   PendingChange,
   ProgressionState,
@@ -31,19 +32,30 @@ export interface UseSyncFlowOptions {
   onLastSyncUpdate: (timestamp: string) => void
   /** Called to record each workout to progression history for charts */
   onRecordHistory?: (change: PendingChange) => void
-  /** IDs of workouts that have already been processed (prevents reprocessing) */
-  processedWorkoutIds?: string[]
+  /** Progression history - used to derive processed workout IDs */
+  progressionHistory: Record<string, ExerciseHistory>
   /** Called to advance to the next day when a workout is detected */
   onDayAdvance?: (nextDay: GZCLPDay) => void
   /** Current day in the app state - used for day mismatch detection */
   currentDay?: GZCLPDay | undefined
+  /** Current total workouts count */
+  totalWorkouts?: number
+  /** Called to update total workouts when new workouts are synced */
+  onTotalWorkoutsUpdate?: (total: number) => void
+  /** Called to auto-apply changes that don't require review */
+  onAutoApplyChange?: (change: PendingChange) => void
 }
 
 export interface UseSyncFlowReturn {
   isSyncing: boolean
   syncError: string | null
+  /** Only changes that require user review (have discrepancies) */
   syncPendingChanges: PendingChange[]
   discrepancies: DiscrepancyInfo[]
+  /** Number of changes that were auto-applied during sync */
+  autoAppliedCount: number
+  /** Actual changes that were auto-applied (for detailed toast messages) */
+  autoAppliedChanges: PendingChange[]
   handleSync: () => Promise<void>
   clearError: () => void
   /** Clear sync pending changes after they've been applied */
@@ -65,9 +77,12 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     isOnline,
     onLastSyncUpdate,
     onRecordHistory,
-    processedWorkoutIds,
+    progressionHistory,
     onDayAdvance,
     currentDay,
+    totalWorkouts = 0,
+    onTotalWorkoutsUpdate,
+    onAutoApplyChange,
   } = options
 
   // Track whether auto-sync has already been triggered
@@ -76,6 +91,14 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
   const recordedChangeIds = useRef(new Set<string>())
   // Track whether we've already advanced for the current detected day
   const lastAdvancedDay = useRef<GZCLPDay | null>(null)
+  // Track last processed workout count to avoid double-counting
+  const lastNewWorkoutsCount = useRef(0)
+  // Track which changes have been auto-applied
+  const autoAppliedChangeIds = useRef(new Set<string>())
+
+  // State for auto-apply tracking
+  const [autoAppliedCount, setAutoAppliedCount] = useState(0)
+  const [autoAppliedChanges, setAutoAppliedChanges] = useState<PendingChange[]>([])
 
   // Use the progression hook for actual sync functionality
   const {
@@ -84,6 +107,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     pendingChanges: syncPendingChanges,
     discrepancies,
     detectedWorkoutDay,
+    newWorkoutsCount,
     syncWorkouts,
     clearError,
     clearPendingChanges: clearSyncPendingChanges,
@@ -94,9 +118,61 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     settings,
     lastSync,
     hevyRoutineIds,
-    processedWorkoutIds,
+    progressionHistory,
     currentDay,
   })
+
+  // Categorize changes into auto-apply vs conflicts
+  // Changes require review only if they have a discrepancy (user lifted different weight than expected)
+  // Deloads are deterministic GZCLP behavior and auto-apply with toast notification
+  const { autoApplyChanges, conflictingChanges } = useMemo(() => {
+    const autoApply: PendingChange[] = []
+    const conflicts: PendingChange[] = []
+
+    for (const change of syncPendingChanges) {
+      // Skip already auto-applied changes
+      if (autoAppliedChangeIds.current.has(change.id)) {
+        continue
+      }
+
+      // Requires review only if has discrepancy (actual weight !== stored weight)
+      // Deloads without discrepancy are auto-applied
+      const hasDiscrepancy = Boolean(change.discrepancy)
+
+      if (hasDiscrepancy) {
+        conflicts.push(change)
+      } else {
+        autoApply.push(change)
+      }
+    }
+
+    return { autoApplyChanges: autoApply, conflictingChanges: conflicts }
+  }, [syncPendingChanges])
+
+  // Auto-apply non-conflicting changes
+  // Note: Processed workout IDs are now derived from progressionHistory,
+  // so we don't need to track them separately
+  useEffect(() => {
+    if (autoApplyChanges.length === 0 || !onAutoApplyChange) return
+
+    const newlyApplied: PendingChange[] = []
+
+    for (const change of autoApplyChanges) {
+      // Skip if already auto-applied
+      if (autoAppliedChangeIds.current.has(change.id)) continue
+
+      console.debug(`[useSyncFlow] Auto-applying change: ${change.exerciseName} (${change.tier})`)
+      autoAppliedChangeIds.current.add(change.id)
+      onAutoApplyChange(change)
+      newlyApplied.push(change)
+    }
+
+    // Update auto-applied count and changes
+    if (newlyApplied.length > 0) {
+      setAutoAppliedCount(autoAppliedChangeIds.current.size)
+      setAutoAppliedChanges((prev) => [...prev, ...newlyApplied])
+    }
+  }, [autoApplyChanges, onAutoApplyChange])
 
   // Auto-sync on mount when conditions are met
   useEffect(() => {
@@ -134,6 +210,19 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     }
   }, [syncPendingChanges, onRecordHistory])
 
+  // Update total workouts count when new workouts are synced
+  // This derives the count from sync rather than manual increment on apply
+  useEffect(() => {
+    if (newWorkoutsCount <= 0 || !onTotalWorkoutsUpdate) return
+    // Only update if the count changed (avoid duplicate updates)
+    if (lastNewWorkoutsCount.current === newWorkoutsCount) return
+
+    lastNewWorkoutsCount.current = newWorkoutsCount
+    const newTotal = totalWorkouts + newWorkoutsCount
+    console.debug(`[useSyncFlow] Updating totalWorkouts: ${totalWorkouts} + ${newWorkoutsCount} = ${newTotal}`)
+    onTotalWorkoutsUpdate(newTotal)
+  }, [newWorkoutsCount, totalWorkouts, onTotalWorkoutsUpdate])
+
   // Handle manual sync and update timestamp
   const handleSync = useCallback(async () => {
     try {
@@ -149,8 +238,10 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
   return {
     isSyncing,
     syncError,
-    syncPendingChanges,
+    syncPendingChanges: conflictingChanges, // Only return changes that need review
     discrepancies,
+    autoAppliedCount,
+    autoAppliedChanges,
     handleSync,
     clearError,
     clearSyncPendingChanges,

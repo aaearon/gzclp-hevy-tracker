@@ -222,8 +222,6 @@ describe('[US2] Workout Analysis', () => {
           currentWeight: 100, // Stored says 100, workout used 110
           stage: 0,
           baseWeight: 100,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -248,8 +246,6 @@ describe('[US2] Workout Analysis', () => {
           currentWeight: 100, // Matches
           stage: 0,
           baseWeight: 100,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }

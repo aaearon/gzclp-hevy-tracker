@@ -128,8 +128,6 @@ const sampleState: GZCLPState = {
       currentWeight: 150,
       stage: 1,
       baseWeight: 140,
-      lastWorkoutId: 'w1',
-      lastWorkoutDate: '2024-06-15',
       amrapRecord: 8,
     },
   },

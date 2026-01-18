@@ -160,9 +160,9 @@ export interface ProgressionStateOptions {
   currentWeight?: number
   stage?: Stage
   baseWeight?: number
-  lastWorkoutId?: string | null
-  lastWorkoutDate?: string | null
   amrapRecord?: number
+  amrapRecordDate?: string | null
+  amrapRecordWorkoutId?: string | null
 }
 
 export function createProgressionState(options: ProgressionStateOptions = {}): ProgressionState {
@@ -172,9 +172,9 @@ export function createProgressionState(options: ProgressionStateOptions = {}): P
     currentWeight: options.currentWeight ?? 60,
     stage: options.stage ?? 0,
     baseWeight: options.baseWeight ?? options.currentWeight ?? 60,
-    lastWorkoutId: options.lastWorkoutId ?? null,
-    lastWorkoutDate: options.lastWorkoutDate ?? null,
     amrapRecord: options.amrapRecord ?? 0,
+    amrapRecordDate: options.amrapRecordDate ?? null,
+    amrapRecordWorkoutId: options.amrapRecordWorkoutId ?? null,
   }
 }
 
@@ -352,6 +352,7 @@ export function createGZCLPState(options: GZCLPStateOptions = {}): GZCLPState {
     mostRecentWorkoutDate: options.mostRecentWorkoutDate ?? null,
     progressionHistory: options.progressionHistory ?? {},
     acknowledgedDiscrepancies: options.acknowledgedDiscrepancies ?? [],
+    needsPush: false,
   }
 }
 
@@ -509,6 +510,7 @@ export function createProgressionStore(options: Partial<ProgressionStore> = {}):
     totalWorkouts: options.totalWorkouts ?? 0,
     mostRecentWorkoutDate: options.mostRecentWorkoutDate ?? null,
     acknowledgedDiscrepancies: options.acknowledgedDiscrepancies ?? [],
+    needsPush: options.needsPush ?? false,
   }
 }
 
@@ -543,6 +545,7 @@ export function splitState(state: GZCLPState): {
       totalWorkouts: state.totalWorkouts,
       mostRecentWorkoutDate: state.mostRecentWorkoutDate,
       acknowledgedDiscrepancies: state.acknowledgedDiscrepancies,
+      needsPush: state.needsPush,
     },
     history: {
       progressionHistory: state.progressionHistory,
@@ -572,6 +575,7 @@ export function mergeStates(
     totalWorkouts: progression.totalWorkouts,
     mostRecentWorkoutDate: progression.mostRecentWorkoutDate,
     acknowledgedDiscrepancies: progression.acknowledgedDiscrepancies,
+    needsPush: progression.needsPush,
     progressionHistory: history.progressionHistory,
   }
 }

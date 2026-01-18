@@ -88,7 +88,9 @@ describe('ExerciseManager', () => {
     it('displays role dropdown for each exercise', () => {
       render(<ExerciseManager />)
 
-      const dropdowns = screen.getAllByRole('combobox')
+      // Query within the table (desktop view) to avoid counting mobile dropdowns
+      const table = screen.getByRole('table')
+      const dropdowns = within(table).getAllByRole('combobox')
       expect(dropdowns).toHaveLength(3)
     })
 
@@ -158,7 +160,9 @@ describe('ExerciseManager', () => {
 
       render(<ExerciseManager />)
 
-      const dropdown = screen.getByRole('combobox')
+      // Query within the table (desktop view) to avoid matching mobile dropdown
+      const table = screen.getByRole('table')
+      const dropdown = within(table).getByRole('combobox')
       await user.selectOptions(dropdown, 't3')
 
       // Should update directly without confirmation
@@ -346,7 +350,9 @@ describe('ExerciseManager', () => {
     it('has accessible labels for role dropdowns', () => {
       render(<ExerciseManager />)
 
-      const dropdown = screen.getByRole('combobox')
+      // Query within the table (desktop view) to avoid matching mobile dropdown
+      const table = screen.getByRole('table')
+      const dropdown = within(table).getByRole('combobox')
       expect(dropdown).toHaveAccessibleName('Role for Squat')
     })
 

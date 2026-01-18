@@ -87,8 +87,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'squat-T2': {
@@ -96,8 +94,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     // Bench progressions (T1 on A2, T2 on A1)
@@ -106,8 +102,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 80,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'bench-T2': {
@@ -115,8 +109,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 80,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     // OHP progressions (T1 on B1, T2 on B2)
@@ -125,8 +117,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 50,
       stage: 1,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ohp-T2': {
@@ -134,8 +124,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 50,
       stage: 1,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     // Deadlift progressions (T1 on B2, T2 on B1)
@@ -144,8 +132,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 120,
       stage: 2,
       baseWeight: 120,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'deadlift-T2': {
@@ -153,8 +139,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 120,
       stage: 2,
       baseWeight: 120,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     // T3 exercises use exerciseId as key
@@ -163,8 +147,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 15,
       stage: 0,
       baseWeight: 15,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ex-row-t3': {
@@ -172,8 +154,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 50,
       stage: 0,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ex-legcurl-t3': {
@@ -181,8 +161,6 @@ describe('[US4] Routine Builder', () => {
       currentWeight: 40,
       stage: 0,
       baseWeight: 40,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   }

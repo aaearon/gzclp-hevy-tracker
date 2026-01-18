@@ -69,12 +69,6 @@ export interface ProgressionStore {
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
   /** Whether local progression differs from Hevy and needs to be pushed */
   needsPush: boolean
-  /**
-   * IDs of all workouts that have been processed (changes applied).
-   * Prevents reprocessing when lastWorkoutId is updated to a newer workout.
-   * Pruned to last 200 entries to prevent unbounded growth.
-   */
-  processedWorkoutIds?: string[]
 }
 
 // =============================================================================

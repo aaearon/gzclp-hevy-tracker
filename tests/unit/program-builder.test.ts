@@ -343,7 +343,7 @@ describe('buildImportProgramState', () => {
     expect(state.progression['squat-T1'].stage).toBe(1)
   })
 
-  it('should set lastWorkoutId/Date from analysis to prevent false discrepancies', () => {
+  it('should use amrapReps from analysis as initial amrapRecord', () => {
     const importResult = createMinimalImportResult()
     importResult.byDay.A1.t1 = createImportedExercise('Back Squat', 'squat-template', {
       analysis: {
@@ -357,6 +357,7 @@ describe('buildImportProgramState', () => {
         suggestion: {
           suggestedWeight: 60,
           suggestedStage: 0,
+          amrapReps: 8,
         },
       },
     })
@@ -364,8 +365,8 @@ describe('buildImportProgramState', () => {
     const params = createImportParams({ importResult })
     const state = buildImportProgramState(params)
 
-    expect(state.progression['squat-T1'].lastWorkoutId).toBe('workout-123')
-    expect(state.progression['squat-T1'].lastWorkoutDate).toBe('2026-01-08T00:00:00.000Z')
+    // amrapReps from analysis should be used as initial amrapRecord
+    expect(state.progression['squat-T1'].amrapRecord).toBe(8)
   })
 
   it('should handle same exercise used as both main lift and T3 (edge case)', () => {
@@ -664,11 +665,9 @@ describe('buildCreateProgramState', () => {
     const params = createCreateParams()
     const state = buildCreateProgramState(params)
 
-    // All progressions should start at stage 0 with null workout tracking
+    // All progressions should start at stage 0 with initial AMRAP record of 0
     for (const progression of Object.values(state.progression)) {
       expect(progression.stage).toBe(0)
-      expect(progression.lastWorkoutId).toBeNull()
-      expect(progression.lastWorkoutDate).toBeNull()
       expect(progression.amrapRecord).toBe(0)
     }
   })

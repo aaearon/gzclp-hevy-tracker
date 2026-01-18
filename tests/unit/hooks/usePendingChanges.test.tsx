@@ -17,8 +17,6 @@ describe('usePendingChanges', () => {
       currentWeight: 100,
       baseWeight: 100,
       stage: 0,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   }

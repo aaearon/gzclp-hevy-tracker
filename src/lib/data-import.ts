@@ -39,10 +39,8 @@ const ProgressionStateSchema = z.object({
   currentWeight: z.number(),
   stage: StageSchema,
   baseWeight: z.number(),
-  lastWorkoutId: z.string().nullable(),
-  lastWorkoutDate: z.string().nullable(),
   amrapRecord: z.number(),
-}).loose() // Allow additional fields
+}).loose() // Allow additional fields for backwards compatibility
 
 const ProgramConfigSchema = z.object({
   name: z.string(),

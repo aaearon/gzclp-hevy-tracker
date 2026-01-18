@@ -23,8 +23,9 @@ import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
 import { deduplicatePendingChanges } from '@/lib/discrepancy-utils'
+import { applyPendingChange } from '@/lib/apply-changes'
 import { calculateCurrentWeek, calculateDayOfWeek, calculateTotalWorkouts } from '@/utils/stats'
-import type { GZCLPDay, ProgressionState } from '@/types/state'
+import type { GZCLPDay, ProgressionState, PendingChange } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
 import { DashboardContent } from './DashboardContent'
@@ -46,9 +47,8 @@ export function Dashboard() {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, processedWorkoutIds } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
 
   // Toast notifications for visual feedback
   const { showToast } = useToast()
@@ -58,6 +58,9 @@ export function Dashboard() {
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
+
+  // Track previous auto-applied count to show toast only once
+  const previousAutoAppliedCount = useRef(0)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -69,11 +72,26 @@ export function Dashboard() {
     }
   }, [isOnline, checkHevyConnection])
 
+  // Auto-apply callback for non-conflicting changes [Task 1]
+  const handleAutoApplyChange = useCallback(
+    (change: PendingChange) => {
+      // Apply the change to progression state
+      const updatedProgression = applyPendingChange(progression, change)
+      updateProgressionBatch(updatedProgression)
+      setNeedsPush(true)
+      // Record to history
+      recordHistoryEntry(change)
+    },
+    [progression, updateProgressionBatch, setNeedsPush, recordHistoryEntry]
+  )
+
   // Use sync flow hook for sync orchestration [Task 3.2]
   const {
     isSyncing,
     syncError,
     syncPendingChanges,
+    autoAppliedCount,
+    autoAppliedChanges,
     handleSync,
     clearError,
     clearSyncPendingChanges,
@@ -87,9 +105,12 @@ export function Dashboard() {
     isOnline,
     onLastSyncUpdate: setLastSync,
     onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
-    processedWorkoutIds,
+    progressionHistory: state.progressionHistory, // Derives processed workout IDs
     onDayAdvance: setCurrentDay, // Auto-advance day when workout is detected
     currentDay: program.currentDay, // For day mismatch detection
+    totalWorkouts: state.totalWorkouts, // [Task 4] For deriving count from sync
+    onTotalWorkoutsUpdate: setTotalWorkouts, // [Task 4] Update total on sync
+    onAutoApplyChange: handleAutoApplyChange, // [Task 1] Auto-apply non-conflicting changes
   })
 
   // Handle progression updates from pending changes
@@ -110,13 +131,13 @@ export function Dashboard() {
     [setCurrentDay]
   )
 
-  // Handle workout completion - update stats
+  // Handle workout completion - update most recent workout date
+  // Note: totalWorkouts is now derived from sync (Task 4), not incremented on apply
   const handleWorkoutComplete = useCallback(
     (workoutDate: string) => {
-      setTotalWorkouts(state.totalWorkouts + 1)
       setMostRecentWorkoutDate(workoutDate)
     },
-    [state.totalWorkouts, setTotalWorkouts, setMostRecentWorkoutDate]
+    [setMostRecentWorkoutDate]
   )
 
   // Merge stored pending changes with sync-generated ones
@@ -150,6 +171,54 @@ export function Dashboard() {
     syncPendingChanges.forEach((c) => previousChangeIds.current.add(c.id))
   }, [syncPendingChanges, storedPendingChanges, addPendingChange])
 
+  // Show toast when changes are auto-applied [Task 1]
+  // Includes detailed info when deloads are auto-applied
+  useEffect(() => {
+    // Only show toast if count increased
+    if (autoAppliedCount > previousAutoAppliedCount.current) {
+      const previousCount = previousAutoAppliedCount.current
+      previousAutoAppliedCount.current = autoAppliedCount
+
+      // Get newly applied changes (those after previousCount index)
+      const newlyAppliedChanges = autoAppliedChanges.slice(previousCount)
+      const newlyAppliedCount = newlyAppliedChanges.length
+
+      // Check for deloads in the newly applied changes
+      const deloads = newlyAppliedChanges.filter((c) => c.type === 'deload')
+      const hasDeloads = deloads.length > 0
+
+      // Build informative toast message
+      let message: string
+      if (hasDeloads) {
+        // Show deload details (e.g., "Squat T1 deloaded to 85kg")
+        const deloadDetails = deloads
+          .map((d) => `${d.exerciseName} ${d.tier} deloaded`)
+          .join(', ')
+        const otherCount = newlyAppliedCount - deloads.length
+        if (otherCount > 0) {
+          message = `${deloadDetails}. ${String(otherCount)} other change${otherCount === 1 ? '' : 's'} applied.`
+        } else {
+          message = deloadDetails
+        }
+      } else {
+        // Standard message for non-deload changes
+        message = newlyAppliedCount === 1
+          ? '1 change applied automatically'
+          : `${String(newlyAppliedCount)} changes applied automatically`
+      }
+
+      showToast({
+        type: 'success',
+        message,
+      })
+
+      // If there are conflicts, open the review modal (scheduled to avoid setState in effect)
+      if (syncPendingChanges.length > 0) {
+        queueMicrotask(() => { setIsReviewModalOpen(true) })
+      }
+    }
+  }, [autoAppliedCount, autoAppliedChanges, syncPendingChanges.length, showToast])
+
   // Callback when all changes are applied (either via applyAll or last individual apply)
   const handleAllChangesApplied = useCallback(() => {
     clearPendingChanges() // Clear from localStorage
@@ -157,7 +226,7 @@ export function Dashboard() {
   }, [clearPendingChanges, clearSyncPendingChanges])
 
   // Callback when a change is rejected - remove from localStorage
-  const handleRejectChange = useCallback((changeId: string, _workoutId: string) => {
+  const handleRejectChange = useCallback((changeId: string) => {
     removePendingChange(changeId)
   }, [removePendingChange])
 
@@ -179,7 +248,6 @@ export function Dashboard() {
     onRecordHistory: recordHistoryEntry,
     onWorkoutComplete: handleWorkoutComplete,
     onAllChangesApplied: handleAllChangesApplied,
-    onAddProcessedWorkoutIds: addProcessedWorkoutIds,
     onRejectChange: handleRejectChange,
   })
 

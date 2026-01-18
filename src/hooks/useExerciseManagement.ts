@@ -131,8 +131,6 @@ export function useExerciseManagement({
           currentWeight: 0,
           stage: 0,
           baseWeight: 0,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
           amrapRecordDate: null,
           amrapRecordWorkoutId: null,

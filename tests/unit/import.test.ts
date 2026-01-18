@@ -40,8 +40,6 @@ const createValidExportData = (): Record<string, unknown> => ({
       currentWeight: 100,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: 'workout-123',
-      lastWorkoutDate: '2024-01-14T10:00:00.000Z',
       amrapRecord: 8,
     },
   },
@@ -411,8 +409,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 100,
         stage: 5, // invalid: must be 0, 1, or 2
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }
@@ -427,8 +423,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 'heavy', // invalid: must be number
         stage: 0,
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }
@@ -470,8 +464,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 100,
         stage: 0,
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }

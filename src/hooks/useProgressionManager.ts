@@ -73,9 +73,6 @@ export interface UseProgressionManagerResult {
 
   /** Clear all pending changes from storage */
   clearPendingChanges: () => void
-
-  /** Add workout IDs to the processed set (prevents reprocessing) */
-  addProcessedWorkoutIds: (workoutIds: string[]) => void
 }
 
 /**
@@ -205,13 +202,6 @@ export function useProgressionManager({
     progressionStorage.clearPendingChanges()
   }, [progressionStorage])
 
-  const addProcessedWorkoutIds = useCallback(
-    (workoutIds: string[]) => {
-      progressionStorage.addProcessedWorkoutIds(workoutIds)
-    },
-    [progressionStorage]
-  )
-
   return {
     setInitialWeight,
     setProgressionByKey,
@@ -226,6 +216,5 @@ export function useProgressionManager({
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   }
 }

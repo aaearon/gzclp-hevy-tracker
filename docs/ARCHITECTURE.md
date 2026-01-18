@@ -1,7 +1,7 @@
 # GZCLP Hevy Tracker - Technical Architecture Documentation
 
-**Version:** 2.6.0
-**Last Updated:** 2026-01-14
+**Version:** 2.7.0
+**Last Updated:** 2026-01-18
 **Target Audience:** LLM assistants and developers working on the codebase
 
 ---
@@ -384,28 +384,9 @@ const setValue = useCallback((value) => {
 
 ### 4.3 React Context Architecture
 
-#### ProgramContext (Read-Only Legacy)
-
-**ProgramContext** provides read-only access for frequently-accessed data:
-
-```typescript
-// src/contexts/ProgramContext.tsx
-export interface ProgramContextValue {
-  weightUnit: WeightUnit
-  exercises: Record<string, ExerciseConfig>
-  progression: Record<string, ProgressionState>
-  t3Schedule: Record<GZCLPDay, string[]>
-  currentDay: GZCLPDay
-  increments: { upper: number; lower: number }
-}
-
-// Usage in deeply nested components
-const { weightUnit, exercises } = useProgramContext()
-```
-
-**Important:** Context is **read-only**. State mutations happen via `useProgram()` methods.
-
 #### Granular Contexts (v2.5.0+)
+
+> **Note (v2.7.0):** `ProgramContext` was removed in the simplification effort. Components now use granular contexts directly via `useConfigContext`, `useProgressionContext`, etc. The `useProgram()` hook remains available as a facade for backwards compatibility.
 
 To improve re-render performance, granular contexts were added that provide both read and write access:
 
@@ -616,7 +597,8 @@ export function CollapsibleSection({ title, children, defaultOpen = true }) {
 **Responsibility:** Main application view orchestration
 **Key features:**
 - Auto-sync on mount via `useSyncFlow()`
-- Pending changes management via `usePendingChanges()`
+- **Auto-apply non-conflicting changes** (v2.7.0): Changes without weight discrepancies are applied automatically
+- Pending changes management via `usePendingChanges()` (only for conflicts requiring review)
 - Push confirmation dialog via `usePushDialog()`
 - Discrepancy resolution with acknowledgment tracking
 - Today's workout modal (show current day exercises)
@@ -1496,14 +1478,16 @@ export interface ExerciseConfig {
 }
 
 // Current progression state
+// Note (v2.8.0): Workout deduplication is derived from progressionHistory
+// (each exercise keeps 200 history entries with workoutId)
 export interface ProgressionState {
   exerciseId: string
   currentWeight: number  // ALWAYS stored in kg (see Weight Storage Convention below)
   stage: Stage
   baseWeight: number     // ALWAYS stored in kg
-  lastWorkoutId: string | null
-  lastWorkoutDate: string | null
   amrapRecord: number
+  amrapRecordDate: string | null
+  amrapRecordWorkoutId: string | null
 }
 
 // ============================================================================

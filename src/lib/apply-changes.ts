@@ -47,13 +47,11 @@ export function applyPendingChange(
     ...exerciseProgression,
     currentWeight: change.newWeight,
     stage: change.newStage,
-    lastWorkoutId: change.workoutId,
-    lastWorkoutDate: change.workoutDate,
   }
 
   console.debug(
     `[applyPendingChange] Applied change for "${change.exerciseName}" (${change.tier}): ` +
-    `progressionKey="${key}", lastWorkoutId="${change.workoutId}", ` +
+    `progressionKey="${key}", workoutId="${change.workoutId}", ` +
     `weight: ${String(exerciseProgression.currentWeight)} -> ${String(change.newWeight)}`
   )
 

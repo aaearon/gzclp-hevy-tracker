@@ -85,9 +85,6 @@ export interface UseProgramResult {
   removePendingChange: (id: string) => void
   clearPendingChanges: () => void
 
-  // Processed workout tracking (prevents reprocessing)
-  addProcessedWorkoutIds: (workoutIds: string[]) => void
-
   // Full state management
   resetState: () => void
   importState: (state: GZCLPState) => ImportResult
@@ -135,7 +132,6 @@ export function useProgram(): UseProgramResult {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   } = useProgressionManager({ progressionStorage })
 
   const historyStorage = useHistoryStorage()
@@ -169,7 +165,6 @@ export function useProgram(): UseProgramResult {
       mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
       acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
       needsPush: progressionStore.needsPush,
-      processedWorkoutIds: progressionStore.processedWorkoutIds ?? [],
       progressionHistory: history.progressionHistory,
     }
   }, [config, progressionStore, history])
@@ -206,7 +201,6 @@ export function useProgram(): UseProgramResult {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
     resetState,
     importState,
   }

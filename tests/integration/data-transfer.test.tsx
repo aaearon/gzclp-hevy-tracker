@@ -6,11 +6,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '../test-utils'
+import { render, screen, waitFor } from '../test-utils'
 import userEvent from '@testing-library/user-event'
 import type { GZCLPState } from '@/types/state'
 import { CURRENT_STATE_VERSION, STORAGE_KEY } from '@/lib/constants'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { ConfigProvider } from '@/contexts/ConfigContext'
+import { ProgressionProvider } from '@/contexts/ProgressionContext'
 
 // Mock state for testing
 const createMockState = (): GZCLPState => ({
@@ -43,8 +45,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 100,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: 'workout-123',
-      lastWorkoutDate: '2024-01-14T10:00:00.000Z',
       amrapRecord: 8,
     },
   },
@@ -69,39 +69,66 @@ describe('[US6] Export/Import Integration - Settings Page', () => {
   })
 
   it('should render export button in settings', async () => {
+    const user = userEvent.setup()
     const { Settings } = await import('@/components/Settings')
 
     render(
       <ThemeProvider>
-        <Settings />
+        <ConfigProvider>
+          <Settings />
+        </ConfigProvider>
       </ThemeProvider>
     )
 
-    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
+    // Navigate to the Data tab where export/import/reset buttons are located
+    const dataTab = screen.getByRole('tab', { name: /data/i })
+    await user.click(dataTab)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
+    })
   })
 
   it('should render import button in settings', async () => {
+    const user = userEvent.setup()
     const { Settings } = await import('@/components/Settings')
 
     render(
       <ThemeProvider>
-        <Settings />
+        <ConfigProvider>
+          <Settings />
+        </ConfigProvider>
       </ThemeProvider>
     )
 
-    expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument()
+    // Navigate to the Data tab
+    const dataTab = screen.getByRole('tab', { name: /data/i })
+    await user.click(dataTab)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument()
+    })
   })
 
   it('should render delete data button in settings', async () => {
+    const user = userEvent.setup()
     const { Settings } = await import('@/components/Settings')
 
     render(
       <ThemeProvider>
-        <Settings />
+        <ConfigProvider>
+          <Settings />
+        </ConfigProvider>
       </ThemeProvider>
     )
 
-    expect(screen.getByRole('button', { name: /delete|reset/i })).toBeInTheDocument()
+    // Navigate to the Data tab
+    const dataTab = screen.getByRole('tab', { name: /data/i })
+    await user.click(dataTab)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument()
+    })
   })
 })
 

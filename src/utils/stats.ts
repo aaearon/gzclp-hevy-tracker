@@ -50,67 +50,41 @@ export function calculateDayOfWeek(
 }
 
 /**
- * Calculate total unique workouts from progression data.
- * Uses storedTotal if provided and > 0, otherwise falls back to counting
- * unique workout IDs from progression.
+ * Calculate total unique workouts.
+ * Uses storedTotal from state (from Hevy API), falling back to 0.
  *
- * @param progression Record of exercise progression states
+ * @param _progression Unused (kept for backwards compatibility)
  * @param storedTotal Optional stored total from state (from Hevy API)
  * @returns Number of unique workouts
  */
 export function calculateTotalWorkouts(
-  progression: Record<string, ProgressionState>,
+  _progression: Record<string, ProgressionState>,
   storedTotal?: number
 ): number {
-  // Use stored total if available and > 0
-  if (storedTotal !== undefined && storedTotal > 0) {
-    return storedTotal
-  }
-
-  // Fall back to counting unique workout IDs from progression
-  const workoutIds = new Set<string>()
-  for (const p of Object.values(progression)) {
-    if (p.lastWorkoutId) {
-      workoutIds.add(p.lastWorkoutId)
-    }
-  }
-  return workoutIds.size
+  return storedTotal ?? 0
 }
 
 /**
  * Get the most recent workout date.
- * Uses storedDate if provided, otherwise falls back to progression data.
+ * Uses storedDate from state (from Hevy API).
  *
- * @param progression Record of exercise progression states
+ * @param _progression Unused (kept for backwards compatibility)
  * @param storedDate Optional stored date from state (from Hevy API)
  * @returns Date object of last workout, or null if no workouts
  */
 export function getLastWorkoutDate(
-  progression: Record<string, ProgressionState>,
+  _progression: Record<string, ProgressionState>,
   storedDate?: string | null
 ): Date | null {
-  // Try stored date first
   if (storedDate) {
     return new Date(storedDate)
   }
-
-  // Fall back to progression data
-  let latestDate: Date | null = null
-  for (const p of Object.values(progression)) {
-    if (p.lastWorkoutDate) {
-      const date = new Date(p.lastWorkoutDate)
-      if (!latestDate || date > latestDate) {
-        latestDate = date
-      }
-    }
-  }
-
-  return latestDate
+  return null
 }
 
 /**
  * Calculate days since the most recent workout.
- * Uses storedDate if provided, otherwise falls back to progression data.
+ * Uses storedDate from state (from Hevy API).
  *
  * Uses calendar day comparison to avoid ±1 day errors from:
  * - Timezone changes (user traveling)

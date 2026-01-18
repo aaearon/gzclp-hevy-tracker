@@ -154,7 +154,9 @@ describe('State Generator', () => {
       expect(state.currentWeight).toBe(60)
       expect(state.stage).toBe(0)
       expect(state.baseWeight).toBe(60)
-      expect(state.lastWorkoutId).toBeNull()
+      expect(state.amrapRecord).toBe(0)
+      expect(state.amrapRecordDate).toBeNull()
+      expect(state.amrapRecordWorkoutId).toBeNull()
     })
 
     it('uses currentWeight as baseWeight default', () => {

@@ -118,8 +118,6 @@ export interface ProgressionState {
   currentWeight: number
   stage: Stage
   baseWeight: number
-  lastWorkoutId: string | null
-  lastWorkoutDate: string | null
   /** Best AMRAP rep count achieved */
   amrapRecord: number
   /** ISO date when the AMRAP record was set (null for legacy/unknown) */
@@ -351,9 +349,6 @@ export interface GZCLPState {
 
   /** Whether local progression differs from Hevy and needs to be pushed */
   needsPush: boolean
-
-  /** IDs of workouts that have been processed (prevents reprocessing on future syncs) */
-  processedWorkoutIds: string[]
 }
 
 // =============================================================================

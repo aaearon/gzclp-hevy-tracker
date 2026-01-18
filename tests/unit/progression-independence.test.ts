@@ -72,8 +72,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0,
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'squat-T2': {
@@ -81,8 +79,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 70,
           stage: 0,
           baseWeight: 42,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -111,8 +107,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0,
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'squat-T2': {
@@ -120,8 +114,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 70,
           stage: 0,
           baseWeight: 42,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -150,8 +142,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0,
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'squat-T2': {
@@ -159,8 +149,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 70,
           stage: 0,
           baseWeight: 42,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -196,8 +184,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0,
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'squat-T2': {
@@ -205,8 +191,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 70,
           stage: 0,
           baseWeight: 42,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -242,8 +226,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0, // At stage 0 (5x3+)
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'squat-T2': {
@@ -251,8 +233,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 70,
           stage: 0, // Also at stage 0 (3x10)
           baseWeight: 42,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -294,8 +274,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 100,
           stage: 0,
           baseWeight: 60,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'bench-T2': {
@@ -303,8 +281,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 50,
           stage: 0,
           baseWeight: 30,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -332,8 +308,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 60,
           stage: 0,
           baseWeight: 40,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'bench-T2': {
@@ -341,8 +315,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 42.5,
           stage: 0,
           baseWeight: 28,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -370,8 +342,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 60,
           stage: 0,
           baseWeight: 40,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
         'bench-T2': {
@@ -379,8 +349,6 @@ describe('[US1] T1/T2 Progression Independence', () => {
           currentWeight: 42.5,
           stage: 0,
           baseWeight: 28,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }

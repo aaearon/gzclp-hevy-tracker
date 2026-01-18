@@ -23,8 +23,6 @@ function createMockProgressionStorage(
         currentWeight: 100,
         stage: 0,
         baseWeight: 100,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 0,
       },
     },
@@ -170,8 +168,6 @@ describe('useProgressionManager', () => {
           currentWeight: 80,
           stage: 0,
           baseWeight: 80,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }

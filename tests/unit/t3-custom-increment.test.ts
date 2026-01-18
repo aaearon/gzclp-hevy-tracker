@@ -18,8 +18,6 @@ describe('T3 Custom Increment', () => {
     currentWeight: 10,
     stage: 0,
     baseWeight: 10,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
     amrapRecordDate: null,
     amrapRecordWorkoutId: null,

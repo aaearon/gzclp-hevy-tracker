@@ -26,8 +26,6 @@ export interface UsePendingChangesProps {
   onWorkoutComplete?: (workoutDate: string) => void
   /** Callback when all pending changes have been applied (for cleanup) */
   onAllChangesApplied?: () => void
-  /** Callback to mark workout IDs as processed (prevents reprocessing on next sync) */
-  onAddProcessedWorkoutIds?: (workoutIds: string[]) => void
   /** Callback when a change is rejected (to remove from localStorage) */
   onRejectChange?: (changeId: string, workoutId: string) => void
 }
@@ -48,7 +46,7 @@ export interface UsePendingChangesResult {
 }
 
 export function usePendingChanges(props: UsePendingChangesProps): UsePendingChangesResult {
-  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied, onAddProcessedWorkoutIds, onRejectChange } = props
+  const { initialChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied, onRejectChange } = props
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(initialChanges)
 
   // Track which change IDs we've "seen" from initialChanges to avoid re-adding rejected items
@@ -103,24 +101,16 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
   /**
    * Apply a single change to the progression state.
    * When this is the last pending change, also advance the day and update stats.
+   * Note: Processed workout IDs are now derived from progressionHistory,
+   * so recording to history also marks the workout as processed.
    */
   const applyChange = useCallback(
     (change: PendingChange) => {
-      // Collect OLD lastWorkoutId that will be replaced (to prevent it from being "orphaned")
-      const existingProgression = progression[change.progressionKey]
-      const oldLastWorkoutId = existingProgression?.lastWorkoutId
-
       // Apply the change to progression
       const updatedProgression = applyPendingChange(progression, change)
       onProgressionUpdate(updatedProgression)
 
-      // Mark both old and new workout IDs as processed to prevent reprocessing on future syncs
-      const workoutIdsToAdd = oldLastWorkoutId
-        ? [oldLastWorkoutId, change.workoutId]
-        : [change.workoutId]
-      onAddProcessedWorkoutIds?.(workoutIdsToAdd)
-
-      // Record to history for charts
+      // Record to history for charts (this also marks the workout as processed)
       onRecordHistory?.(change)
 
       // Check if this is the last pending change
@@ -137,20 +127,21 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
         onAllChangesApplied?.()
       }
     },
-    [progression, onProgressionUpdate, onAddProcessedWorkoutIds, onRecordHistory, pendingChanges, currentDay, onDayAdvance, onWorkoutComplete, onAllChangesApplied]
+    [progression, onProgressionUpdate, onRecordHistory, pendingChanges, currentDay, onDayAdvance, onWorkoutComplete, onAllChangesApplied]
   )
 
   /**
    * Reject a change - store for potential undo [Task 4.2]
+   * Note: Rejected changes are removed from localStorage but workouts
+   * will still appear in future syncs since they're not in progressionHistory.
+   * This is intentional - users can re-review rejected changes.
    */
   const rejectChange = useCallback((changeId: string) => {
     setPendingChanges((prev) => {
       const change = prev.find((c) => c.id === changeId)
       if (change) {
-        // Remove from localStorage and mark workout as processed to prevent re-appearance
+        // Remove from localStorage to prevent re-appearance
         onRejectChange?.(changeId, change.workoutId)
-        // Also add to processedWorkoutIds so this workout won't be re-synced
-        onAddProcessedWorkoutIds?.([change.workoutId])
 
         // Store for undo
         setRecentlyRejected(change)
@@ -167,7 +158,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
       }
       return prev.filter((c) => c.id !== changeId)
     })
-  }, [onRejectChange, onAddProcessedWorkoutIds])
+  }, [onRejectChange])
 
   /**
    * Modify the weight of a pending change.
@@ -180,38 +171,24 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
   /**
    * Apply all pending changes at once and advance to the next day.
+   * Note: Recording to history marks workouts as processed, so no separate tracking needed.
    */
   const applyAllChanges = useCallback(() => {
     if (pendingChanges.length === 0) return
 
     let currentProgression = progression
     let mostRecentDate: string | null = null
-    const workoutIds = new Set<string>()
-
-    // Collect OLD lastWorkoutIds that will be replaced - these need to be marked as processed
-    // to prevent them from being "orphaned" when overwritten with newer workout IDs
-    for (const change of pendingChanges) {
-      const existingProgression = progression[change.progressionKey]
-      if (existingProgression?.lastWorkoutId) {
-        workoutIds.add(existingProgression.lastWorkoutId)
-      }
-    }
 
     for (const change of pendingChanges) {
       currentProgression = applyPendingChange(currentProgression, change)
-      // Record each change to history for charts
+      // Record each change to history for charts (this also marks the workout as processed)
       onRecordHistory?.(change)
-      // Collect new workout IDs
-      workoutIds.add(change.workoutId)
       // Track the most recent workout date
       if (!mostRecentDate || change.workoutDate > mostRecentDate) {
         mostRecentDate = change.workoutDate
       }
     }
     onProgressionUpdate(currentProgression)
-
-    // Mark all workouts (old AND new) as processed to prevent reprocessing on future syncs
-    onAddProcessedWorkoutIds?.([...workoutIds])
 
     setPendingChanges([])
 
@@ -225,7 +202,7 @@ export function usePendingChanges(props: UsePendingChangesProps): UsePendingChan
 
     // Notify that all changes have been applied (for cleanup)
     onAllChangesApplied?.()
-  }, [pendingChanges, progression, onProgressionUpdate, onAddProcessedWorkoutIds, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied])
+  }, [pendingChanges, progression, onProgressionUpdate, currentDay, onDayAdvance, onRecordHistory, onWorkoutComplete, onAllChangesApplied])
 
   /**
    * Clear all pending changes without applying.

@@ -48,8 +48,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'squat-T2': {
@@ -57,8 +55,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 70,
       stage: 0,
       baseWeight: 42,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'bench-T1': {
@@ -66,8 +62,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 60,
       stage: 0,
       baseWeight: 40,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'bench-T2': {
@@ -75,8 +69,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 42,
       stage: 0,
       baseWeight: 28,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ohp-T1': {
@@ -84,8 +76,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 40,
       stage: 0,
       baseWeight: 20,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ohp-T2': {
@@ -93,8 +83,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 28,
       stage: 0,
       baseWeight: 14,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'deadlift-T1': {
@@ -102,8 +90,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 120,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'deadlift-T2': {
@@ -111,8 +97,6 @@ describe('[US1] End-to-End Tier Progression Independence', () => {
       currentWeight: 84,
       stage: 0,
       baseWeight: 56,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   })

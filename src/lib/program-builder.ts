@@ -68,8 +68,6 @@ function createProgressionEntry(
   exerciseId: string,
   weight: number,
   stage: Stage,
-  lastWorkoutId: string | null = null,
-  lastWorkoutDate: string | null = null,
   amrapRecord = 0,
   amrapRecordDate: string | null = null,
   amrapRecordWorkoutId: string | null = null
@@ -79,8 +77,6 @@ function createProgressionEntry(
     currentWeight: weight,
     baseWeight: weight,
     stage,
-    lastWorkoutId,
-    lastWorkoutDate,
     amrapRecord,
     amrapRecordDate,
     amrapRecordWorkoutId,
@@ -191,8 +187,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           stage,
-          imported.analysis?.performance?.workoutId ?? null,
-          imported.analysis?.performance?.workoutDate ?? null,
           imported.analysis?.suggestion?.amrapReps ?? 0
         )
         processedProgressionKeys.add(t1Key)
@@ -228,8 +222,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           stage,
-          imported.analysis?.performance?.workoutId ?? null,
-          imported.analysis?.performance?.workoutDate ?? null,
           0 // T2 doesn't track AMRAP
         )
         processedProgressionKeys.add(t2Key)
@@ -262,8 +254,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           0, // T3 always stage 0
-          t3.analysis?.performance?.workoutId ?? null,
-          t3.analysis?.performance?.workoutDate ?? null,
           t3.analysis?.suggestion?.amrapReps ?? 0
         )
       }

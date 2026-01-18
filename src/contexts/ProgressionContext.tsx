@@ -32,7 +32,6 @@ export interface ProgressionContextValue {
   mostRecentWorkoutDate: string | null
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
   needsPush: boolean
-  processedWorkoutIds: string[]
 
   // Progression mutations
   setInitialWeight: (exerciseId: string, weight: number, stage?: Stage) => void
@@ -56,9 +55,6 @@ export interface ProgressionContextValue {
   addPendingChange: (change: PendingChange) => void
   removePendingChange: (id: string) => void
   clearPendingChanges: () => void
-
-  // Processed workout tracking
-  addProcessedWorkoutIds: (workoutIds: string[]) => void
 
   // Internal: expose storage for useProgram facade
   _progressionStorage: UseProgressionStorageResult
@@ -102,7 +98,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   } = useProgressionManager({ progressionStorage })
 
   // Memoize the context value
@@ -115,7 +110,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
     acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
     needsPush: progressionStore.needsPush,
-    processedWorkoutIds: progressionStore.processedWorkoutIds ?? [],
 
     // Mutations
     setInitialWeight,
@@ -131,7 +125,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
 
     // Internal
     _progressionStorage: progressionStorage,
@@ -151,7 +144,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   ])
 
   return (

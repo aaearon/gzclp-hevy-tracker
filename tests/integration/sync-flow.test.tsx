@@ -118,25 +118,21 @@ const mockExercises: Record<string, ExerciseConfig> = {
 }
 
 // Sample progression states (use role-tier keys for main lifts, exerciseId for T3)
-// Note: useProgression hook doesn't pass day context, so tier defaults to T1
-// We need both T1 keys since without day context, both exercises are treated as T1
+// Keys follow the format: {role}-{tier} for main lifts
+// On day A1: squat is T1, bench is T2
 const mockProgression: Record<string, ProgressionState> = {
   'squat-T1': {
     exerciseId: 'squat',
     currentWeight: 100,
     stage: 0,
     baseWeight: 100,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 5,
   },
-  'bench-T1': {
+  'bench-T2': {
     exerciseId: 'bench',
     currentWeight: 60,
     stage: 0,
     baseWeight: 60,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
   },
   'ex-lat': {
@@ -144,8 +140,6 @@ const mockProgression: Record<string, ProgressionState> = {
     currentWeight: 40,
     stage: 0,
     baseWeight: 40,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
   },
 }
@@ -187,6 +181,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -228,6 +223,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -274,6 +270,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -284,10 +281,10 @@ describe('[US2] Sync Flow Integration', () => {
 
       await waitFor(() => {
         expect(result.current.pendingChanges).toHaveLength(2)
-        // Exercise names now include tier prefix for main lifts
-        // Note: Without day context, useProgression defaults all main lifts to T1
+        // Exercise names include tier prefix for main lifts
+        // On day A1: squat is T1, bench is T2
         expect(result.current.pendingChanges.find(c => c.exerciseName === 'T1 Squat')).toBeDefined()
-        expect(result.current.pendingChanges.find(c => c.exerciseName === 'T1 Bench Press')).toBeDefined()
+        expect(result.current.pendingChanges.find(c => c.exerciseName === 'T2 Bench Press')).toBeDefined()
       })
     })
   })
@@ -320,6 +317,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -357,6 +355,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -394,6 +393,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -423,6 +423,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -464,6 +465,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -480,12 +482,15 @@ describe('[US2] Sync Flow Integration', () => {
       })
     })
 
-    it('should generate repeat for T3 when AMRAP set < 25', async () => {
+    it('should not generate pending change for T3 when AMRAP set < 25 (repeat is silent)', async () => {
+      // When T3 AMRAP is below 25 reps, the user should repeat the same weight.
+      // However, since nothing actually changes (same weight, same scheme), no pending
+      // change is generated. This keeps the review queue clean of no-op changes.
       const workout = createWorkout('workout-1', '2024-01-15T10:00:00Z', [
         createWorkoutExercise('hevy-lat', [
           createSet(15, 40),
           createSet(15, 40),
-          createSet(20, 40), // AMRAP set: 20 reps (below threshold)
+          createSet(20, 40), // AMRAP set: 20 reps (below 25 threshold)
         ]),
       ])
 
@@ -504,6 +509,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -513,10 +519,9 @@ describe('[US2] Sync Flow Integration', () => {
       })
 
       await waitFor(() => {
+        // No pending change for T3 repeat - nothing actually changes
         const t3Change = result.current.pendingChanges.find(c => c.exerciseName === 'Lat Pulldown')
-        expect(t3Change).toBeDefined()
-        expect(t3Change!.type).toBe('repeat')
-        expect(t3Change!.newWeight).toBe(40) // Same weight
+        expect(t3Change).toBeUndefined()
       })
     })
   })
@@ -538,6 +543,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )
@@ -574,6 +580,7 @@ describe('[US2] Sync Flow Integration', () => {
             settings: { weightUnit: 'kg' as WeightUnit, increments: { upper: 2.5, lower: 5 }, restTimers: { t1: 180, t2: 120, t3: 60 } },
             lastSync: null,
             hevyRoutineIds: mockHevyRoutineIds,
+            progressionHistory: {},
           }),
         { wrapper: TestWrapper }
       )

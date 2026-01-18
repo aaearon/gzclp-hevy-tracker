@@ -21,8 +21,6 @@ describe('DashboardContent', () => {
       currentWeight: 60,
       stage: 0,
       baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     }
     state.progression['squat-T2'] = {
@@ -30,8 +28,6 @@ describe('DashboardContent', () => {
       currentWeight: 50,
       stage: 0,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     }
     // Add exercise config with role
@@ -78,8 +74,6 @@ describe('DashboardContent', () => {
         currentWeight: 30,
         stage: 0,
         baseWeight: 30,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 0,
       }
 

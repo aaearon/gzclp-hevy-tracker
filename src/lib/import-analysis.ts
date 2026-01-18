@@ -108,8 +108,6 @@ export function calculateImportProgression(
     currentWeight: performance.weight,
     stage: currentStage,
     baseWeight: performance.weight, // Use current as base for import
-    lastWorkoutId: performance.workoutId,
-    lastWorkoutDate: performance.workoutDate,
     amrapRecord: 0, // No prior record during import
     amrapRecordDate: null,
     amrapRecordWorkoutId: null,
