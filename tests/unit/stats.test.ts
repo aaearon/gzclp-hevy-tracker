@@ -12,8 +12,9 @@ import {
   calculateDayOfWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
+  getMostRecentWorkoutDate,
 } from '@/utils/stats'
-import type { ProgressionState } from '@/types/state'
+import type { ExerciseHistory } from '@/types/state'
 
 describe('calculateWeeksOnProgram', () => {
   beforeEach(() => {
@@ -71,133 +72,30 @@ describe('calculateDayOfWeek', () => {
 })
 
 describe('calculateTotalWorkouts', () => {
-  it('should return 0 for empty progression', () => {
+  it('should return 0 for empty progression and no stored total', () => {
     const result = calculateTotalWorkouts({})
     expect(result).toBe(0)
   })
 
-  it('should return 0 when no exercises have workoutIds', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
-        amrapRecord: 0,
-      },
-    }
-    const result = calculateTotalWorkouts(progression)
+  it('should return stored total when provided', () => {
+    const result = calculateTotalWorkouts({}, 15)
+    expect(result).toBe(15)
+  })
+
+  it('should return 0 when stored total is 0', () => {
+    const result = calculateTotalWorkouts({}, 0)
     expect(result).toBe(0)
   })
 
-  it('should count unique workout IDs', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-15',
-        amrapRecord: 5,
-      },
-      'ex2': {
-        exerciseId: 'ex2',
-        currentWeight: 40,
-        stage: 0,
-        baseWeight: 40,
-        lastWorkoutId: 'workout-2',
-        lastWorkoutDate: '2024-03-14',
-        amrapRecord: 6,
-      },
-    }
-    const result = calculateTotalWorkouts(progression)
-    expect(result).toBe(2)
+  it('should return 0 when stored total is undefined', () => {
+    const result = calculateTotalWorkouts({})
+    expect(result).toBe(0)
   })
 
-  it('should not double-count same workout ID across exercises', () => {
-    const progression: Record<string, ProgressionState> = {
-      'squat-T1': {
-        exerciseId: 'squat',
-        currentWeight: 100,
-        stage: 0,
-        baseWeight: 100,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-15',
-        amrapRecord: 5,
-      },
-      'squat-T2': {
-        exerciseId: 'squat',
-        currentWeight: 80,
-        stage: 0,
-        baseWeight: 80,
-        lastWorkoutId: 'workout-1', // Same workout
-        lastWorkoutDate: '2024-03-15',
-        amrapRecord: 10,
-      },
-      'bench-T1': {
-        exerciseId: 'bench',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-2',
-        lastWorkoutDate: '2024-03-14',
-        amrapRecord: 5,
-      },
-    }
-    const result = calculateTotalWorkouts(progression)
-    expect(result).toBe(2) // Only 2 unique workouts
-  })
-
-  describe('stored total value', () => {
-    it('should use stored total when provided and > 0', () => {
-      const progression: Record<string, ProgressionState> = {}
-      const result = calculateTotalWorkouts(progression, 15)
-      expect(result).toBe(15)
-    })
-
-    it('should fall back to progression when stored total is 0', () => {
-      const progression: Record<string, ProgressionState> = {
-        'ex1': {
-          exerciseId: 'ex1',
-          currentWeight: 60,
-          stage: 0,
-          baseWeight: 60,
-          lastWorkoutId: 'workout-1',
-          lastWorkoutDate: '2024-03-15',
-          amrapRecord: 5,
-        },
-      }
-      const result = calculateTotalWorkouts(progression, 0)
-      expect(result).toBe(1) // Falls back to counting progression
-    })
-
-    it('should fall back to progression when stored total is undefined', () => {
-      const progression: Record<string, ProgressionState> = {
-        'ex1': {
-          exerciseId: 'ex1',
-          currentWeight: 60,
-          stage: 0,
-          baseWeight: 60,
-          lastWorkoutId: 'workout-1',
-          lastWorkoutDate: '2024-03-15',
-          amrapRecord: 5,
-        },
-        'ex2': {
-          exerciseId: 'ex2',
-          currentWeight: 40,
-          stage: 0,
-          baseWeight: 40,
-          lastWorkoutId: 'workout-2',
-          lastWorkoutDate: '2024-03-14',
-          amrapRecord: 6,
-        },
-      }
-      const result = calculateTotalWorkouts(progression)
-      expect(result).toBe(2)
-    })
+  it('should ignore progression data (uses stored total only)', () => {
+    // The progression parameter is kept for backwards compatibility but not used
+    const result = calculateTotalWorkouts({}, 42)
+    expect(result).toBe(42)
   })
 })
 
@@ -211,176 +109,134 @@ describe('calculateDaysSinceLastWorkout', () => {
     vi.useRealTimers()
   })
 
-  it('should return null for empty progression', () => {
+  it('should return null for empty progression and no stored date', () => {
     const result = calculateDaysSinceLastWorkout({})
     expect(result).toBeNull()
   })
 
-  it('should return null when no exercises have workout dates', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
-        amrapRecord: 0,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
+  it('should return null when stored date is null', () => {
+    const result = calculateDaysSinceLastWorkout({}, null)
     expect(result).toBeNull()
   })
 
   it('should return 0 for workout done today', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-15T10:00:00Z',
-        amrapRecord: 5,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
+    const result = calculateDaysSinceLastWorkout({}, '2024-03-15T10:00:00Z')
     expect(result).toBe(0)
   })
 
   it('should return 1 for workout done yesterday', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-14T12:00:00Z',
-        amrapRecord: 5,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
+    const result = calculateDaysSinceLastWorkout({}, '2024-03-14T12:00:00Z')
     expect(result).toBe(1)
   })
 
   it('should return 7 for workout done a week ago', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-08T12:00:00Z',
-        amrapRecord: 5,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
+    const result = calculateDaysSinceLastWorkout({}, '2024-03-08T12:00:00Z')
     expect(result).toBe(7)
-  })
-
-  it('should find the most recent workout date across all exercises', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: 'workout-1',
-        lastWorkoutDate: '2024-03-10T12:00:00Z', // 5 days ago
-        amrapRecord: 5,
-      },
-      'ex2': {
-        exerciseId: 'ex2',
-        currentWeight: 40,
-        stage: 0,
-        baseWeight: 40,
-        lastWorkoutId: 'workout-2',
-        lastWorkoutDate: '2024-03-14T12:00:00Z', // 1 day ago (most recent)
-        amrapRecord: 6,
-      },
-      'ex3': {
-        exerciseId: 'ex3',
-        currentWeight: 30,
-        stage: 0,
-        baseWeight: 30,
-        lastWorkoutId: 'workout-3',
-        lastWorkoutDate: '2024-03-01T12:00:00Z', // 14 days ago
-        amrapRecord: 10,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
-    expect(result).toBe(1) // Most recent is 1 day ago
-  })
-
-  it('should handle mixed null and valid dates', () => {
-    const progression: Record<string, ProgressionState> = {
-      'ex1': {
-        exerciseId: 'ex1',
-        currentWeight: 60,
-        stage: 0,
-        baseWeight: 60,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
-        amrapRecord: 0,
-      },
-      'ex2': {
-        exerciseId: 'ex2',
-        currentWeight: 40,
-        stage: 0,
-        baseWeight: 40,
-        lastWorkoutId: 'workout-2',
-        lastWorkoutDate: '2024-03-12T12:00:00Z', // 3 days ago
-        amrapRecord: 6,
-      },
-    }
-    const result = calculateDaysSinceLastWorkout(progression)
-    expect(result).toBe(3)
   })
 
   describe('stored date value', () => {
     it('should use stored date when provided', () => {
-      const progression: Record<string, ProgressionState> = {}
-      const result = calculateDaysSinceLastWorkout(progression, '2024-03-14T12:00:00Z')
+      const result = calculateDaysSinceLastWorkout({}, '2024-03-14T12:00:00Z')
       expect(result).toBe(1) // 1 day before 2024-03-15
     })
 
-    it('should fall back to progression when stored date is null', () => {
-      const progression: Record<string, ProgressionState> = {
-        'ex1': {
-          exerciseId: 'ex1',
-          currentWeight: 60,
-          stage: 0,
-          baseWeight: 60,
-          lastWorkoutId: 'workout-1',
-          lastWorkoutDate: '2024-03-13T12:00:00Z', // 2 days ago
-          amrapRecord: 5,
-        },
-      }
-      const result = calculateDaysSinceLastWorkout(progression, null)
-      expect(result).toBe(2)
-    })
-
-    it('should fall back to progression when stored date is undefined', () => {
-      const progression: Record<string, ProgressionState> = {
-        'ex1': {
-          exerciseId: 'ex1',
-          currentWeight: 60,
-          stage: 0,
-          baseWeight: 60,
-          lastWorkoutId: 'workout-1',
-          lastWorkoutDate: '2024-03-12T12:00:00Z', // 3 days ago
-          amrapRecord: 5,
-        },
-      }
-      const result = calculateDaysSinceLastWorkout(progression)
-      expect(result).toBe(3)
-    })
-
-    it('should return null when stored date is null and progression is empty', () => {
+    it('should return null when stored date is null', () => {
       const result = calculateDaysSinceLastWorkout({}, null)
       expect(result).toBeNull()
     })
+
+    it('should return null when stored date is undefined', () => {
+      const result = calculateDaysSinceLastWorkout({})
+      expect(result).toBeNull()
+    })
+  })
+})
+
+describe('getMostRecentWorkoutDate', () => {
+  it('should return null for empty history', () => {
+    const result = getMostRecentWorkoutDate({})
+    expect(result).toBeNull()
+  })
+
+  it('should return null for history with no entries', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBeNull()
+  })
+
+  it('should return the most recent date from single exercise', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+          { date: '2024-03-15T10:00:00Z', workoutId: 'w2', weight: 102.5, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+          { date: '2024-03-12T10:00:00Z', workoutId: 'w3', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-15T10:00:00Z')
+  })
+
+  it('should return the most recent date across multiple exercises', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+      'bench-T1': {
+        progressionKey: 'bench-T1',
+        exerciseName: 'Bench',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-20T10:00:00Z', workoutId: 'w2', weight: 60, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+      'deadlift-T1': {
+        progressionKey: 'deadlift-T1',
+        exerciseName: 'Deadlift',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-15T10:00:00Z', workoutId: 'w3', weight: 120, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-20T10:00:00Z')
+  })
+
+  it('should handle mixed empty and populated histories', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [],
+      },
+      'bench-T1': {
+        progressionKey: 'bench-T1',
+        exerciseName: 'Bench',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 60, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-10T10:00:00Z')
   })
 })

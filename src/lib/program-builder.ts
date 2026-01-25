@@ -34,8 +34,7 @@ export interface ImportPathParams {
   workoutsPerWeek: number
   workoutStats: {
     createdAt: string
-    totalWorkouts: number
-    mostRecentWorkoutDate: string | null
+    // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
   }
   progressionHistory: Record<string, ExerciseHistory>
 }
@@ -68,22 +67,16 @@ function createProgressionEntry(
   exerciseId: string,
   weight: number,
   stage: Stage,
-  lastWorkoutId: string | null = null,
-  lastWorkoutDate: string | null = null,
   amrapRecord = 0,
-  amrapRecordDate: string | null = null,
-  amrapRecordWorkoutId: string | null = null
+  amrapRecordDate: string | null = null
 ): ProgressionState {
   return {
     exerciseId,
     currentWeight: weight,
     baseWeight: weight,
     stage,
-    lastWorkoutId,
-    lastWorkoutDate,
     amrapRecord,
     amrapRecordDate,
-    amrapRecordWorkoutId,
   }
 }
 
@@ -146,8 +139,7 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
   state.program.workoutsPerWeek = workoutsPerWeek
   state.program.createdAt = workoutStats.createdAt
   state.program.hevyRoutineIds = { ...routineIds }
-  state.totalWorkouts = workoutStats.totalWorkouts
-  state.mostRecentWorkoutDate = workoutStats.mostRecentWorkoutDate
+  // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
   state.progressionHistory = progressionHistory
   state.settings = createDefaultSettings(unit)
 
@@ -191,8 +183,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           stage,
-          imported.analysis?.performance?.workoutId ?? null,
-          imported.analysis?.performance?.workoutDate ?? null,
           imported.analysis?.suggestion?.amrapReps ?? 0
         )
         processedProgressionKeys.add(t1Key)
@@ -228,8 +218,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           stage,
-          imported.analysis?.performance?.workoutId ?? null,
-          imported.analysis?.performance?.workoutDate ?? null,
           0 // T2 doesn't track AMRAP
         )
         processedProgressionKeys.add(t2Key)
@@ -262,8 +250,6 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
           exerciseId,
           weight,
           0, // T3 always stage 0
-          t3.analysis?.performance?.workoutId ?? null,
-          t3.analysis?.performance?.workoutDate ?? null,
           t3.analysis?.suggestion?.amrapReps ?? 0
         )
       }

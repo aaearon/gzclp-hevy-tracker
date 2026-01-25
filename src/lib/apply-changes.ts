@@ -47,13 +47,11 @@ export function applyPendingChange(
     ...exerciseProgression,
     currentWeight: change.newWeight,
     stage: change.newStage,
-    lastWorkoutId: change.workoutId,
-    lastWorkoutDate: change.workoutDate,
   }
 
   console.debug(
     `[applyPendingChange] Applied change for "${change.exerciseName}" (${change.tier}): ` +
-    `progressionKey="${key}", lastWorkoutId="${change.workoutId}", ` +
+    `progressionKey="${key}", workoutId="${change.workoutId}", ` +
     `weight: ${String(exerciseProgression.currentWeight)} -> ${String(change.newWeight)}`
   )
 
@@ -63,10 +61,10 @@ export function applyPendingChange(
   }
 
   // Update AMRAP record if a new PR was achieved
+  // Note: amrapRecordWorkoutId removed (Task 2) - can be derived from progressionHistory if needed
   if (change.newPR && change.newAmrapRecord !== undefined) {
     updatedProgression.amrapRecord = change.newAmrapRecord
     updatedProgression.amrapRecordDate = change.workoutDate
-    updatedProgression.amrapRecordWorkoutId = change.workoutId
   }
 
   return {

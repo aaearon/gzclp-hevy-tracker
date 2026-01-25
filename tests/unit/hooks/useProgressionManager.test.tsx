@@ -23,8 +23,6 @@ function createMockProgressionStorage(
         currentWeight: 100,
         stage: 0,
         baseWeight: 100,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 0,
       },
     },
@@ -170,8 +168,6 @@ describe('useProgressionManager', () => {
           currentWeight: 80,
           stage: 0,
           baseWeight: 80,
-          lastWorkoutId: null,
-          lastWorkoutDate: null,
           amrapRecord: 0,
         },
       }
@@ -185,40 +181,6 @@ describe('useProgressionManager', () => {
           'exercise-1': expect.any(Object), // existing
           'exercise-2': expect.any(Object), // new
         })
-      )
-    })
-  })
-
-  describe('setTotalWorkouts', () => {
-    it('should forward to storage hook', () => {
-      const mockStorage = createMockProgressionStorage()
-
-      const { result } = renderHook(() =>
-        useProgressionManager({ progressionStorage: mockStorage })
-      )
-
-      act(() => {
-        result.current.setTotalWorkouts(10)
-      })
-
-      expect(mockStorage.setTotalWorkouts).toHaveBeenCalledWith(10)
-    })
-  })
-
-  describe('setMostRecentWorkoutDate', () => {
-    it('should forward to storage hook', () => {
-      const mockStorage = createMockProgressionStorage()
-
-      const { result } = renderHook(() =>
-        useProgressionManager({ progressionStorage: mockStorage })
-      )
-
-      act(() => {
-        result.current.setMostRecentWorkoutDate('2024-01-15T10:00:00Z')
-      })
-
-      expect(mockStorage.setMostRecentWorkoutDate).toHaveBeenCalledWith(
-        '2024-01-15T10:00:00Z'
       )
     })
   })

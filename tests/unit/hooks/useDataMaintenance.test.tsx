@@ -32,8 +32,6 @@ describe('useDataMaintenance', () => {
         currentWeight: 100,
         stage: 0 as const,
         baseWeight: 100,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 0,
       },
     },

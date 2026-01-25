@@ -45,7 +45,6 @@ describe('ReviewModal - Discrepancy Display', () => {
     onApply: vi.fn(),
     onApplyAll: vi.fn(),
     onReject: vi.fn(),
-    onModify: vi.fn(),
     onClose: vi.fn(),
   }
 

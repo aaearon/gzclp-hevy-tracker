@@ -23,26 +23,24 @@ import type {
 // Context Value Type
 // =============================================================================
 
+/**
+ * Note: totalWorkouts and mostRecentWorkoutDate were removed (Task 2 - Derive Stats from History).
+ * - totalWorkouts: Now derived from Hevy API response during sync
+ * - mostRecentWorkoutDate: Now derived from progressionHistory via getMostRecentWorkoutDate()
+ */
 export interface ProgressionContextValue {
   // Read-only state
   progression: Record<string, ProgressionState>
   pendingChanges: PendingChange[]
   lastSync: string | null
-  totalWorkouts: number
-  mostRecentWorkoutDate: string | null
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
   needsPush: boolean
-  processedWorkoutIds: string[]
 
   // Progression mutations
   setInitialWeight: (exerciseId: string, weight: number, stage?: Stage) => void
   setProgressionByKey: (key: string, exerciseId: string, weight: number, stage?: Stage) => void
   updateProgression: (exerciseId: string, updates: Partial<ProgressionState>) => void
   updateProgressionBatch: (progressionUpdates: Record<string, ProgressionState>) => void
-
-  // Workout stats
-  setTotalWorkouts: (count: number) => void
-  setMostRecentWorkoutDate: (date: string | null) => void
 
   // Sync metadata
   setLastSync: (timestamp: string) => void
@@ -56,9 +54,6 @@ export interface ProgressionContextValue {
   addPendingChange: (change: PendingChange) => void
   removePendingChange: (id: string) => void
   clearPendingChanges: () => void
-
-  // Processed workout tracking
-  addProcessedWorkoutIds: (workoutIds: string[]) => void
 
   // Internal: expose storage for useProgram facade
   _progressionStorage: UseProgressionStorageResult
@@ -93,8 +88,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     acknowledgeDiscrepancy,
@@ -102,7 +95,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   } = useProgressionManager({ progressionStorage })
 
   // Memoize the context value
@@ -111,19 +103,14 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     progression: progressionStore.progression,
     pendingChanges: progressionStore.pendingChanges,
     lastSync: progressionStore.lastSync,
-    totalWorkouts: progressionStore.totalWorkouts,
-    mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
     acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
     needsPush: progressionStore.needsPush,
-    processedWorkoutIds: progressionStore.processedWorkoutIds ?? [],
 
     // Mutations
     setInitialWeight,
     setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     acknowledgeDiscrepancy,
@@ -131,7 +118,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
 
     // Internal
     _progressionStorage: progressionStorage,
@@ -142,8 +128,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     acknowledgeDiscrepancy,
@@ -151,7 +135,6 @@ export function ProgressionProvider({ children }: ProgressionProviderProps) {
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   ])
 
   return (

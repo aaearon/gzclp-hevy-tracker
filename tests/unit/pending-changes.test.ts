@@ -20,18 +20,16 @@ describe('[US3] Pending Changes Application', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 5,
+      amrapRecordDate: null,
     },
     'ex-bench': {
       exerciseId: 'ex-bench',
       currentWeight: 60,
       stage: 0,
       baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
+      amrapRecordDate: null,
     },
   }
 
@@ -97,8 +95,6 @@ describe('[US3] Pending Changes Application', () => {
 
       expect(updated['ex-squat'].currentWeight).toBe(105)
       expect(updated['ex-squat'].stage).toBe(0)
-      expect(updated['ex-squat'].lastWorkoutId).toBe('workout-1')
-      expect(updated['ex-squat'].lastWorkoutDate).toBe('2024-01-15T10:00:00Z')
     })
 
     it('should apply stage change', () => {
@@ -190,7 +186,6 @@ describe('[US3] Pending Changes Application', () => {
       const updated = applyAllPendingChanges(mockProgression, [change1, change2])
 
       expect(updated['ex-squat'].currentWeight).toBe(110)
-      expect(updated['ex-squat'].lastWorkoutId).toBe('workout-2')
     })
   })
 

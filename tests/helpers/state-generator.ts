@@ -160,9 +160,8 @@ export interface ProgressionStateOptions {
   currentWeight?: number
   stage?: Stage
   baseWeight?: number
-  lastWorkoutId?: string | null
-  lastWorkoutDate?: string | null
   amrapRecord?: number
+  amrapRecordDate?: string | null
 }
 
 export function createProgressionState(options: ProgressionStateOptions = {}): ProgressionState {
@@ -172,9 +171,8 @@ export function createProgressionState(options: ProgressionStateOptions = {}): P
     currentWeight: options.currentWeight ?? 60,
     stage: options.stage ?? 0,
     baseWeight: options.baseWeight ?? options.currentWeight ?? 60,
-    lastWorkoutId: options.lastWorkoutId ?? null,
-    lastWorkoutDate: options.lastWorkoutDate ?? null,
     amrapRecord: options.amrapRecord ?? 0,
+    amrapRecordDate: options.amrapRecordDate ?? null,
   }
 }
 
@@ -331,8 +329,6 @@ export interface GZCLPStateOptions {
   settings?: DeepPartial<UserSettings>
   lastSync?: string | null
   t3Schedule?: Record<GZCLPDay, string[]>
-  totalWorkouts?: number
-  mostRecentWorkoutDate?: string | null
   progressionHistory?: Record<string, ExerciseHistory>
   acknowledgedDiscrepancies?: AcknowledgedDiscrepancy[]
 }
@@ -348,10 +344,9 @@ export function createGZCLPState(options: GZCLPStateOptions = {}): GZCLPState {
     settings: createUserSettings(options.settings as UserSettingsOptions),
     lastSync: options.lastSync ?? null,
     t3Schedule: options.t3Schedule ?? { ...INITIAL_T3_SCHEDULE },
-    totalWorkouts: options.totalWorkouts ?? 0,
-    mostRecentWorkoutDate: options.mostRecentWorkoutDate ?? null,
     progressionHistory: options.progressionHistory ?? {},
     acknowledgedDiscrepancies: options.acknowledgedDiscrepancies ?? [],
+    needsPush: false,
   }
 }
 
@@ -506,9 +501,8 @@ export function createProgressionStore(options: Partial<ProgressionStore> = {}):
     progression: options.progression ?? {},
     pendingChanges: options.pendingChanges ?? [],
     lastSync: options.lastSync ?? null,
-    totalWorkouts: options.totalWorkouts ?? 0,
-    mostRecentWorkoutDate: options.mostRecentWorkoutDate ?? null,
     acknowledgedDiscrepancies: options.acknowledgedDiscrepancies ?? [],
+    needsPush: options.needsPush ?? false,
   }
 }
 
@@ -540,9 +534,8 @@ export function splitState(state: GZCLPState): {
       progression: state.progression,
       pendingChanges: state.pendingChanges,
       lastSync: state.lastSync,
-      totalWorkouts: state.totalWorkouts,
-      mostRecentWorkoutDate: state.mostRecentWorkoutDate,
       acknowledgedDiscrepancies: state.acknowledgedDiscrepancies,
+      needsPush: state.needsPush,
     },
     history: {
       progressionHistory: state.progressionHistory,
@@ -569,9 +562,8 @@ export function mergeStates(
     progression: progression.progression,
     pendingChanges: progression.pendingChanges,
     lastSync: progression.lastSync,
-    totalWorkouts: progression.totalWorkouts,
-    mostRecentWorkoutDate: progression.mostRecentWorkoutDate,
     acknowledgedDiscrepancies: progression.acknowledgedDiscrepancies,
+    needsPush: progression.needsPush,
     progressionHistory: history.progressionHistory,
   }
 }

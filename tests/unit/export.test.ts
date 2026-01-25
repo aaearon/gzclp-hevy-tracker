@@ -48,8 +48,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 100,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: 'workout-123',
-      lastWorkoutDate: '2024-01-14T10:00:00.000Z',
       amrapRecord: 8,
     },
     'ex-2': {
@@ -57,8 +55,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 60,
       stage: 1,
       baseWeight: 50,
-      lastWorkoutId: 'workout-124',
-      lastWorkoutDate: '2024-01-14T10:00:00.000Z',
       amrapRecord: 5,
     },
   },

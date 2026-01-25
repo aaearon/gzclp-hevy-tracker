@@ -23,14 +23,30 @@ import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
 import { deduplicatePendingChanges } from '@/lib/discrepancy-utils'
-import { calculateCurrentWeek, calculateDayOfWeek, calculateTotalWorkouts } from '@/utils/stats'
-import type { GZCLPDay, ProgressionState } from '@/types/state'
+import { applyPendingChange } from '@/lib/apply-changes'
+import { calculateCurrentWeek, calculateDayOfWeek } from '@/utils/stats'
+import type { GZCLPDay, ProgressionState, PendingChange } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
 import { DashboardContent } from './DashboardContent'
 import { ReviewModal } from '@/components/ReviewModal'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 import { PushConfirmDialog } from './PushConfirmDialog'
+import type { GZCLPState } from '@/types/state'
+
+/**
+ * Derive total unique workouts from progression history.
+ * Counts distinct workout IDs across all exercise histories.
+ */
+function deriveTotalWorkouts(progressionHistory: GZCLPState['progressionHistory']): number {
+  const workoutIds = new Set<string>()
+  for (const history of Object.values(progressionHistory)) {
+    for (const entry of history.entries) {
+      workoutIds.add(entry.workoutId)
+    }
+  }
+  return workoutIds.size
+}
 
 export function Dashboard() {
   const {
@@ -41,14 +57,12 @@ export function Dashboard() {
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
+    // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
-    addProcessedWorkoutIds,
   } = useProgram()
-  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule, processedWorkoutIds } = state
+  const { exercises, progression, settings, program, lastSync, apiKey, pendingChanges: storedPendingChanges, t3Schedule } = state
 
   // Toast notifications for visual feedback
   const { showToast } = useToast()
@@ -58,6 +72,9 @@ export function Dashboard() {
 
   // Track seen change IDs to avoid re-processing
   const previousChangeIds = useRef<Set<string>>(new Set())
+
+  // Track previous auto-applied count to show toast only once
+  const previousAutoAppliedCount = useRef(0)
 
   // Online status for offline detection [T102]
   const { isOnline, isHevyReachable, checkHevyConnection } = useOnlineStatus()
@@ -69,11 +86,26 @@ export function Dashboard() {
     }
   }, [isOnline, checkHevyConnection])
 
+  // Auto-apply callback for non-conflicting changes [Task 1]
+  const handleAutoApplyChange = useCallback(
+    (change: PendingChange) => {
+      // Apply the change to progression state
+      const updatedProgression = applyPendingChange(progression, change)
+      updateProgressionBatch(updatedProgression)
+      setNeedsPush(true)
+      // Record to history
+      recordHistoryEntry(change)
+    },
+    [progression, updateProgressionBatch, setNeedsPush, recordHistoryEntry]
+  )
+
   // Use sync flow hook for sync orchestration [Task 3.2]
   const {
     isSyncing,
     syncError,
     syncPendingChanges,
+    autoAppliedCount,
+    autoAppliedChanges,
     handleSync,
     clearError,
     clearSyncPendingChanges,
@@ -87,9 +119,11 @@ export function Dashboard() {
     isOnline,
     onLastSyncUpdate: setLastSync,
     onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
-    processedWorkoutIds,
+    progressionHistory: state.progressionHistory, // Derives processed workout IDs
     onDayAdvance: setCurrentDay, // Auto-advance day when workout is detected
     currentDay: program.currentDay, // For day mismatch detection
+    // Note: totalWorkouts removed (Task 2) - now derived from history
+    onAutoApplyChange: handleAutoApplyChange, // [Task 1] Auto-apply non-conflicting changes
   })
 
   // Handle progression updates from pending changes
@@ -110,14 +144,7 @@ export function Dashboard() {
     [setCurrentDay]
   )
 
-  // Handle workout completion - update stats
-  const handleWorkoutComplete = useCallback(
-    (workoutDate: string) => {
-      setTotalWorkouts(state.totalWorkouts + 1)
-      setMostRecentWorkoutDate(workoutDate)
-    },
-    [state.totalWorkouts, setTotalWorkouts, setMostRecentWorkoutDate]
-  )
+  // Note: handleWorkoutComplete removed (Task 2) - mostRecentWorkoutDate now derived from history
 
   // Merge stored pending changes with sync-generated ones
   // Deduplicate by progressionKey to prevent duplicates when sync runs multiple times
@@ -150,6 +177,54 @@ export function Dashboard() {
     syncPendingChanges.forEach((c) => previousChangeIds.current.add(c.id))
   }, [syncPendingChanges, storedPendingChanges, addPendingChange])
 
+  // Show toast when changes are auto-applied [Task 1]
+  // Includes detailed info when deloads are auto-applied
+  useEffect(() => {
+    // Only show toast if count increased
+    if (autoAppliedCount > previousAutoAppliedCount.current) {
+      const previousCount = previousAutoAppliedCount.current
+      previousAutoAppliedCount.current = autoAppliedCount
+
+      // Get newly applied changes (those after previousCount index)
+      const newlyAppliedChanges = autoAppliedChanges.slice(previousCount)
+      const newlyAppliedCount = newlyAppliedChanges.length
+
+      // Check for deloads in the newly applied changes
+      const deloads = newlyAppliedChanges.filter((c) => c.type === 'deload')
+      const hasDeloads = deloads.length > 0
+
+      // Build informative toast message
+      let message: string
+      if (hasDeloads) {
+        // Show deload details (e.g., "Squat T1 deloaded to 85kg")
+        const deloadDetails = deloads
+          .map((d) => `${d.exerciseName} ${d.tier} deloaded`)
+          .join(', ')
+        const otherCount = newlyAppliedCount - deloads.length
+        if (otherCount > 0) {
+          message = `${deloadDetails}. ${String(otherCount)} other change${otherCount === 1 ? '' : 's'} applied.`
+        } else {
+          message = deloadDetails
+        }
+      } else {
+        // Standard message for non-deload changes
+        message = newlyAppliedCount === 1
+          ? '1 change applied automatically'
+          : `${String(newlyAppliedCount)} changes applied automatically`
+      }
+
+      showToast({
+        type: 'success',
+        message,
+      })
+
+      // If there are conflicts, open the review modal (scheduled to avoid setState in effect)
+      if (syncPendingChanges.length > 0) {
+        queueMicrotask(() => { setIsReviewModalOpen(true) })
+      }
+    }
+  }, [autoAppliedCount, autoAppliedChanges, syncPendingChanges.length, showToast])
+
   // Callback when all changes are applied (either via applyAll or last individual apply)
   const handleAllChangesApplied = useCallback(() => {
     clearPendingChanges() // Clear from localStorage
@@ -157,7 +232,7 @@ export function Dashboard() {
   }, [clearPendingChanges, clearSyncPendingChanges])
 
   // Callback when a change is rejected - remove from localStorage
-  const handleRejectChange = useCallback((changeId: string, _workoutId: string) => {
+  const handleRejectChange = useCallback((changeId: string) => {
     removePendingChange(changeId)
   }, [removePendingChange])
 
@@ -167,7 +242,6 @@ export function Dashboard() {
     recentlyRejected,
     applyChange,
     rejectChange,
-    modifyChange,
     applyAllChanges,
     undoReject,
   } = usePendingChanges({
@@ -177,9 +251,7 @@ export function Dashboard() {
     currentDay: program.currentDay,
     onDayAdvance: handleDayAdvance,
     onRecordHistory: recordHistoryEntry,
-    onWorkoutComplete: handleWorkoutComplete,
     onAllChangesApplied: handleAllChangesApplied,
-    onAddProcessedWorkoutIds: addProcessedWorkoutIds,
     onRejectChange: handleRejectChange,
   })
 
@@ -230,8 +302,8 @@ export function Dashboard() {
   // Note: Discrepancy handling has been moved to ReviewModal
   // Discrepancy info is now shown inline on pending change cards
 
-  // Calculate week stats for header
-  const totalWorkouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
+  // Calculate week stats for header (derive from progression history)
+  const totalWorkouts = deriveTotalWorkouts(state.progressionHistory)
   const currentWeek = calculateCurrentWeek(totalWorkouts, state.program.workoutsPerWeek)
   const dayOfWeek = calculateDayOfWeek(totalWorkouts, state.program.workoutsPerWeek)
 
@@ -284,7 +356,6 @@ export function Dashboard() {
         onApply={applyChange}
         onApplyAll={handleApplyAllChanges}
         onReject={rejectChange}
-        onModify={modifyChange}
         onClose={() => { setIsReviewModalOpen(false) }}
         recentlyRejected={recentlyRejected}
         onUndoReject={undoReject}

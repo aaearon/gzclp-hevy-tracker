@@ -15,6 +15,7 @@ import { createPendingChangesFromAnalysis } from '@/lib/progression'
 import { deduplicateDiscrepancies } from '@/lib/discrepancy-utils'
 import type {
   ExerciseConfig,
+  ExerciseHistory,
   GZCLPDay,
   ProgressionState,
   PendingChange,
@@ -39,8 +40,8 @@ export interface UseProgressionProps {
     A2: string | null
     B2: string | null
   }
-  /** IDs of workouts that have already been processed (prevents reprocessing) */
-  processedWorkoutIds?: string[] | undefined
+  /** Progression history - used to derive processed workout IDs */
+  progressionHistory: Record<string, ExerciseHistory>
   /** Current day in the app state - used for day mismatch detection */
   currentDay?: GZCLPDay | undefined
 }
@@ -66,11 +67,35 @@ export interface UseProgressionResult {
   analysisResults: WorkoutAnalysisResult[]
   /** The most recent unprocessed workout day detected during sync (for auto day advancement) */
   detectedWorkoutDay: GZCLPDay | null
+  /** Number of new workouts processed in the most recent sync */
+  newWorkoutsCount: number
 
   // Actions
   syncWorkouts: () => Promise<void>
   clearError: () => void
   clearPendingChanges: () => void
+}
+
+// =============================================================================
+// Utility Functions
+// =============================================================================
+
+/**
+ * Derive processed workout IDs from progression history.
+ * Each exercise history entry contains a workoutId, so we collect all unique IDs.
+ * This provides better coverage than a separate array since each exercise
+ * has up to 200 entries (vs the old global 200 cap).
+ */
+function getProcessedWorkoutIds(
+  progressionHistory: Record<string, ExerciseHistory>
+): Set<string> {
+  const processed = new Set<string>()
+  for (const history of Object.values(progressionHistory)) {
+    for (const entry of history.entries) {
+      processed.add(entry.workoutId)
+    }
+  }
+  return processed
 }
 
 // =============================================================================
@@ -100,7 +125,7 @@ function findDayByRoutineId(
 }
 
 export function useProgression(props: UseProgressionProps): UseProgressionResult {
-  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds, processedWorkoutIds = [], currentDay } = props
+  const { apiKey, exercises, progression, settings, lastSync, hevyRoutineIds, progressionHistory, currentDay } = props
 
   // State
   const [isSyncing, setIsSyncing] = useState(false)
@@ -110,6 +135,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyInfo[]>([])
   const [analysisResults, setAnalysisResults] = useState<WorkoutAnalysisResult[]>([])
   const [detectedWorkoutDay, setDetectedWorkoutDay] = useState<GZCLPDay | null>(null)
+  const [newWorkoutsCount, setNewWorkoutsCount] = useState(0)
 
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true)
@@ -170,17 +196,8 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         return matchedDay !== null
       })
 
-      // Build set of already-processed workout IDs from:
-      // 1. The global processedWorkoutIds array (persisted, prevents reprocessing after lastWorkoutId updates)
-      // 2. Current lastWorkoutId values (backwards compatibility for existing users)
-      const processedWorkoutIdSet = new Set<string>(processedWorkoutIds)
-      for (const [key, prog] of Object.entries(progression)) {
-        if (prog.lastWorkoutId) {
-          processedWorkoutIdSet.add(prog.lastWorkoutId)
-          // Debug: log which progression entries have lastWorkoutId set
-          console.debug(`[syncWorkouts] Progression "${key}" has lastWorkoutId: ${prog.lastWorkoutId}`)
-        }
-      }
+      // Build set of already-processed workout IDs from progression history
+      const processedWorkoutIdSet = getProcessedWorkoutIds(progressionHistory)
 
       // Filter out already-processed workouts
       const unprocessedWorkouts = relevantWorkouts.filter(
@@ -275,6 +292,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
       setPendingChanges(changes)
       setLastSyncTime(new Date().toISOString())
       setDetectedWorkoutDay(mostRecentWorkoutDay)
+      setNewWorkoutsCount(unprocessedWorkouts.length)
 
     } catch (error) {
       // Don't update state if unmounted or request was cancelled
@@ -295,7 +313,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
         setIsSyncing(false)
       }
     }
-  }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds, processedWorkoutIds])
+  }, [client, exercises, progression, settings.weightUnit, hevyRoutineIds, progressionHistory, currentDay])
 
   /**
    * Clear sync error.
@@ -321,6 +339,7 @@ export function useProgression(props: UseProgressionProps): UseProgressionResult
     discrepancies,
     analysisResults,
     detectedWorkoutDay,
+    newWorkoutsCount,
     syncWorkouts,
     clearError,
     clearPendingChanges,

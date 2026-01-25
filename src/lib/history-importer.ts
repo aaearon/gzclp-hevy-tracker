@@ -43,8 +43,6 @@ export interface AmrapRecordInfo {
   amrapRecord: number
   /** ISO date when the record was set */
   amrapRecordDate: string
-  /** Workout ID where the record was set */
-  amrapRecordWorkoutId: string
 }
 
 export interface AmrapBackfillResult {
@@ -242,7 +240,6 @@ export async function backfillAmrapRecords(
           progressionKey,
           amrapRecord: amrapReps,
           amrapRecordDate: workout.start_time,
-          amrapRecordWorkoutId: workout.id,
         }
       }
     }
@@ -281,7 +278,6 @@ export function applyAmrapBackfill(
         ...existing,
         amrapRecord: record.amrapRecord,
         amrapRecordDate: record.amrapRecordDate,
-        amrapRecordWorkoutId: record.amrapRecordWorkoutId,
       }
     }
   }

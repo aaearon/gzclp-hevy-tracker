@@ -40,8 +40,6 @@ function createProgression(
     currentWeight,
     stage,
     baseWeight: currentWeight,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
   }
 }

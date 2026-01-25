@@ -2,18 +2,16 @@
  * PendingChangeCard Component
  *
  * Displays a single pending change with current vs proposed values.
+ * Read-only presentation with Apply/Reject actions.
  */
 
-import { useState } from 'react'
 import type { PendingChange, WeightUnit } from '@/types/state'
-import { WeightEditor } from './WeightEditor'
 
 export interface PendingChangeCardProps {
   change: PendingChange
   unit: WeightUnit
   onApply: (change: PendingChange) => void
   onReject: (changeId: string) => void
-  onModify: (changeId: string, newWeight: number) => void
 }
 
 /**
@@ -37,15 +35,8 @@ export function PendingChangeCard({
   unit,
   onApply,
   onReject,
-  onModify,
 }: PendingChangeCardProps) {
-  const [isEditing, setIsEditing] = useState(false)
   const badge = getChangeTypeBadge(change.type)
-
-  const handleModify = (newWeight: number) => {
-    onModify(change.id, newWeight)
-    setIsEditing(false)
-  }
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-white">
@@ -84,30 +75,21 @@ export function PendingChangeCard({
           />
         </svg>
 
-        {isEditing ? (
-          <WeightEditor
-            initialWeight={change.newWeight}
-            unit={unit}
-            onConfirm={handleModify}
-            onCancel={() => { setIsEditing(false) }}
-          />
-        ) : (
-          <div className="text-center">
-            <div className="text-sm text-gray-500">Proposed</div>
-            <div
-              className={`text-lg font-semibold ${
-                change.newWeight > change.currentWeight
-                  ? 'text-green-600'
-                  : change.newWeight < change.currentWeight
-                    ? 'text-red-600'
-                    : 'text-gray-900'
-              }`}
-            >
-              {change.newWeight}
-              {unit}
-            </div>
+        <div className="text-center">
+          <div className="text-sm text-gray-500">Proposed</div>
+          <div
+            className={`text-lg font-semibold ${
+              change.newWeight > change.currentWeight
+                ? 'text-green-600'
+                : change.newWeight < change.currentWeight
+                  ? 'text-red-600'
+                  : 'text-gray-900'
+            }`}
+          >
+            {change.newWeight}
+            {unit}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Scheme Change */}
@@ -131,18 +113,6 @@ export function PendingChangeCard({
         >
           Apply
         </button>
-
-        {!isEditing && (
-          <button
-            type="button"
-            onClick={() => { setIsEditing(true) }}
-            aria-label="Modify weight"
-            className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100
-                       hover:bg-gray-200 rounded-md min-h-[44px] transition-colors"
-          >
-            Edit
-          </button>
-        )}
 
         <button
           type="button"

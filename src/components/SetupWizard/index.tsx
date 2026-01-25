@@ -191,8 +191,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           workoutsPerWeek: program.state.program.workoutsPerWeek,
           workoutStats: {
             createdAt: weeksResult.calculatedCreatedAt,
-            totalWorkouts: weeksResult.matchingWorkoutCount,
-            mostRecentWorkoutDate: weeksResult.mostRecentWorkoutDate,
           },
           progressionHistory,
         })

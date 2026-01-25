@@ -53,6 +53,10 @@ export interface ConfigState {
  * Progression state stored in localStorage.
  * Contains runtime workout progression data.
  * Changes frequently during workouts.
+ *
+ * Note: totalWorkouts and mostRecentWorkoutDate were removed in Task 2 (Derive Stats from History).
+ * - totalWorkouts: Now derived from Hevy API response during sync
+ * - mostRecentWorkoutDate: Now derived from progressionHistory via getMostRecentWorkoutDate()
  */
 export interface ProgressionStore {
   /** Current progression state for each exercise/progression key */
@@ -61,20 +65,10 @@ export interface ProgressionStore {
   pendingChanges: PendingChange[]
   /** Last sync timestamp (ISO string) */
   lastSync: string | null
-  /** Total workout count */
-  totalWorkouts: number
-  /** Most recent workout date (ISO string) */
-  mostRecentWorkoutDate: string | null
   /** Discrepancies the user has acknowledged */
   acknowledgedDiscrepancies: AcknowledgedDiscrepancy[]
   /** Whether local progression differs from Hevy and needs to be pushed */
   needsPush: boolean
-  /**
-   * IDs of all workouts that have been processed (changes applied).
-   * Prevents reprocessing when lastWorkoutId is updated to a newer workout.
-   * Pruned to last 200 entries to prevent unbounded growth.
-   */
-  processedWorkoutIds?: string[]
 }
 
 // =============================================================================
@@ -153,6 +147,7 @@ export function isConfigState(obj: unknown): obj is ConfigState {
 
 /**
  * Check if an object is a valid ProgressionStore.
+ * Note: totalWorkouts and mostRecentWorkoutDate are no longer stored (derived instead).
  */
 export function isProgressionStore(obj: unknown): obj is ProgressionStore {
   if (!obj || typeof obj !== 'object') return false
@@ -161,7 +156,6 @@ export function isProgressionStore(obj: unknown): obj is ProgressionStore {
     typeof store.progression === 'object' &&
     Array.isArray(store.pendingChanges) &&
     (store.lastSync === null || typeof store.lastSync === 'string') &&
-    typeof store.totalWorkouts === 'number' &&
     Array.isArray(store.acknowledgedDiscrepancies) &&
     // needsPush is optional for backwards compatibility (defaults to false)
     (store.needsPush === undefined || typeof store.needsPush === 'boolean')

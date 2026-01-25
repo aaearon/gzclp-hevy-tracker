@@ -9,7 +9,6 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToastProvider } from '@/contexts/ToastContext'
-import { ProgramProvider } from '@/contexts/ProgramContext'
 import { ConfigProvider } from '@/contexts/ConfigContext'
 import { ProgressionProvider } from '@/contexts/ProgressionContext'
 import { HistoryProvider } from '@/contexts/HistoryContext'
@@ -55,10 +54,8 @@ function GranularProviders({ children }: { children: ReactNode }) {
 
 /**
  * App providers component
- * Provides program state via ProgramContext and runs data maintenance tasks.
+ * Wraps children with granular contexts and runs data maintenance tasks.
  * Must be inside RootLayout (after useProgram hook can run).
- *
- * Also wraps children with granular contexts for incremental migration.
  */
 function AppProviders({ children }: { children: ReactNode }) {
   const { state, updateProgressionBatch, setProgressionHistory } = useProgram()
@@ -74,21 +71,13 @@ function AppProviders({ children }: { children: ReactNode }) {
     updateProgressionBatch,
   })
 
-  // Provide read-only program state to all components (H2 fix)
-  // Also wrap with granular contexts for incremental migration
+  // Provide granular contexts for components
+  // Note: ProgramContext was removed in Task 3 simplification
+  // Components now use granular contexts directly via useConfigContext, etc.
   return (
-    <ProgramProvider
-      weightUnit={state.settings.weightUnit}
-      exercises={state.exercises}
-      progression={state.progression}
-      t3Schedule={state.t3Schedule}
-      currentDay={state.program.currentDay}
-      increments={state.settings.increments}
-    >
-      <GranularProviders>
-        {children}
-      </GranularProviders>
-    </ProgramProvider>
+    <GranularProviders>
+      {children}
+    </GranularProviders>
   )
 }
 

@@ -27,8 +27,6 @@ function createDefaultProgressionStore(): ProgressionStore {
     progression: {},
     pendingChanges: [],
     lastSync: null,
-    totalWorkouts: 0,
-    mostRecentWorkoutDate: null,
     acknowledgedDiscrepancies: [],
     needsPush: false,
   }
@@ -60,13 +58,9 @@ export interface UseProgressionStorageResult {
   clearPendingChanges: () => void
 
   // Sync Metadata
+  // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
   setLastSync: (timestamp: string | null) => void
-  setTotalWorkouts: (count: number) => void
-  setMostRecentWorkoutDate: (date: string | null) => void
   setNeedsPush: (needsPush: boolean) => void
-
-  // Processed Workout Tracking
-  addProcessedWorkoutIds: (workoutIds: string[]) => void
 
   // Discrepancy Acknowledgment
   acknowledgeDiscrepancy: (exerciseId: string, weight: number, tier: Tier) => void
@@ -89,36 +83,14 @@ export function useProgressionStorage(): UseProgressionStorageResult {
   )
 
   // Ensure store has all required fields
-  // Also seed processedWorkoutIds from existing lastWorkoutId values if empty (migration)
   const store = useMemo((): ProgressionStore => {
     const defaultStore = createDefaultProgressionStore()
-    let processedWorkoutIds = rawStore.processedWorkoutIds ?? []
-
-    // Migration: if processedWorkoutIds is empty but we have progressions with lastWorkoutId,
-    // seed it with those values to prevent old workouts from being reprocessed
-    if (processedWorkoutIds.length === 0 && rawStore.progression) {
-      const seedIds = Object.values(rawStore.progression)
-        .map((p) => p.lastWorkoutId)
-        .filter((id): id is string => id !== null)
-      if (seedIds.length > 0) {
-        processedWorkoutIds = seedIds
-        // Persist the seeded values to localStorage
-        try {
-          const updatedStore = { ...rawStore, processedWorkoutIds: seedIds }
-          localStorage.setItem(STORAGE_KEYS.PROGRESSION, JSON.stringify(updatedStore))
-        } catch {
-          // Ignore write errors during migration
-        }
-      }
-    }
-
     return {
       ...defaultStore,
       ...rawStore,
       pendingChanges: rawStore.pendingChanges ?? [],
       acknowledgedDiscrepancies: rawStore.acknowledgedDiscrepancies ?? [],
       needsPush: rawStore.needsPush ?? false,
-      processedWorkoutIds,
     }
   }, [rawStore])
 
@@ -158,11 +130,8 @@ export function useProgressionStorage(): UseProgressionStorageResult {
             currentWeight: weight,
             baseWeight: weight,
             stage,
-            lastWorkoutId: null,
-            lastWorkoutDate: null,
             amrapRecord: 0,
             amrapRecordDate: null,
-            amrapRecordWorkoutId: null,
           },
         },
       }))
@@ -218,6 +187,7 @@ export function useProgressionStorage(): UseProgressionStorageResult {
   }, [setRawStore])
 
   // Sync Metadata
+  // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
   const setLastSync = useCallback(
     (timestamp: string | null) => {
       setRawStore((prev) => ({ ...prev, lastSync: timestamp }))
@@ -225,45 +195,9 @@ export function useProgressionStorage(): UseProgressionStorageResult {
     [setRawStore]
   )
 
-  const setTotalWorkouts = useCallback(
-    (count: number) => {
-      setRawStore((prev) => ({ ...prev, totalWorkouts: count }))
-    },
-    [setRawStore]
-  )
-
-  const setMostRecentWorkoutDate = useCallback(
-    (date: string | null) => {
-      setRawStore((prev) => ({ ...prev, mostRecentWorkoutDate: date }))
-    },
-    [setRawStore]
-  )
-
   const setNeedsPush = useCallback(
     (needsPush: boolean) => {
       setRawStore((prev) => ({ ...prev, needsPush }))
-    },
-    [setRawStore]
-  )
-
-  // Processed Workout Tracking
-  // Prevents reprocessing workouts when lastWorkoutId is updated to a newer value
-  // Set to 200 to handle users with longer histories (API fetches 10 at a time, so 200 = ~20 syncs)
-  const MAX_PROCESSED_WORKOUT_IDS = 200
-
-  const addProcessedWorkoutIds = useCallback(
-    (workoutIds: string[]) => {
-      if (workoutIds.length === 0) return
-      setRawStore((prev) => {
-        const existing = prev.processedWorkoutIds ?? []
-        const existingSet = new Set(existing)
-        const newIds = workoutIds.filter((id) => !existingSet.has(id))
-        if (newIds.length === 0) return prev
-
-        // Add new IDs and prune to keep only the most recent entries
-        const updated = [...existing, ...newIds].slice(-MAX_PROCESSED_WORKOUT_IDS)
-        return { ...prev, processedWorkoutIds: updated }
-      })
     },
     [setRawStore]
   )
@@ -322,10 +256,7 @@ export function useProgressionStorage(): UseProgressionStorageResult {
     removePendingChange,
     clearPendingChanges,
     setLastSync,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setNeedsPush,
-    addProcessedWorkoutIds,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,
     resetProgression,

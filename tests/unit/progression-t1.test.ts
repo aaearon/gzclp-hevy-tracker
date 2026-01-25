@@ -22,8 +22,6 @@ describe('[US2] T1 Progression Logic', () => {
     currentWeight: 100,
     stage: 0,
     baseWeight: 100,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
   }
 

@@ -32,8 +32,6 @@ describe('createPendingChange', () => {
     currentWeight: 100,
     stage: 0,
     baseWeight: 100,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 5,
   }
 
@@ -139,8 +137,6 @@ describe('createPendingChange', () => {
       currentWeight: 50,
       stage: 0,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     }
 
@@ -232,8 +228,6 @@ describe('createPendingChangesFromAnalysis', () => {
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 5,
     },
     'bench-T2': {
@@ -241,8 +235,6 @@ describe('createPendingChangesFromAnalysis', () => {
       currentWeight: 60,
       stage: 0,
       baseWeight: 60,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ex-lat': {
@@ -250,8 +242,6 @@ describe('createPendingChangesFromAnalysis', () => {
       currentWeight: 40,
       stage: 0,
       baseWeight: 40,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   }
@@ -461,8 +451,6 @@ describe('createPendingChangesFromAnalysis', () => {
         currentWeight: weightKg, // Stored in kg
         stage: 0,
         baseWeight: weightKg,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }

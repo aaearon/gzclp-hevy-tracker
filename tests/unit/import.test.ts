@@ -40,8 +40,6 @@ const createValidExportData = (): Record<string, unknown> => ({
       currentWeight: 100,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: 'workout-123',
-      lastWorkoutDate: '2024-01-14T10:00:00.000Z',
       amrapRecord: 8,
     },
   },
@@ -279,20 +277,6 @@ describe('[US6] Data Import - importData', () => {
     expect(result.t3Schedule).toEqual({ A1: [], B1: [], A2: [], B2: [] })
   })
 
-  it('should provide default for missing totalWorkouts', () => {
-    const data = createValidExportData()
-    delete data.totalWorkouts
-    const result = importData(JSON.stringify(data))
-    expect(result.totalWorkouts).toBe(0)
-  })
-
-  it('should provide default for missing mostRecentWorkoutDate', () => {
-    const data = createValidExportData()
-    delete data.mostRecentWorkoutDate
-    const result = importData(JSON.stringify(data))
-    expect(result.mostRecentWorkoutDate).toBeNull()
-  })
-
   it('should provide default for missing needsPush', () => {
     const data = createValidExportData()
     delete data.needsPush
@@ -411,8 +395,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 100,
         stage: 5, // invalid: must be 0, 1, or 2
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }
@@ -427,8 +409,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 'heavy', // invalid: must be number
         stage: 0,
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }
@@ -470,8 +450,6 @@ describe('[US6] Data Import - Deep Validation', () => {
         currentWeight: 100,
         stage: 0,
         baseWeight: 80,
-        lastWorkoutId: null,
-        lastWorkoutDate: null,
         amrapRecord: 5,
       },
     }

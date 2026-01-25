@@ -7,7 +7,7 @@
  * [Task 4.2] Undo reject functionality
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { PendingChange, WeightUnit } from '@/types/state'
 import { TierBadge } from '@/components/common/TierBadge'
 import { DayBadge } from '@/components/common/DayBadge'
@@ -19,7 +19,6 @@ interface ReviewModalProps {
   onApply: (change: PendingChange) => void
   onApplyAll: () => void
   onReject: (changeId: string) => void
-  onModify: (changeId: string, newWeight: number) => void
   onClose: () => void
   // Undo props [Task 4.2]
   recentlyRejected?: PendingChange | null
@@ -69,22 +68,12 @@ function PendingChangeCard({
   unit,
   onApply,
   onReject,
-  onModify,
 }: {
   change: PendingChange
   unit: WeightUnit
   onApply: () => void
   onReject: () => void
-  onModify: (newWeight: number) => void
 }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editWeight, setEditWeight] = useState(change.newWeight)
-
-  const handleConfirmEdit = () => {
-    onModify(editWeight)
-    setIsEditing(false)
-  }
-
   const typeConfig = changeTypeConfig[change.type] ?? {
     label: change.type,
     bgClass: 'bg-gray-100 dark:bg-gray-700',
@@ -153,32 +142,9 @@ function PendingChangeCard({
           <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                role="spinbutton"
-                value={editWeight}
-                onChange={(e) => {
-                  const parsed = parseFloat(e.target.value)
-                  setEditWeight(isNaN(parsed) ? 0 : parsed)
-                }}
-                className="w-24 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-lg"
-                step="2.5"
-              />
-              <button
-                type="button"
-                onClick={handleConfirmEdit}
-                className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[44px]"
-              >
-                Confirm
-              </button>
-            </div>
-          ) : (
-            <span className="font-semibold text-gray-900 dark:text-gray-100">
-              {change.newWeight} {unit}
-            </span>
-          )}
+          <span className="font-semibold text-gray-900 dark:text-gray-100">
+            {change.newWeight} {unit}
+          </span>
         </div>
       </div>
 
@@ -209,13 +175,6 @@ function PendingChangeCard({
         >
           Reject
         </button>
-        <button
-          type="button"
-          onClick={() => { setIsEditing(true) }}
-          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 min-h-[44px]"
-        >
-          Edit Weight
-        </button>
       </div>
     </div>
   )
@@ -228,7 +187,6 @@ export function ReviewModal({
   onApply,
   onApplyAll,
   onReject,
-  onModify,
   onClose,
   recentlyRejected,
   onUndoReject,
@@ -331,7 +289,6 @@ export function ReviewModal({
                   unit={unit}
                   onApply={() => { onApply(change) }}
                   onReject={() => { onReject(change.id) }}
-                  onModify={(newWeight) => { onModify(change.id, newWeight) }}
                 />
               ))}
 

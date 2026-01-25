@@ -175,37 +175,6 @@ export function analyzeWorkout(
   return results
 }
 
-// =============================================================================
-// Sync State
-// =============================================================================
-
-export interface SyncState {
-  lastProcessedWorkoutId: string | null
-  lastProcessedDate: string | null
-}
-
-/**
- * Filter workouts to only include those after the last processed workout.
- * Workouts should be provided in chronological order (oldest first).
- */
-export function filterNewWorkouts(
-  workouts: Workout[],
-  lastProcessedWorkoutId: string | null
-): Workout[] {
-  if (!lastProcessedWorkoutId) {
-    return workouts
-  }
-
-  const lastIndex = workouts.findIndex((w) => w.id === lastProcessedWorkoutId)
-  if (lastIndex === -1) {
-    // Last processed workout not found, return all
-    return workouts
-  }
-
-  // Return workouts after the last processed one
-  return workouts.slice(lastIndex + 1)
-}
-
 /**
  * Sort workouts by start time (oldest first for chronological processing).
  */

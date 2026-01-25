@@ -153,8 +153,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 100,
       stage: 0,
       baseWeight: 100,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'squat-T2': {
@@ -162,8 +160,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 70,
       stage: 0,
       baseWeight: 70,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'bench-T1': {
@@ -171,8 +167,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 80,
       stage: 0,
       baseWeight: 80,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'bench-T2': {
@@ -180,8 +174,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 55,
       stage: 0,
       baseWeight: 55,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ohp-T1': {
@@ -189,8 +181,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 50,
       stage: 0,
       baseWeight: 50,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'ohp-T2': {
@@ -198,8 +188,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 35,
       stage: 0,
       baseWeight: 35,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'deadlift-T1': {
@@ -207,8 +195,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 120,
       stage: 0,
       baseWeight: 120,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     'deadlift-T2': {
@@ -216,8 +202,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 85,
       stage: 0,
       baseWeight: 85,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     // T3s use exerciseId directly
@@ -226,8 +210,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 20,
       stage: 0,
       baseWeight: 20,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
     rows: {
@@ -235,8 +217,6 @@ const createMockState = (): GZCLPState => ({
       currentWeight: 40,
       stage: 0,
       baseWeight: 40,
-      lastWorkoutId: null,
-      lastWorkoutDate: null,
       amrapRecord: 0,
     },
   },

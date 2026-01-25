@@ -30,8 +30,6 @@ const mockProgression: Record<string, ProgressionState> = {
     currentWeight: 100,
     stage: 0,
     baseWeight: 100,
-    lastWorkoutId: null,
-    lastWorkoutDate: null,
     amrapRecord: 0,
   },
 }
