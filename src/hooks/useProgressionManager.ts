@@ -43,12 +43,6 @@ export interface UseProgressionManagerResult {
   /** Update multiple exercises' progressions at once */
   updateProgressionBatch: (progressionUpdates: Record<string, ProgressionState>) => void
 
-  /** Set total workout count */
-  setTotalWorkouts: (count: number) => void
-
-  /** Set most recent workout date */
-  setMostRecentWorkoutDate: (date: string | null) => void
-
   /** Set last sync timestamp */
   setLastSync: (timestamp: string) => void
 
@@ -145,19 +139,7 @@ export function useProgressionManager({
     [progressionStorage]
   )
 
-  const setTotalWorkouts = useCallback(
-    (count: number) => {
-      progressionStorage.setTotalWorkouts(count)
-    },
-    [progressionStorage]
-  )
-
-  const setMostRecentWorkoutDate = useCallback(
-    (date: string | null) => {
-      progressionStorage.setMostRecentWorkoutDate(date)
-    },
-    [progressionStorage]
-  )
+  // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
 
   const setLastSync = useCallback(
     (timestamp: string) => {
@@ -207,8 +189,6 @@ export function useProgressionManager({
     setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     acknowledgeDiscrepancy,

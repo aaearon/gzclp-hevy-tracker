@@ -44,7 +44,6 @@ describe('useSyncFlow', () => {
       baseWeight: 100,
       amrapRecord: 5,
       amrapRecordDate: null,
-      amrapRecordWorkoutId: null,
     },
   }
 

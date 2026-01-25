@@ -193,6 +193,7 @@ export function importData(data: string): GZCLPState {
   }
 
   // Ensure required fields have defaults for backwards compatibility
+  // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
   const state = {
     ...stateData,
     // Existing defaults
@@ -201,8 +202,6 @@ export function importData(data: string): GZCLPState {
     // New defaults for fields added in later versions
     pendingChanges: stateData.pendingChanges ?? [],
     t3Schedule: stateData.t3Schedule ?? { A1: [], B1: [], A2: [], B2: [] },
-    totalWorkouts: stateData.totalWorkouts ?? 0,
-    mostRecentWorkoutDate: stateData.mostRecentWorkoutDate ?? null,
     needsPush: stateData.needsPush ?? false,
     lastSync: stateData.lastSync ?? null,
     // Always update version to current

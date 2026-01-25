@@ -113,6 +113,12 @@ export interface ExerciseConfig {
 // Progression State
 // =============================================================================
 
+/**
+ * Progression state for a single exercise/tier.
+ *
+ * Note: amrapRecordWorkoutId was removed in Task 2 (Derive Stats from History)
+ * as it was never queried. If needed, it can be derived from progressionHistory.
+ */
 export interface ProgressionState {
   exerciseId: string
   currentWeight: number
@@ -122,8 +128,6 @@ export interface ProgressionState {
   amrapRecord: number
   /** ISO date when the AMRAP record was set (null for legacy/unknown) */
   amrapRecordDate: string | null
-  /** Workout ID where the AMRAP record was set (null for legacy/unknown) */
-  amrapRecordWorkoutId: string | null
 }
 
 // =============================================================================
@@ -321,6 +325,13 @@ export interface AcknowledgedDiscrepancy {
 // Root State
 // =============================================================================
 
+/**
+ * Root state for import/export compatibility.
+ *
+ * Note: totalWorkouts and mostRecentWorkoutDate were removed in Task 2 (Derive Stats from History).
+ * - totalWorkouts: Now derived from Hevy API response during sync
+ * - mostRecentWorkoutDate: Now derived from progressionHistory via getMostRecentWorkoutDate()
+ */
 export interface GZCLPState {
   version: string
   apiKey: string
@@ -335,11 +346,6 @@ export interface GZCLPState {
 
   /** Per-day T3 schedule - maps each day to its T3 exercise IDs */
   t3Schedule: Record<GZCLPDay, string[]>
-
-  /** Total workout count matching GZCLP routines (from Hevy API) */
-  totalWorkouts: number
-  /** Most recent workout date matching GZCLP routines (ISO string) */
-  mostRecentWorkoutDate: string | null
 
   /** Progression history for charts (keyed by progressionKey) */
   progressionHistory: Record<string, ExerciseHistory>

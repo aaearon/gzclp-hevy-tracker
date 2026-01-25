@@ -27,8 +27,6 @@ function createDefaultProgressionStore(): ProgressionStore {
     progression: {},
     pendingChanges: [],
     lastSync: null,
-    totalWorkouts: 0,
-    mostRecentWorkoutDate: null,
     acknowledgedDiscrepancies: [],
     needsPush: false,
   }
@@ -60,9 +58,8 @@ export interface UseProgressionStorageResult {
   clearPendingChanges: () => void
 
   // Sync Metadata
+  // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
   setLastSync: (timestamp: string | null) => void
-  setTotalWorkouts: (count: number) => void
-  setMostRecentWorkoutDate: (date: string | null) => void
   setNeedsPush: (needsPush: boolean) => void
 
   // Discrepancy Acknowledgment
@@ -135,7 +132,6 @@ export function useProgressionStorage(): UseProgressionStorageResult {
             stage,
             amrapRecord: 0,
             amrapRecordDate: null,
-            amrapRecordWorkoutId: null,
           },
         },
       }))
@@ -191,23 +187,10 @@ export function useProgressionStorage(): UseProgressionStorageResult {
   }, [setRawStore])
 
   // Sync Metadata
+  // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
   const setLastSync = useCallback(
     (timestamp: string | null) => {
       setRawStore((prev) => ({ ...prev, lastSync: timestamp }))
-    },
-    [setRawStore]
-  )
-
-  const setTotalWorkouts = useCallback(
-    (count: number) => {
-      setRawStore((prev) => ({ ...prev, totalWorkouts: count }))
-    },
-    [setRawStore]
-  )
-
-  const setMostRecentWorkoutDate = useCallback(
-    (date: string | null) => {
-      setRawStore((prev) => ({ ...prev, mostRecentWorkoutDate: date }))
     },
     [setRawStore]
   )
@@ -273,8 +256,6 @@ export function useProgressionStorage(): UseProgressionStorageResult {
     removePendingChange,
     clearPendingChanges,
     setLastSync,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setNeedsPush,
     acknowledgeDiscrepancy,
     clearAcknowledgedDiscrepancies,

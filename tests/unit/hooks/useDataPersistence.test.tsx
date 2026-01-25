@@ -129,12 +129,11 @@ const sampleState: GZCLPState = {
       stage: 1,
       baseWeight: 140,
       amrapRecord: 8,
+      amrapRecordDate: null,
     },
   },
   pendingChanges: [],
   lastSync: '2024-06-15T10:00:00Z',
-  totalWorkouts: 20,
-  mostRecentWorkoutDate: '2024-06-15',
   acknowledgedDiscrepancies: [],
   needsPush: false,
   progressionHistory: {
@@ -216,8 +215,6 @@ describe('useDataPersistence', () => {
         progression: sampleState.progression,
         pendingChanges: sampleState.pendingChanges,
         lastSync: sampleState.lastSync,
-        totalWorkouts: sampleState.totalWorkouts,
-        mostRecentWorkoutDate: sampleState.mostRecentWorkoutDate,
         acknowledgedDiscrepancies: sampleState.acknowledgedDiscrepancies,
         needsPush: sampleState.needsPush,
       })

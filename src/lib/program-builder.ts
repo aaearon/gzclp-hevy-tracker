@@ -34,8 +34,7 @@ export interface ImportPathParams {
   workoutsPerWeek: number
   workoutStats: {
     createdAt: string
-    totalWorkouts: number
-    mostRecentWorkoutDate: string | null
+    // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
   }
   progressionHistory: Record<string, ExerciseHistory>
 }
@@ -69,8 +68,7 @@ function createProgressionEntry(
   weight: number,
   stage: Stage,
   amrapRecord = 0,
-  amrapRecordDate: string | null = null,
-  amrapRecordWorkoutId: string | null = null
+  amrapRecordDate: string | null = null
 ): ProgressionState {
   return {
     exerciseId,
@@ -79,7 +77,6 @@ function createProgressionEntry(
     stage,
     amrapRecord,
     amrapRecordDate,
-    amrapRecordWorkoutId,
   }
 }
 
@@ -142,8 +139,7 @@ export function buildImportProgramState(params: ImportPathParams): GZCLPState {
   state.program.workoutsPerWeek = workoutsPerWeek
   state.program.createdAt = workoutStats.createdAt
   state.program.hevyRoutineIds = { ...routineIds }
-  state.totalWorkouts = workoutStats.totalWorkouts
-  state.mostRecentWorkoutDate = workoutStats.mostRecentWorkoutDate
+  // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
   state.progressionHistory = progressionHistory
   state.settings = createDefaultSettings(unit)
 

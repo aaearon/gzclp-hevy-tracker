@@ -7,7 +7,7 @@
  * - Days since last workout
  */
 
-import type { ProgressionState } from '@/types/state'
+import type { ProgressionState, ExerciseHistory } from '@/types/state'
 
 /**
  * Calculate weeks on program from creation date.
@@ -176,4 +176,27 @@ export function formatProgramStartDate(createdAt: string | null): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/**
+ * Derive the most recent workout date from progression history.
+ * Scans all exercise history entries to find the latest date.
+ *
+ * @param progressionHistory Record of exercise histories keyed by progression key
+ * @returns ISO date string of the most recent workout, or null if no history
+ */
+export function getMostRecentWorkoutDate(
+  progressionHistory: Record<string, ExerciseHistory>
+): string | null {
+  let latest: string | null = null
+
+  for (const history of Object.values(progressionHistory)) {
+    for (const entry of history.entries) {
+      if (!latest || entry.date > latest) {
+        latest = entry.date
+      }
+    }
+  }
+
+  return latest
 }

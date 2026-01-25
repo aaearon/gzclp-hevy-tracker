@@ -86,7 +86,6 @@ describe('Storage Split', () => {
       expect(store.progression).toEqual({})
       expect(store.pendingChanges).toEqual([])
       expect(store.lastSync).toBeNull()
-      expect(store.totalWorkouts).toBe(0)
       expect(store.acknowledgedDiscrepancies).toEqual([])
     })
 
@@ -94,11 +93,10 @@ describe('Storage Split', () => {
       const progression = createProgressionState({ exerciseId: 'squat-1', currentWeight: 100 })
       const store = createProgressionStore({
         progression: { 'squat-T1': progression },
-        totalWorkouts: 42,
         lastSync: '2024-01-01T00:00:00.000Z',
       })
       expect(store.progression['squat-T1'].currentWeight).toBe(100)
-      expect(store.totalWorkouts).toBe(42)
+      expect(store.lastSync).toBe('2024-01-01T00:00:00.000Z')
     })
 
     it('passes type guard when valid', () => {
@@ -216,7 +214,7 @@ describe('Storage Split', () => {
 
     it('merged state has all required fields', () => {
       const config = createConfigState({ apiKey: 'test' })
-      const progression = createProgressionStore({ totalWorkouts: 10 })
+      const progression = createProgressionStore()
       const history = createHistoryState()
 
       const merged = mergeStates(config, progression, history)
@@ -231,7 +229,6 @@ describe('Storage Split', () => {
       // Progression fields
       expect(merged.progression).toBeDefined()
       expect(merged.pendingChanges).toBeDefined()
-      expect(merged.totalWorkouts).toBe(10)
       expect(merged.lastSync).toBeNull()
       expect(merged.acknowledgedDiscrepancies).toBeDefined()
 

@@ -61,10 +61,10 @@ export function applyPendingChange(
   }
 
   // Update AMRAP record if a new PR was achieved
+  // Note: amrapRecordWorkoutId removed (Task 2) - can be derived from progressionHistory if needed
   if (change.newPR && change.newAmrapRecord !== undefined) {
     updatedProgression.amrapRecord = change.newAmrapRecord
     updatedProgression.amrapRecordDate = change.workoutDate
-    updatedProgression.amrapRecordWorkoutId = change.workoutId
   }
 
   return {

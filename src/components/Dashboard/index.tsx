@@ -24,7 +24,7 @@ import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
 import { deduplicatePendingChanges } from '@/lib/discrepancy-utils'
 import { applyPendingChange } from '@/lib/apply-changes'
-import { calculateCurrentWeek, calculateDayOfWeek, calculateTotalWorkouts } from '@/utils/stats'
+import { calculateCurrentWeek, calculateDayOfWeek } from '@/utils/stats'
 import type { GZCLPDay, ProgressionState, PendingChange } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
 import { DashboardAlerts } from './DashboardAlerts'
@@ -32,6 +32,21 @@ import { DashboardContent } from './DashboardContent'
 import { ReviewModal } from '@/components/ReviewModal'
 import { OfflineIndicator } from '@/components/common/OfflineIndicator'
 import { PushConfirmDialog } from './PushConfirmDialog'
+import type { GZCLPState } from '@/types/state'
+
+/**
+ * Derive total unique workouts from progression history.
+ * Counts distinct workout IDs across all exercise histories.
+ */
+function deriveTotalWorkouts(progressionHistory: GZCLPState['progressionHistory']): number {
+  const workoutIds = new Set<string>()
+  for (const history of Object.values(progressionHistory)) {
+    for (const entry of history.entries) {
+      workoutIds.add(entry.workoutId)
+    }
+  }
+  return workoutIds.size
+}
 
 export function Dashboard() {
   const {
@@ -42,8 +57,7 @@ export function Dashboard() {
     setHevyRoutineIds,
     setCurrentDay,
     recordHistoryEntry,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
+    // Note: setTotalWorkouts and setMostRecentWorkoutDate removed (Task 2) - now derived
     addPendingChange,
     removePendingChange,
     clearPendingChanges,
@@ -108,8 +122,7 @@ export function Dashboard() {
     progressionHistory: state.progressionHistory, // Derives processed workout IDs
     onDayAdvance: setCurrentDay, // Auto-advance day when workout is detected
     currentDay: program.currentDay, // For day mismatch detection
-    totalWorkouts: state.totalWorkouts, // [Task 4] For deriving count from sync
-    onTotalWorkoutsUpdate: setTotalWorkouts, // [Task 4] Update total on sync
+    // Note: totalWorkouts removed (Task 2) - now derived from history
     onAutoApplyChange: handleAutoApplyChange, // [Task 1] Auto-apply non-conflicting changes
   })
 
@@ -131,14 +144,7 @@ export function Dashboard() {
     [setCurrentDay]
   )
 
-  // Handle workout completion - update most recent workout date
-  // Note: totalWorkouts is now derived from sync (Task 4), not incremented on apply
-  const handleWorkoutComplete = useCallback(
-    (workoutDate: string) => {
-      setMostRecentWorkoutDate(workoutDate)
-    },
-    [setMostRecentWorkoutDate]
-  )
+  // Note: handleWorkoutComplete removed (Task 2) - mostRecentWorkoutDate now derived from history
 
   // Merge stored pending changes with sync-generated ones
   // Deduplicate by progressionKey to prevent duplicates when sync runs multiple times
@@ -236,7 +242,6 @@ export function Dashboard() {
     recentlyRejected,
     applyChange,
     rejectChange,
-    modifyChange,
     applyAllChanges,
     undoReject,
   } = usePendingChanges({
@@ -246,7 +251,6 @@ export function Dashboard() {
     currentDay: program.currentDay,
     onDayAdvance: handleDayAdvance,
     onRecordHistory: recordHistoryEntry,
-    onWorkoutComplete: handleWorkoutComplete,
     onAllChangesApplied: handleAllChangesApplied,
     onRejectChange: handleRejectChange,
   })
@@ -298,8 +302,8 @@ export function Dashboard() {
   // Note: Discrepancy handling has been moved to ReviewModal
   // Discrepancy info is now shown inline on pending change cards
 
-  // Calculate week stats for header
-  const totalWorkouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
+  // Calculate week stats for header (derive from progression history)
+  const totalWorkouts = deriveTotalWorkouts(state.progressionHistory)
   const currentWeek = calculateCurrentWeek(totalWorkouts, state.program.workoutsPerWeek)
   const dayOfWeek = calculateDayOfWeek(totalWorkouts, state.program.workoutsPerWeek)
 
@@ -352,7 +356,6 @@ export function Dashboard() {
         onApply={applyChange}
         onApplyAll={handleApplyAllChanges}
         onReject={rejectChange}
-        onModify={modifyChange}
         onClose={() => { setIsReviewModalOpen(false) }}
         recentlyRejected={recentlyRejected}
         onUndoReject={undoReject}

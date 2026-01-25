@@ -185,40 +185,6 @@ describe('useProgressionManager', () => {
     })
   })
 
-  describe('setTotalWorkouts', () => {
-    it('should forward to storage hook', () => {
-      const mockStorage = createMockProgressionStorage()
-
-      const { result } = renderHook(() =>
-        useProgressionManager({ progressionStorage: mockStorage })
-      )
-
-      act(() => {
-        result.current.setTotalWorkouts(10)
-      })
-
-      expect(mockStorage.setTotalWorkouts).toHaveBeenCalledWith(10)
-    })
-  })
-
-  describe('setMostRecentWorkoutDate', () => {
-    it('should forward to storage hook', () => {
-      const mockStorage = createMockProgressionStorage()
-
-      const { result } = renderHook(() =>
-        useProgressionManager({ progressionStorage: mockStorage })
-      )
-
-      act(() => {
-        result.current.setMostRecentWorkoutDate('2024-01-15T10:00:00Z')
-      })
-
-      expect(mockStorage.setMostRecentWorkoutDate).toHaveBeenCalledWith(
-        '2024-01-15T10:00:00Z'
-      )
-    })
-  })
-
   describe('setLastSync', () => {
     it('should forward to storage hook', () => {
       const mockStorage = createMockProgressionStorage()

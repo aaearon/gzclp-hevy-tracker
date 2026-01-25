@@ -103,12 +103,11 @@ export function useDataPersistence({
 
         try {
           // Step 2: Import into progression storage
+          // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
           progressionStorage.importProgression({
             progression: newState.progression,
             pendingChanges: newState.pendingChanges,
             lastSync: newState.lastSync,
-            totalWorkouts: newState.totalWorkouts,
-            mostRecentWorkoutDate: newState.mostRecentWorkoutDate,
             acknowledgedDiscrepancies: newState.acknowledgedDiscrepancies,
             needsPush: newState.needsPush,
           })

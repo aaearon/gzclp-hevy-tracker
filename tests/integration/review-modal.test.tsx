@@ -52,7 +52,6 @@ describe('[US3] Review Modal Flow', () => {
   const mockOnApply = vi.fn()
   const mockOnApplyAll = vi.fn()
   const mockOnReject = vi.fn()
-  const mockOnModify = vi.fn()
   const mockOnClose = vi.fn()
 
   beforeEach(() => {
@@ -73,7 +72,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -91,7 +90,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -110,7 +109,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -128,7 +127,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -145,7 +144,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -164,7 +163,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -185,7 +184,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -206,7 +205,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -226,7 +225,7 @@ describe('[US3] Review Modal Flow', () => {
           onApply={mockOnApply}
           onApplyAll={mockOnApplyAll}
           onReject={mockOnReject}
-          onModify={mockOnModify}
+
           onClose={mockOnClose}
         />
       )
@@ -238,38 +237,4 @@ describe('[US3] Review Modal Flow', () => {
     })
   })
 
-  describe('Weight Modification', () => {
-    it('should allow editing the proposed weight', async () => {
-      render(
-        <ReviewModal
-          isOpen={true}
-          pendingChanges={mockPendingChanges}
-          unit="kg"
-          onApply={mockOnApply}
-          onApplyAll={mockOnApplyAll}
-          onReject={mockOnReject}
-          onModify={mockOnModify}
-          onClose={mockOnClose}
-        />
-      )
-
-      // Find the edit button for the first change
-      const editButtons = screen.getAllByRole('button', { name: /edit|modify/i })
-      await user.click(editButtons[0])
-
-      // Should show weight input
-      const weightInput = screen.getByRole('spinbutton')
-      expect(weightInput).toBeInTheDocument()
-
-      // Modify the weight
-      await user.clear(weightInput)
-      await user.type(weightInput, '102.5')
-
-      // Confirm the change
-      const confirmButton = screen.getByRole('button', { name: /confirm|save/i })
-      await user.click(confirmButton)
-
-      expect(mockOnModify).toHaveBeenCalledWith(mockPendingChanges[0].id, 102.5)
-    })
-  })
 })

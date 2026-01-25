@@ -9,16 +9,31 @@
  * [REQ-DASH-003] Quick stats dashboard display
  */
 
+import { useMemo } from 'react'
 import {
   calculateCurrentWeek,
   calculateDayOfWeek,
-  calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
   getLastWorkoutDate,
   formatLastWorkoutDisplay,
   formatProgramStartDate,
+  getMostRecentWorkoutDate,
 } from '@/utils/stats'
 import type { GZCLPState } from '@/types/state'
+
+/**
+ * Derive total unique workouts from progression history.
+ * Counts distinct workout IDs across all exercise histories.
+ */
+function deriveTotalWorkouts(progressionHistory: GZCLPState['progressionHistory']): number {
+  const workoutIds = new Set<string>()
+  for (const history of Object.values(progressionHistory)) {
+    for (const entry of history.entries) {
+      workoutIds.add(entry.workoutId)
+    }
+  }
+  return workoutIds.size
+}
 
 interface QuickStatsProps {
   state: GZCLPState
@@ -44,11 +59,20 @@ function StatCard({ label, value, subtitle, warning }: StatCardProps) {
 }
 
 export function QuickStats({ state }: QuickStatsProps) {
-  const workouts = calculateTotalWorkouts(state.progression, state.totalWorkouts)
+  // Derive stats from progression history (Task 2 simplification)
+  const workouts = useMemo(
+    () => deriveTotalWorkouts(state.progressionHistory),
+    [state.progressionHistory]
+  )
+  const mostRecentDate = useMemo(
+    () => getMostRecentWorkoutDate(state.progressionHistory),
+    [state.progressionHistory]
+  )
+
   const currentWeek = calculateCurrentWeek(workouts, state.program.workoutsPerWeek)
   const dayOfWeek = calculateDayOfWeek(workouts, state.program.workoutsPerWeek)
-  const daysSince = calculateDaysSinceLastWorkout(state.progression, state.mostRecentWorkoutDate)
-  const lastWorkoutDate = getLastWorkoutDate(state.progression, state.mostRecentWorkoutDate)
+  const daysSince = calculateDaysSinceLastWorkout(state.progression, mostRecentDate)
+  const lastWorkoutDate = getLastWorkoutDate(state.progression, mostRecentDate)
   const lastWorkoutDisplay = formatLastWorkoutDisplay(lastWorkoutDate, daysSince)
   const programStartDate = formatProgramStartDate(state.program.createdAt)
 

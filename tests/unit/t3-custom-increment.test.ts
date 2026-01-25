@@ -20,7 +20,6 @@ describe('T3 Custom Increment', () => {
     baseWeight: 10,
     amrapRecord: 0,
     amrapRecordDate: null,
-    amrapRecordWorkoutId: null,
   }
 
   describe('calculateT3Progression with custom increment', () => {

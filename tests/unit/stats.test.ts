@@ -12,7 +12,9 @@ import {
   calculateDayOfWeek,
   calculateTotalWorkouts,
   calculateDaysSinceLastWorkout,
+  getMostRecentWorkoutDate,
 } from '@/utils/stats'
+import type { ExerciseHistory } from '@/types/state'
 
 describe('calculateWeeksOnProgram', () => {
   beforeEach(() => {
@@ -147,5 +149,94 @@ describe('calculateDaysSinceLastWorkout', () => {
       const result = calculateDaysSinceLastWorkout({})
       expect(result).toBeNull()
     })
+  })
+})
+
+describe('getMostRecentWorkoutDate', () => {
+  it('should return null for empty history', () => {
+    const result = getMostRecentWorkoutDate({})
+    expect(result).toBeNull()
+  })
+
+  it('should return null for history with no entries', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBeNull()
+  })
+
+  it('should return the most recent date from single exercise', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+          { date: '2024-03-15T10:00:00Z', workoutId: 'w2', weight: 102.5, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+          { date: '2024-03-12T10:00:00Z', workoutId: 'w3', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-15T10:00:00Z')
+  })
+
+  it('should return the most recent date across multiple exercises', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 100, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+      'bench-T1': {
+        progressionKey: 'bench-T1',
+        exerciseName: 'Bench',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-20T10:00:00Z', workoutId: 'w2', weight: 60, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+      'deadlift-T1': {
+        progressionKey: 'deadlift-T1',
+        exerciseName: 'Deadlift',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-15T10:00:00Z', workoutId: 'w3', weight: 120, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-20T10:00:00Z')
+  })
+
+  it('should handle mixed empty and populated histories', () => {
+    const history: Record<string, ExerciseHistory> = {
+      'squat-T1': {
+        progressionKey: 'squat-T1',
+        exerciseName: 'Squat',
+        tier: 'T1',
+        entries: [],
+      },
+      'bench-T1': {
+        progressionKey: 'bench-T1',
+        exerciseName: 'Bench',
+        tier: 'T1',
+        entries: [
+          { date: '2024-03-10T10:00:00Z', workoutId: 'w1', weight: 60, stage: 0, tier: 'T1', success: true, changeType: 'progress' },
+        ],
+      },
+    }
+    const result = getMostRecentWorkoutDate(history)
+    expect(result).toBe('2024-03-10T10:00:00Z')
   })
 })

@@ -66,14 +66,13 @@ export function createInitialConfigState(unit: WeightUnit = 'kg'): ConfigState {
 
 /**
  * Create initial progression store for split storage.
+ * Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
  */
 export function createInitialProgressionStore(): ProgressionStore {
   return {
     progression: {},
     pendingChanges: [],
     lastSync: null,
-    totalWorkouts: 0,
-    mostRecentWorkoutDate: null,
     acknowledgedDiscrepancies: [],
     needsPush: false,
   }
@@ -113,8 +112,7 @@ export function createInitialState(unit: WeightUnit = 'kg'): GZCLPState {
     settings: createDefaultSettings(unit),
     lastSync: null,
 
-    totalWorkouts: 0,
-    mostRecentWorkoutDate: null,
+    // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
     progressionHistory: {},
     acknowledgedDiscrepancies: [],
     needsPush: false,

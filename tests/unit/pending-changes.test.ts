@@ -22,7 +22,6 @@ describe('[US3] Pending Changes Application', () => {
       baseWeight: 100,
       amrapRecord: 5,
       amrapRecordDate: null,
-      amrapRecordWorkoutId: null,
     },
     'ex-bench': {
       exerciseId: 'ex-bench',
@@ -31,7 +30,6 @@ describe('[US3] Pending Changes Application', () => {
       baseWeight: 60,
       amrapRecord: 0,
       amrapRecordDate: null,
-      amrapRecordWorkoutId: null,
     },
   }
 

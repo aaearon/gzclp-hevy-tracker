@@ -64,10 +64,6 @@ export interface UseProgramResult {
   setWorkoutsPerWeek: (workoutsPerWeek: number) => void
   setT3Schedule: (schedule: Record<GZCLPDay, string[]>) => void
 
-  // Workout Stats
-  setTotalWorkouts: (count: number) => void
-  setMostRecentWorkoutDate: (date: string | null) => void
-
   // Sync
   setLastSync: (timestamp: string) => void
   setNeedsPush: (needsPush: boolean) => void
@@ -123,8 +119,6 @@ export function useProgram(): UseProgramResult {
     setProgressionByKey,
     updateProgression,
     updateProgressionBatch,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     acknowledgeDiscrepancy,
@@ -161,8 +155,7 @@ export function useProgram(): UseProgramResult {
       progression: progressionStore.progression,
       pendingChanges: progressionStore.pendingChanges,
       lastSync: progressionStore.lastSync,
-      totalWorkouts: progressionStore.totalWorkouts,
-      mostRecentWorkoutDate: progressionStore.mostRecentWorkoutDate,
+      // Note: totalWorkouts and mostRecentWorkoutDate removed (Task 2) - now derived
       acknowledgedDiscrepancies: progressionStore.acknowledgedDiscrepancies,
       needsPush: progressionStore.needsPush,
       progressionHistory: history.progressionHistory,
@@ -190,8 +183,6 @@ export function useProgram(): UseProgramResult {
     setProgramCreatedAt,
     setWorkoutsPerWeek,
     setT3Schedule,
-    setTotalWorkouts,
-    setMostRecentWorkoutDate,
     setLastSync,
     setNeedsPush,
     setProgressionHistory,

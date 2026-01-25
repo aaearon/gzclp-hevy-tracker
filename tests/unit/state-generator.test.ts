@@ -156,7 +156,6 @@ describe('State Generator', () => {
       expect(state.baseWeight).toBe(60)
       expect(state.amrapRecord).toBe(0)
       expect(state.amrapRecordDate).toBeNull()
-      expect(state.amrapRecordWorkoutId).toBeNull()
     })
 
     it('uses currentWeight as baseWeight default', () => {
@@ -227,10 +226,10 @@ describe('State Generator', () => {
     it('accepts partial overrides', () => {
       const state = createGZCLPState({
         apiKey: 'test-key',
-        totalWorkouts: 10,
+        lastSync: '2024-01-01T00:00:00.000Z',
       })
       expect(state.apiKey).toBe('test-key')
-      expect(state.totalWorkouts).toBe(10)
+      expect(state.lastSync).toBe('2024-01-01T00:00:00.000Z')
     })
   })
 
@@ -288,7 +287,6 @@ describe('State Generator', () => {
         expect(store.progression).toEqual({})
         expect(store.pendingChanges).toEqual([])
         expect(store.lastSync).toBeNull()
-        expect(store.totalWorkouts).toBe(0)
         expect(store.acknowledgedDiscrepancies).toEqual([])
       })
     })

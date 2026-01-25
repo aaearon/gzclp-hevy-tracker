@@ -133,7 +133,6 @@ export function useExerciseManagement({
           baseWeight: 0,
           amrapRecord: 0,
           amrapRecordDate: null,
-          amrapRecordWorkoutId: null,
         },
       })
 

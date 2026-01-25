@@ -237,16 +237,12 @@ describe('buildImportProgramState', () => {
     const params = createImportParams({
       workoutStats: {
         createdAt: '2026-01-01T12:00:00.000Z',
-        totalWorkouts: 25,
-        mostRecentWorkoutDate: '2026-01-09T18:30:00.000Z',
       },
     })
 
     const state = buildImportProgramState(params)
 
     expect(state.program.createdAt).toBe('2026-01-01T12:00:00.000Z')
-    expect(state.totalWorkouts).toBe(25)
-    expect(state.mostRecentWorkoutDate).toBe('2026-01-09T18:30:00.000Z')
   })
 
   it('should set currentDay from selectedDay', () => {

@@ -38,10 +38,7 @@ export interface UseSyncFlowOptions {
   onDayAdvance?: (nextDay: GZCLPDay) => void
   /** Current day in the app state - used for day mismatch detection */
   currentDay?: GZCLPDay | undefined
-  /** Current total workouts count */
-  totalWorkouts?: number
-  /** Called to update total workouts when new workouts are synced */
-  onTotalWorkoutsUpdate?: (total: number) => void
+  // Note: totalWorkouts and onTotalWorkoutsUpdate removed (Task 2) - now derived from history
   /** Called to auto-apply changes that don't require review */
   onAutoApplyChange?: (change: PendingChange) => void
 }
@@ -80,8 +77,6 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     progressionHistory,
     onDayAdvance,
     currentDay,
-    totalWorkouts = 0,
-    onTotalWorkoutsUpdate,
     onAutoApplyChange,
   } = options
 
@@ -91,8 +86,6 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
   const recordedChangeIds = useRef(new Set<string>())
   // Track whether we've already advanced for the current detected day
   const lastAdvancedDay = useRef<GZCLPDay | null>(null)
-  // Track last processed workout count to avoid double-counting
-  const lastNewWorkoutsCount = useRef(0)
   // Track which changes have been auto-applied
   const autoAppliedChangeIds = useRef(new Set<string>())
 
@@ -107,7 +100,6 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     pendingChanges: syncPendingChanges,
     discrepancies,
     detectedWorkoutDay,
-    newWorkoutsCount,
     syncWorkouts,
     clearError,
     clearPendingChanges: clearSyncPendingChanges,
@@ -210,18 +202,7 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     }
   }, [syncPendingChanges, onRecordHistory])
 
-  // Update total workouts count when new workouts are synced
-  // This derives the count from sync rather than manual increment on apply
-  useEffect(() => {
-    if (newWorkoutsCount <= 0 || !onTotalWorkoutsUpdate) return
-    // Only update if the count changed (avoid duplicate updates)
-    if (lastNewWorkoutsCount.current === newWorkoutsCount) return
-
-    lastNewWorkoutsCount.current = newWorkoutsCount
-    const newTotal = totalWorkouts + newWorkoutsCount
-    console.debug(`[useSyncFlow] Updating totalWorkouts: ${totalWorkouts} + ${newWorkoutsCount} = ${newTotal}`)
-    onTotalWorkoutsUpdate(newTotal)
-  }, [newWorkoutsCount, totalWorkouts, onTotalWorkoutsUpdate])
+  // Note: totalWorkouts update effect removed (Task 2) - now derived from history
 
   // Handle manual sync and update timestamp
   const handleSync = useCallback(async () => {
