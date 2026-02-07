@@ -395,7 +395,7 @@ describe('[US4] Routine Builder', () => {
     it('should use custom rest timers from settings', () => {
       const customSettings: UserSettings = {
         ...defaultSettings,
-        restTimers: { t1: 240, t2: 150, t3: 90 },
+        restTimers: { t1: 180, t2: 120, t3: 90 },
       }
 
       const t1Exercise = buildRoutineExercise(
@@ -417,8 +417,8 @@ describe('[US4] Routine Builder', () => {
         'A1'
       )
 
-      expect(t1Exercise.rest_seconds).toBe(240)
-      expect(t2Exercise.rest_seconds).toBe(150)
+      expect(t1Exercise.rest_seconds).toBe(180)
+      expect(t2Exercise.rest_seconds).toBe(120)
       expect(t3Exercise.rest_seconds).toBe(90)
     })
   })

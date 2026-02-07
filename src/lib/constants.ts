@@ -149,9 +149,9 @@ export const WEIGHT_ROUNDING: Record<WeightUnit, number> = {
 // =============================================================================
 
 export const DEFAULT_REST_TIMERS: Record<Tier, number> = {
-  T1: 240, // 4 minutes (spec: 3-5 min midpoint)
-  T2: 150, // 2.5 minutes (spec: 2-3 min midpoint)
-  T3: 75, // 1.25 minutes (spec: 60-90s midpoint)
+  T1: 180, // 3 minutes
+  T2: 120, // 2 minutes
+  T3: 60, // 1 minute
 }
 
 // =============================================================================
