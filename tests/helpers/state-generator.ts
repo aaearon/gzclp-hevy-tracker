@@ -97,9 +97,9 @@ export function createUserSettings(options: UserSettingsOptions = {}): UserSetti
       lower: options.increments?.lower ?? defaultIncrements.lower,
     },
     restTimers: {
-      t1: options.restTimers?.t1 ?? 240,
-      t2: options.restTimers?.t2 ?? 150,
-      t3: options.restTimers?.t3 ?? 75,
+      t1: options.restTimers?.t1 ?? 180,
+      t2: options.restTimers?.t2 ?? 120,
+      t3: options.restTimers?.t3 ?? 60,
     },
   }
 }
