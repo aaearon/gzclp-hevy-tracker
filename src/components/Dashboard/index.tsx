@@ -23,7 +23,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { createHevyClient } from '@/lib/hevy-client'
 import { DAY_CYCLE } from '@/lib/constants'
 import { deduplicatePendingChanges } from '@/lib/discrepancy-utils'
-import { applyPendingChange } from '@/lib/apply-changes'
+import { applyAllPendingChanges } from '@/lib/apply-changes'
 import { calculateCurrentWeek, calculateDayOfWeek } from '@/utils/stats'
 import type { GZCLPDay, ProgressionState, PendingChange } from '@/types/state'
 import { DashboardHeader } from './DashboardHeader'
@@ -86,15 +86,18 @@ export function Dashboard() {
     }
   }, [isOnline, checkHevyConnection])
 
-  // Auto-apply callback for non-conflicting changes [Task 1]
-  const handleAutoApplyChange = useCallback(
-    (change: PendingChange) => {
-      // Apply the change to progression state
-      const updatedProgression = applyPendingChange(progression, change)
+  // Batch auto-apply callback for non-conflicting changes [Task 1]
+  // Uses applyAllPendingChanges to apply sequentially, avoiding stale closure bug
+  const handleAutoApplyChanges = useCallback(
+    (changes: PendingChange[]) => {
+      // Apply all changes atomically — each builds on the previous result
+      const updatedProgression = applyAllPendingChanges(progression, changes)
       updateProgressionBatch(updatedProgression)
       setNeedsPush(true)
-      // Record to history
-      recordHistoryEntry(change)
+      // Record history for each applied change
+      for (const change of changes) {
+        recordHistoryEntry(change)
+      }
     },
     [progression, updateProgressionBatch, setNeedsPush, recordHistoryEntry]
   )
@@ -118,12 +121,11 @@ export function Dashboard() {
     hevyRoutineIds: program.hevyRoutineIds,
     isOnline,
     onLastSyncUpdate: setLastSync,
-    onRecordHistory: recordHistoryEntry, // Record to history immediately on sync
     progressionHistory: state.progressionHistory, // Derives processed workout IDs
     onDayAdvance: setCurrentDay, // Auto-advance day when workout is detected
     currentDay: program.currentDay, // For day mismatch detection
     // Note: totalWorkouts removed (Task 2) - now derived from history
-    onAutoApplyChange: handleAutoApplyChange, // [Task 1] Auto-apply non-conflicting changes
+    onAutoApplyChanges: handleAutoApplyChanges, // [Task 1] Batch auto-apply non-conflicting changes
   })
 
   // Handle progression updates from pending changes

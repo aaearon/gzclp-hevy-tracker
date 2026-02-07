@@ -30,8 +30,6 @@ export interface UseSyncFlowOptions {
   hevyRoutineIds: Record<GZCLPDay, string | null>
   isOnline: boolean
   onLastSyncUpdate: (timestamp: string) => void
-  /** Called to record each workout to progression history for charts */
-  onRecordHistory?: (change: PendingChange) => void
   /** Progression history - used to derive processed workout IDs */
   progressionHistory: Record<string, ExerciseHistory>
   /** Called to advance to the next day when a workout is detected */
@@ -39,8 +37,8 @@ export interface UseSyncFlowOptions {
   /** Current day in the app state - used for day mismatch detection */
   currentDay?: GZCLPDay | undefined
   // Note: totalWorkouts and onTotalWorkoutsUpdate removed (Task 2) - now derived from history
-  /** Called to auto-apply changes that don't require review */
-  onAutoApplyChange?: (change: PendingChange) => void
+  /** Called to batch auto-apply changes that don't require review */
+  onAutoApplyChanges?: (changes: PendingChange[]) => void
 }
 
 export interface UseSyncFlowReturn {
@@ -73,17 +71,14 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     hevyRoutineIds,
     isOnline,
     onLastSyncUpdate,
-    onRecordHistory,
     progressionHistory,
     onDayAdvance,
     currentDay,
-    onAutoApplyChange,
+    onAutoApplyChanges,
   } = options
 
   // Track whether auto-sync has already been triggered
   const hasAutoSynced = useRef(false)
-  // Track which changes have been recorded to history
-  const recordedChangeIds = useRef(new Set<string>())
   // Track whether we've already advanced for the current detected day
   const lastAdvancedDay = useRef<GZCLPDay | null>(null)
   // Track which changes have been auto-applied
@@ -141,30 +136,31 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     return { autoApplyChanges: autoApply, conflictingChanges: conflicts }
   }, [syncPendingChanges])
 
-  // Auto-apply non-conflicting changes
+  // Auto-apply non-conflicting changes in a single batch
   // Note: Processed workout IDs are now derived from progressionHistory,
   // so we don't need to track them separately
   useEffect(() => {
-    if (autoApplyChanges.length === 0 || !onAutoApplyChange) return
+    if (autoApplyChanges.length === 0 || !onAutoApplyChanges) return
 
-    const newlyApplied: PendingChange[] = []
+    // Collect only changes that haven't been applied yet
+    const newlyApplied = autoApplyChanges.filter(
+      (change) => !autoAppliedChangeIds.current.has(change.id)
+    )
 
-    for (const change of autoApplyChanges) {
-      // Skip if already auto-applied
-      if (autoAppliedChangeIds.current.has(change.id)) continue
+    if (newlyApplied.length === 0) return
 
+    // Mark all as applied before calling the batch callback
+    for (const change of newlyApplied) {
       console.debug(`[useSyncFlow] Auto-applying change: ${change.exerciseName} (${change.tier})`)
       autoAppliedChangeIds.current.add(change.id)
-      onAutoApplyChange(change)
-      newlyApplied.push(change)
     }
 
-    // Update auto-applied count and changes
-    if (newlyApplied.length > 0) {
-      setAutoAppliedCount(autoAppliedChangeIds.current.size)
-      setAutoAppliedChanges((prev) => [...prev, ...newlyApplied])
-    }
-  }, [autoApplyChanges, onAutoApplyChange])
+    // Single batch callback — caller applies all changes atomically
+    onAutoApplyChanges(newlyApplied)
+
+    setAutoAppliedCount(autoAppliedChangeIds.current.size)
+    setAutoAppliedChanges((prev) => [...prev, ...newlyApplied])
+  }, [autoApplyChanges, onAutoApplyChanges])
 
   // Auto-sync on mount when conditions are met
   useEffect(() => {
@@ -188,21 +184,9 @@ export function useSyncFlow(options: UseSyncFlowOptions): UseSyncFlowReturn {
     onDayAdvance(nextDay)
   }, [detectedWorkoutDay, onDayAdvance])
 
-  // Record sync results to progression history for charts
-  // This runs whenever new pending changes come from sync
-  useEffect(() => {
-    if (!onRecordHistory || syncPendingChanges.length === 0) return
-
-    for (const change of syncPendingChanges) {
-      // Only record each change once
-      if (!recordedChangeIds.current.has(change.id)) {
-        recordedChangeIds.current.add(change.id)
-        onRecordHistory(change)
-      }
-    }
-  }, [syncPendingChanges, onRecordHistory])
-
-  // Note: totalWorkouts update effect removed (Task 2) - now derived from history
+  // Note: History recording removed from useSyncFlow — callers record history
+  // when changes are actually applied (auto-apply batch or user review).
+  // This prevents premature recording of conflicting changes that may be rejected.
 
   // Handle manual sync and update timestamp
   const handleSync = useCallback(async () => {
