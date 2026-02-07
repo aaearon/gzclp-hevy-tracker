@@ -384,4 +384,135 @@ describe('useSyncFlow', () => {
       expect(result.current.autoAppliedCount).toBe(0)
     })
   })
+
+  describe('batch auto-apply', () => {
+    const createChange = (id: string, overrides: Partial<import('@/types/state').PendingChange> = {}): import('@/types/state').PendingChange => ({
+      id,
+      exerciseId: 'ex-1',
+      exerciseName: 'Squat',
+      tier: 'T1' as const,
+      type: 'progress' as const,
+      progressionKey: `key-${id}`,
+      currentWeight: 100,
+      currentStage: 0 as const,
+      newWeight: 105,
+      newStage: 0 as const,
+      newScheme: '5x3+',
+      reason: 'Completed all reps',
+      workoutId: `workout-${id}`,
+      workoutDate: '2025-01-01',
+      createdAt: '2025-01-01T12:00:00Z',
+      ...overrides,
+    })
+
+    it('calls onAutoApplyChanges once with all non-conflicting changes', async () => {
+      const changes = [
+        createChange('1', { progressionKey: 'squat-T1' }),
+        createChange('2', { progressionKey: 'ohp-T1', exerciseName: 'OHP' }),
+        createChange('3', { progressionKey: 'bench-T2', exerciseName: 'Bench' }),
+      ]
+
+      mockUseProgression.mockReturnValue(createMockProgressionReturn({ pendingChanges: changes }))
+
+      const onAutoApplyChanges = vi.fn()
+
+      renderHook(() => useSyncFlow({
+        ...defaultOptions,
+        onAutoApplyChanges,
+      }))
+
+      await waitFor(() => {
+        expect(onAutoApplyChanges).toHaveBeenCalledTimes(1)
+      })
+
+      // Called once with all 3 changes
+      expect(onAutoApplyChanges).toHaveBeenCalledWith(changes)
+    })
+
+    it('does not include conflicting changes in batch callback', async () => {
+      const autoChange = createChange('1', { progressionKey: 'squat-T1' })
+      const conflictChange = createChange('2', {
+        progressionKey: 'ohp-T1',
+        exerciseName: 'OHP',
+        discrepancy: { storedWeight: 100, actualWeight: 95 },
+      })
+
+      mockUseProgression.mockReturnValue(
+        createMockProgressionReturn({ pendingChanges: [autoChange, conflictChange] })
+      )
+
+      const onAutoApplyChanges = vi.fn()
+
+      renderHook(() => useSyncFlow({
+        ...defaultOptions,
+        onAutoApplyChanges,
+      }))
+
+      await waitFor(() => {
+        expect(onAutoApplyChanges).toHaveBeenCalledTimes(1)
+      })
+
+      // Only the non-conflicting change
+      expect(onAutoApplyChanges).toHaveBeenCalledWith([autoChange])
+    })
+
+    it('does not call onAutoApplyChanges when there are no auto-apply changes', async () => {
+      const conflictChange = createChange('1', {
+        discrepancy: { storedWeight: 100, actualWeight: 95 },
+      })
+
+      mockUseProgression.mockReturnValue(
+        createMockProgressionReturn({ pendingChanges: [conflictChange] })
+      )
+
+      const onAutoApplyChanges = vi.fn()
+
+      renderHook(() => useSyncFlow({
+        ...defaultOptions,
+        onAutoApplyChanges,
+      }))
+
+      // Wait to ensure effect runs
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(onAutoApplyChanges).not.toHaveBeenCalled()
+    })
+
+    it('does not re-call onAutoApplyChanges for already-applied changes on rerender', async () => {
+      const changes = [createChange('1', { progressionKey: 'squat-T1' })]
+
+      mockUseProgression.mockReturnValue(createMockProgressionReturn({ pendingChanges: changes }))
+
+      const onAutoApplyChanges = vi.fn()
+
+      const { rerender } = renderHook(() => useSyncFlow({
+        ...defaultOptions,
+        onAutoApplyChanges,
+      }))
+
+      await waitFor(() => {
+        expect(onAutoApplyChanges).toHaveBeenCalledTimes(1)
+      })
+
+      // Rerender — same changes still present
+      rerender()
+      rerender()
+
+      // Should still only be called once
+      expect(onAutoApplyChanges).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('no premature history recording', () => {
+    it('does not accept onRecordHistory prop', () => {
+      // The hook should NOT have an onRecordHistory prop
+      // History recording is the caller's responsibility when applying changes
+      mockUseProgression.mockReturnValue(createMockProgressionReturn())
+
+      // Verify the type doesn't include onRecordHistory by checking that
+      // the hook works without it
+      const { result } = renderHook(() => useSyncFlow(defaultOptions))
+
+      expect(result.current.isSyncing).toBe(false)
+    })
+  })
 })

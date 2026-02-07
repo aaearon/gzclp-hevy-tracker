@@ -597,7 +597,7 @@ export function CollapsibleSection({ title, children, defaultOpen = true }) {
 **Responsibility:** Main application view orchestration
 **Key features:**
 - Auto-sync on mount via `useSyncFlow()`
-- **Auto-apply non-conflicting changes** (v2.7.0): Changes without weight discrepancies are applied automatically
+- **Batch auto-apply non-conflicting changes** (v2.7.0): Changes without weight discrepancies are applied atomically in a single batch via `applyAllPendingChanges()`, with history recorded after application
 - Pending changes management via `usePendingChanges()` (only for conflicts requiring review)
 - Push confirmation dialog via `usePushDialog()`
 - Discrepancy resolution with acknowledgment tracking
